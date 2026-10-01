@@ -1,0 +1,96 @@
+.homepage {
+  font-family: Arial, sans-serif;
+  color: #222;
+}
+.homepage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fc3f04 !important;
+  color: #fff;
+  padding: 16px 32px;
+}
+.logo {
+  font-size: 2rem;
+  font-weight: bold;
+}
+nav a {
+  color: #fff;
+  margin-left: 24px;
+  text-decoration: none;
+  font-weight: 500;
+}
+.banner {
+  background: url('banner.jpg') center/cover no-repeat;
+  padding: 60px 0 40px 0;
+  text-align: center;
+  color: #fff;
+}
+.banner h1 {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+}
+.tours-section, .groups-section, .zones-section {
+  padding: 32px 0;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.tour-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.tour-card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  width: 260px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.tour-card img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+}
+.tour-info {
+  padding: 16px;
+}
+.tour-info h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+}
+.tour-price {
+  color: #d35400;
+  font-weight: bold;
+}
+.group-list, .zone-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.group-card, .zone-card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  padding: 20px;
+  width: 300px;
+}
+.homepage-footer {
+  background: #006666;
+  color: #fff;
+  text-align: center;
+  padding: 24px 0 12px 0;
+  margin-top: 40px;
+}
+@media (max-width: 900px) {
+  .tour-list, .group-list, .zone-list {
+    flex-direction: column;
+    align-items: center;
+  }
+  .tour-card, .group-card, .zone-card {
+    width: 90vw;
+    max-width: 350px;
+  }
+}

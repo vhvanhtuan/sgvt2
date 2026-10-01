@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>CMS - Danh sách bảng</title>
+    <link href="/html_logo.ico" rel="shortcut icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="cms.css">
+    <link rel="stylesheet" href="scroll-top.css">
+    <link rel="stylesheet" href="cms-chat.css">
+    <!-- Select2 + Bootstrap 5 theme -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/gh/apalfrey/select2-bootstrap-5-theme@latest/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="cms-toasts.css" rel="stylesheet">
+    <style>
+        .one-role { padding-bottom: 4px; display: block; }
+        .one-role:nth-of-type(3n+1) { color: red; }
+        .one-role:nth-of-type(3n+2) { color: rgb(25, 0, 255); }
+        .one-role:nth-of-type(3n+3) { color: rgb(9, 80, 0); }
+        /* Filter row styling */
+        .cms-filter-row {
+            background-color: #f5f5f5;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .cms-filter-cell {
+            padding: 8px 4px;
+            vertical-align: middle;
+        }
+
+        .cms-filter-input,
+        .cms-filter-select {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+
+        .cms-filter-input::placeholder {
+            color: #999;
+        }
+
+        .cms-filter-select {
+            cursor: pointer;
+        }
+
+        .cms-filter-actions {
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .cms-btn-filter,
+        .cms-btn-clear {
+            padding: 6px 12px;
+            margin: 0 2px;
+            font-size: 12px;
+        }
+
+        .cms-btn-filter {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .cms-btn-filter:hover {
+            background-color: #45a049;
+        }
+
+        .cms-btn-clear {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .cms-html-content img {
+            max-width: 90%;
+            height: auto;
+        }
+        table.cms-table tbody tr:nth-child(odd) {
+        background: #ffffea;
+        }
+
+        table.cms-table tbody tr:hover {
+        background: #f1f1f1;
+        }
+        input[type="date"] {max-width: 70px;}
+
+
+    </style>
+</head>
+<body>
+    <div class="cms-list-container">
+        <div class="cms-topbar">
+            <div id="cms-shortcuts" style="margin-right:12px"></div>
+            <h2 id="cms-table-title">CMS List</h2>
+            <div class="cms-topbar-actions">
+                <a href="driver.html" target="_blank">Driver</a>
+                <button class="cms-btn-add" id="cms-btn-add" onclick="cmsAddRecord()">+ Thêm record</button>
+                <!-- search removed: using Select2 for table selection -->
+                <select id="cms-table-select" class="cms-table-select" title="Chọn bảng dữ liệu"></select>
+                <button class="cms-btn cms-btn-logout" onclick="cmsLogout()">Đăng xuất</button>
+            </div>
+        </div>
+        <div id="cms-error" class="cms-error cms-hidden"></div>
+        <!-- [DEBUG - TẠM THỜI] Panel đối chiếu quyền -->
+        <div id="cms-debug-panel" style="background:#fffbe6;border:2px dashed #f0a500;border-radius:6px;padding:10px 14px;margin:8px 0;font-size:13px;">
+            <div id="cms-debug-toggle" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;user-select:none" onclick="var b=document.getElementById('cms-debug-body');if(!b)return;b.style.display=b.style.display==='none'?'block':'none'">
+                <strong style="color:#c00">&#128269; DEBUG - Đối chiếu quyền</strong>
+                <button type="button" onclick="event.stopPropagation();loadDebugPerm()" style="padding:3px 10px;font-size:12px;cursor:pointer">&#8635; Tải</button>
+                <span style="color:#888;font-size:11px">[Xóa panel này khi xong debug]</span>
+            </div>
+            <div id="cms-debug-body" style="margin-top:8px;display:none">
+                <div id="cms-debug-token" style="margin-bottom:8px"></div>
+                <div id="cms-debug-content" style="color:#666">-- Chọn bảng để tải --</div>
+            </div>
+        </div>
+        <!-- END DEBUG -->
+        <div class="cms-table-wrapper"><table class="cms-table cms-hidden" id="cms-table"></table></div>
+    </div>
+    <button id="scrollTopBtn" class="scroll-top-btn" type="button" title="Lên đầu trang">↑</button>
+    <div id="cms-toast-container" class="toast-container position-fixed" aria-live="polite" aria-atomic="true"></div>
+    <!-- jQuery and Select2 (needed for enhanced table select) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="cms-help.js"></script>
+    <script src="cms-top-menu.js"></script>
+    <script src="scroll-top.js"></script>
+    <script src="cms-chat.js"></script>
+    <script>
+        // Đăng xuất
+        function cmsLogout() {
+            localStorage.removeItem('cms_token');
+            window.location.href = 'cms-login.html';
+        }
+
+        // Kiểm tra token
+        const token = localStorage.getItem('cms_token');
+        if (!token) {
+            window.location.href = 'cms-login.html';
+        }
+
+        // Load user menus (shortcuts) into #cms-shortcuts
+        (async function loadUserMenus(){
+            try {
+                if (window.renderCmsTopMenu) {
+                    await window.renderCmsTopMenu(document.getElementById('cms-shortcuts'));
+                }
+                try { await initCmsHelp(token); } catch (e) {}
+            } catch (e) { /* ignore */ }
+        })();
+
+        // Render cms_token info in debug panel (copy / inline edit / clear)
+        function renderTokenInfo() {
+            const el = document.getElementById('cms-debug-token');
+            if (!el) return;
+            const t = localStorage.getItem('cms_token');
+
+            if (!t) {
+                el.innerHTML = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><strong style="min-width:86px">cms_token:</strong><input id="cms-token-input" placeholder="Chưa có token..." style="padding:6px;font-family:monospace;width:320px"><button id="cms-token-set" style="padding:4px 8px">Đặt token</button></div>`;
+                const setBtn = document.getElementById('cms-token-set');
+                const input = document.getElementById('cms-token-input');
+                if (setBtn) setBtn.addEventListener('click', () => {
+                    const v = String(input.value || '').trim();
+                    if (!v) { alert('Token rỗng.'); return; }
+                    localStorage.setItem('cms_token', v);
+                    renderTokenInfo();
+                    alert('Token đã được đặt');
+                });
+                return;
+            }
+
+            const masked = t.length > 24 ? t.slice(0,10) + '…' + t.slice(-8) : t;
+            el.innerHTML = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><strong style="min-width:86px">cms_token:</strong><span id="cms-token-masked" style="font-family:monospace;color:#333">${masked}</span><button id="cms-token-copy" style="padding:4px 8px">Sao chép</button><button id="cms-token-update" style="padding:4px 8px">Cập nhật</button><button id="cms-token-clear" style="padding:4px 8px">Xóa token</button></div><div id="cms-token-input-wrap" style="margin-top:8px;display:none"></div>`;
+
+            const copyBtn = document.getElementById('cms-token-copy');
+            const updateBtn = document.getElementById('cms-token-update');
+            const clearBtn = document.getElementById('cms-token-clear');
+
+            if (copyBtn) copyBtn.addEventListener('click', async () => {
+                try { await navigator.clipboard.writeText(t); alert('Đã sao chép token vào clipboard'); } catch (e) { prompt('Copy token:', t); }
+            });
+
+            if (clearBtn) clearBtn.addEventListener('click', () => {
+                if (!confirm('Xóa token khỏi localStorage?')) return;
+                localStorage.removeItem('cms_token'); renderTokenInfo(); alert('Token đã bị xóa');
+            });
+
+            if (updateBtn) updateBtn.addEventListener('click', () => {
+                const wrap = document.getElementById('cms-token-input-wrap');
+                if (!wrap) return;
+                wrap.style.display = 'block';
+                wrap.innerHTML = '';
+                const input = document.createElement('input');
+                input.id = 'cms-token-input';
+                input.style.padding = '6px';
+                input.style.fontFamily = 'monospace';
+//                input.style.width = '420px';
+                input.value = t;
+                const save = document.createElement('button');
+                save.id = 'cms-token-save';
+                save.style.padding = '4px 8px';
+                save.innerText = 'Lưu';
+                const cancel = document.createElement('button');
+                cancel.id = 'cms-token-cancel';
+                cancel.style.padding = '4px 8px';
+                cancel.style.marginLeft = '6px';
+                cancel.innerText = 'Hủy';
+                wrap.appendChild(input);
+                wrap.appendChild(save);
+                wrap.appendChild(cancel);
+
+                save.addEventListener('click', () => {
+                    const newVal = String(input.value || '').trim();
+                    if (newVal === '') {
+                        if (confirm('Bạn đã nhập rỗng. Xóa token thay vì lưu?')) {
+                            localStorage.removeItem('cms_token');
+                            renderTokenInfo();
+                            alert('Token đã bị xóa');
+                            return;
+                        } else {
+                            return;
+                        }
+                    }
+                    localStorage.setItem('cms_token', newVal);
+                    renderTokenInfo();
+                    alert('Token đã được cập nhật');
+                });
+
+                cancel.addEventListener('click', () => {
+                    renderTokenInfo();
+                });
+            });
+        }
+
+        // Init token display
+        try { renderTokenInfo(); } catch (e) {}
+
+        // Absolute API base (override via window.__API_BASE__ if needed)
+        // Use same-origin by default; can be overridden by setting window.__API_BASE__
+        const API_BASE = window.__API_BASE__ || '';
+        // Redirect relative /api/ URLs to absolute API base to avoid origin mismatches
+        (function(){
+            const _fetch = window.fetch.bind(window);
+            window.fetch = function(input, init){
+                try {
+                    if (typeof input === 'string' && input.startsWith('/api/')) input = API_BASE + input;
+                    else if (input instanceof Request && input.url && input.url.startsWith('/api/')) input = new Request(API_BASE + input.url, input);
+                } catch(e){}
+                return _fetch(input, init);
+            };
+            // kiểm tra có thay đổi data sau mỗi 30 giây để reload lại danh sách (nếu có tableName hoặc formFile)
+            setInterval(() => {
+                loadDataWithFilters(tableName, currentPage, new URLSearchParams(currentFilters), 1);
+                // loadData(table, page);
+                // console.log('Checking for data changes...');
+            }, 10000);
+        })();
+
+        // Strip HTML tags from text
+        function stripTags(text) {
+            return String(text || '').replace(/<[^>]+>/g, '');
+        }
+
+        // Apply user CSS stored in localStorage.cms_user_css
+        function applyUserCss() {
+            try {
+                const css = localStorage.getItem('cms_user_css') || '';
+                const cleaned = stripTags(css);
+                let style = document.getElementById('cms-user-css');
+                if (!style) {
+                    style = document.createElement('style');
+                    style.id = 'cms-user-css';
+                    document.getElementsByTagName('head')[0].appendChild(style);
+                }
+                style.innerHTML = cleaned;
+            } catch (e) {
+                if (typeof console !== 'undefined' && console.warn) console.warn('applyUserCss error', e);
+            }
+        }
+
+        // Apply immediately if available
+        try { applyUserCss(); } catch (e) {}
+
+        function getQueryParam(name) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(name) || '';
+        }
+
+        // Lấy tên bảng từ query (?table=...)
+        function getTableName() {
+            return getQueryParam('table');
+        }
+
+        // Lấy tên form_file từ query (?form_file=...)
+        function getFormFile() {
+            return getQueryParam('form_file');
+        }
+
+        const tableName = getTableName();
+        const formFile = getFormFile();
+        // Set document title to include table name or form_file (if any)
+        try { if (formFile) document.title = `CMS - Danh sách bảng - ${formFile}`; else if (tableName) document.title = `CMS - Danh sách bảng - ${tableName}`; } catch (e) {}
+        let meta = null;
+        let primaryKey = '';
+        let currentPage = 1;
+        let optionLabelMaps = {};
+        let optionLabelLists = {};
+        let tableList = [];
+        let currentFilters = {};  // Lưu giữ giá trị filter hiện tại
+        const limit = 50;
+        let currentUserId = '';
+        let currentSelfRecordFields = [];
+        // Load danh sách table
+        loadTableList();
+        function setTableSelectValue(val) {
+            const sel = document.getElementById('cms-table-select');
+            if (sel) sel.value = val;
+        }
+
+        function initTableSelect2() {
+            if (typeof jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') return;
+            const $sel = jQuery('#cms-table-select');
+            if (!$sel.length) return;
+            try {
+                if ($sel.hasClass('select2-hidden-accessible')) {
+                    $sel.select2('destroy');
+                }
+            } catch (e) {}
+            $sel.select2({
+                theme: 'bootstrap-5',
+                width: 'style',
+                dropdownAutoWidth: true,
+                placeholder: 'Chọn bảng dữ liệu'
+            });
+            $sel.off('change.select2').on('change.select2', function() {
+                const v = jQuery(this).val();
+                if (v) window.location.href = `cms-list.html?table=${encodeURIComponent(v)}`;
+            });
+        }
+
+        function isTruthyMetaFlag(value) {
+            const normalized = String(value || '').trim().toLowerCase();
+            if (!normalized) return true;
+            return !['0', 'false', 'off', 'no', 'null'].includes(normalized);
+        }
+
+        function hasSelect2Extra(extraStr) {
+            const extraText = String(extraStr || '').trim();
+            if (!extraText) return false;
+
+            const attrMatch = extraText.match(/(?:^|\s)select2(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s]+)))?(?=\s|$)/i);
+            if (attrMatch) {
+                const rawValue = attrMatch[1] ?? attrMatch[2] ?? attrMatch[3];
+                return rawValue === undefined ? true : isTruthyMetaFlag(rawValue);
+            }
+
+            const jsonMatch = extraText.match(/["']select2["']\s*:\s*(?:"([^"]*)"|'([^']*)'|(true|false|1|0|null))/i);
+            if (jsonMatch) {
+                const rawValue = jsonMatch[1] ?? jsonMatch[2] ?? jsonMatch[3];
+                return isTruthyMetaFlag(rawValue);
+            }
+
+            return false;
+        }
+
+        // Initialize Select2 only for filter selects explicitly marked in table_definitions.extra
+        function initFilterSelect2() {
+            if (typeof jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') return;
+            const $forms = jQuery('#cms-table');
+            if (!$forms.length) return;
+            $forms.find('select.cms-filter-select').each(function() {
+                const $sel = jQuery(this);
+                try {
+                    if ($sel.hasClass('select2-hidden-accessible')) $sel.select2('destroy');
+                } catch (e) {}
+                if (this.getAttribute('data-select2-enabled') === '1') {
+                    try {
+                        $sel.select2({
+                            theme: 'bootstrap-5',
+                            width: 'style',
+                            dropdownAutoWidth: true,
+                            placeholder: $sel.find('option[value=""]').text() || 'Tất cả'
+                        });
+                    } catch (e) {
+                        // ignore
+                    }
+                }
+            });
+        }
+
+        function sanitizeControlChars(value) {
+            return String(value == null ? '' : value).replace(/[\u0000-\u001F\u007F]/g, '');
+        }
+
+        function normalizeText(value) {
+            return String(value || '')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '');
+        }
+
+        function renderTableOptions(filterText) {
+            const sel = document.getElementById('cms-table-select');
+            const currentValue = sanitizeControlChars(sel.value || tableName);
+            const keyword = normalizeText(filterText).trim();
+            const filteredTables = tableList.filter(tb => {
+                if (!keyword) return true;
+                const haystack = normalizeText(`${tb.table_name} ${tb.table_php_name || ''}`);
+                return haystack.includes(keyword);
+            });
+
+            sel.innerHTML = '';
+            filteredTables.forEach(tb => {
+                const opt = document.createElement('option');
+                opt.value = sanitizeControlChars(tb.table_name);
+                opt.text = sanitizeControlChars(tb.table_php_name || tb.table_name);
+                sel.appendChild(opt);
+            });
+
+            if (filteredTables.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.text = 'Không tìm thấy bảng';
+                opt.disabled = true;
+                opt.selected = true;
+                sel.appendChild(opt);
+                return;
+            }
+
+            const hasCurrent = filteredTables.some(tb => sanitizeControlChars(tb.table_name) === currentValue);
+            sel.value = sanitizeControlChars(hasCurrent ? currentValue : filteredTables[0].table_name);
+        }
+
+        async function loadTableList() {
+            try {
+                const res = await fetch('/api/generic.php?action=table_list', { headers: { 'Authorization': 'Bearer ' + token } });
+                const data = await res.json();
+                const sel = document.getElementById('cms-table-select');
+                if (data.success && Array.isArray(data.tables)) {
+                    tableList = data.tables;
+                    renderTableOptions('');
+                }
+                sel.value = tableName;
+                // Initialize Select2 (or fallback to native onchange)
+                if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
+                    initTableSelect2();
+                } else {
+                    sel.onchange = function() {
+                        if (sel.value) window.location.href = `cms-list.html?table=${encodeURIComponent(sel.value)}`;
+                    };
+                }
+
+                // search input removed; Select2 handles filtering and selection
+            } catch (e) {
+                // fallback nếu lỗi
+                const sel = document.getElementById('cms-table-select');
+                sel.innerHTML = '<option>Lỗi tải danh sách bảng</option>';
+            }
+            // Nếu có tableName hoặc formFile thì load data
+            if (tableName || formFile) loadMetaAndData(tableName, 1);
+        }
+
+        // [DEBUG] load debug_perm
+        async function loadDebugPerm() {
+            const tbl = getTableName();
+            if (!tbl) return;
+            document.getElementById('cms-debug-content').textContent = 'Đang tải...';
+            try {
+                const res = await fetch(`/api/generic.php?action=debug_perm&table=${encodeURIComponent(tbl)}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                renderDebugPerm(data);
+            } catch(e) {
+                document.getElementById('cms-debug-content').textContent = 'Lỗi: ' + e.message;
+            }
+        }
+
+        function renderDebugPerm(data) {
+            const el = document.getElementById('cms-debug-content');
+            if (!data || !data.success) {
+                el.textContent = 'Lỗi: ' + (data && data.message ? data.message : 'không rõ');
+                return;
+            }
+            // Preface User ID with stored cms_user_name / cms_user_email if available
+            const _cms_name = localStorage.getItem('cms_user_name') || '';
+            const _cms_email = localStorage.getItem('cms_user_email') || '';
+            const userTag = (_cms_name || _cms_email) ? `[${_cms_name}${_cms_name && _cms_email ? '/' : ''}${_cms_email}] ` : '';
+            let html = `<b>${userTag}User ID: ${data.user_id}</b> — Quyền hiện tại:<br>`;
+            if (!data.user_roles.length) {
+                html += '<span style="color:#c00">Không có role nào</span><br>';
+            } else {
+                data.user_roles.forEach(r => {
+                    html += `<span style="background:#e8f0fe;padding:2px 7px;margin:2px;display:inline-block;border-radius:3px">ID ${r.role_id}: ${r.name}</span>`;
+                });
+            }
+            html += '<br><br>';
+            html += `<b>Rules quyen_voi_table cho bảng "${data.table}":</b><br>`;
+            if (!data.table_rules.length) {
+                html += '<span style="color:#c00">Không có rule nào</span>';
+            } else {
+                data.table_rules.forEach(rule => {
+                    const mc = rule.matched ? '#276827' : '#aaa';
+                    const mt = rule.matched ? '&#10003; KHỚP' : '&#10007; không khớp';
+                    const perms = [];
+                    if (rule.can_read)   perms.push('<span style="color:green">read</span>');
+                    if (rule.can_create) perms.push('<span style="color:blue">create</span>');
+                    if (rule.can_update) perms.push('<span style="color:darkorange">update</span>');
+                    if (rule.can_delete) perms.push('<span style="color:red">delete</span>');
+                    const rolesTags = rule.roles.map(r => `<span style="font-size:12px;background:#f5f5f5;padding:1px 5px;border-radius:3px;margin:1px">ID ${r.role_id}: ${r.name}</span>`).join(' ');
+                    html += `<div style="border:1px solid ${mc};border-radius:4px;padding:5px 10px;margin:4px 0">`;
+                    html += `<div><b>Rule #${rule.id}</b> <span style="color:${mc};font-size:12px">${mt}</span></div>`;
+                    html += `<div>Roles: ${rolesTags || '<span style="color:#aaa">trống</span>'}</div>`;
+                    html += `<div>Quyền: ${perms.length ? perms.join(' | ') : '<span style="color:#aaa">không có</span>'}</div>`;
+                    if (rule.self_record) html += `<div style="color:#888;font-size:12px">self_record: ${rule.self_record}</div>`;
+                    html += '</div>';
+                });
+            }
+            el.innerHTML = html;
+        }
+let h2_title = '';
+        async function loadMetaAndData(table, page) {
+            document.getElementById('cms-error').classList.add('cms-hidden');
+            try {
+                // Lấy metadata
+                const paramName = formFile ? 'form_file' : 'table';
+                const paramValue = formFile || table;
+                const metaRes = await fetch(`/api/generic.php?show_list=1&action=meta&${paramName}=${encodeURIComponent(paramValue)}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                meta = await metaRes.json();
+                if (!meta.success) throw new Error(meta.message || 'Không lấy được metadata');
+                h2_title = meta.table_label || table;
+                document.getElementById('cms-table-title').innerText = h2_title;
+                try { document.title = `CMS - Danh sách bảng - ${h2_title}`; } catch (e) {}
+                currentUserId = String(meta.current_user_id || '');
+                currentSelfRecordFields = Array.isArray(meta.self_record_fields) ? meta.self_record_fields : [];
+                renderListCustomButtons();
+                await preloadOptionLabels(meta.fields || []);
+                // Chỉ hiện nút Thêm khi API xác nhận quyền create và không phải view form_file.
+                const addBtn = document.getElementById('cms-btn-add');
+                if (meta.can_insert === true && !formFile) {
+                    addBtn.style.display = 'inline-block';
+                } else {
+                    addBtn.style.display = 'none';
+                }
+                // Nếu URL có tham số filter (ví dụ project_id=1), truyền vào bộ lọc và load dữ liệu theo filter
+                const urlParams = new URLSearchParams(window.location.search);
+                const initialFilters = {};
+                for (const [k, v] of urlParams.entries()) {
+                    if (!v) continue;
+                    if (['table', 'page', 'limit', 'action'].includes(k)) continue;
+                    if (!/_id$/i.test(k)) continue; // only accept params with suffix _id
+                    // Only include if field exists in meta.fields
+                    if ((meta.fields || []).some(f => f.name === k)) {
+                        initialFilters[k] = v;
+                    }
+                }
+                if (Object.keys(initialFilters).length > 0) {
+                    currentFilters = initialFilters;
+                    const params = new URLSearchParams();
+                    for (const [k, val] of Object.entries(initialFilters)) params.append(k, val);
+                    await loadDataWithFilters(table, page, params);
+                } else {
+                    // Lấy dữ liệu
+                    await loadData(table, page);
+                }
+                // [DEBUG] load permission info
+                loadDebugPerm();
+            } catch (err) {
+                document.getElementById('cms-error').innerText = err.message || 'Lỗi không xác định';
+                document.getElementById('cms-error').classList.remove('cms-hidden');
+            }
+        }
+
+        async function loadData(table, page) {
+            currentPage = page;
+            // Clear filters when doing regular load
+            currentFilters = {};
+            const paramName = formFile ? 'form_file' : 'table';
+            const paramValue = formFile || table;
+            const dataRes = await fetch(`/api/generic.php?action=list&${paramName}=${encodeURIComponent(paramValue)}&page=${page}&limit=${limit}`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await dataRes.json();
+            if (!data.success) {
+                document.getElementById('cms-error').innerText = data.message || 'Không lấy được dữ liệu';
+                document.getElementById('cms-error').classList.remove('cms-hidden');
+                return;
+            }
+            document.getElementById('cms-table-title').innerText = h2_title + ` - tổng cộng : ${formatNumberDisplay(data.total)} records`;
+            primaryKey = data.primary_key || '';
+            renderTable(meta, data.rows || [], primaryKey);
+            renderPagination(data.total, data.page, data.limit);
+        }
+
+        async function preloadOptionLabels(fields) {
+            optionLabelMaps = {};
+            const tasks = fields
+                    .filter(f => f && f.q_code && String(f.q_code).trim() !== '')
+                    .map(async (f) => {
+                        try {
+                            // Include current URL params (e.g. project_id) so options_query placeholders like $project_id
+                            // can be substituted server-side. Merge into JSON body for POST.
+                            const urlParams = new URLSearchParams(window.location.search);
+                            const extraParams = {};
+                            for (const [k, v] of urlParams.entries()) {
+                                extraParams[k] = v;
+                            }
+                            const payload = Object.assign({ q_code: f.q_code }, extraParams);
+                            const res = await fetch('/api/generic.php?action=options', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': 'Bearer ' + token,
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify(payload)
+                            });
+                            const data = await res.json();
+                                            if (data.success && Array.isArray(data.options)) {
+                                                const map = {};
+                                                data.options.forEach(opt => {
+                                                    const key = String(opt.value ?? '');
+                                                    map[key] = opt.label ?? opt.value;
+                                                });
+                                                optionLabelMaps[f.name] = map;
+                                                optionLabelLists[f.name] = data.options;
+                                            }
+                        } catch (e) {
+                            // Nếu lỗi thì giữ nguyên hiển thị giá trị gốc
+                        }
+                    });
+            await Promise.all(tasks);
+        }
+
+        function getDecimalDigitsFromExtra(extra) {
+            const extraText = String(extra || '').trim();
+            if (!extraText) return null;
+
+            let match = extraText.match(/\bstep\s*=\s*(["'])([^"']+)\1/i);
+            if (!match) {
+                match = extraText.match(/\bstep\s*=\s*([^\s]+)/i);
+            }
+            if (!match) return null;
+
+            const step = String(match[2] || match[1] || '').trim();
+            if (!step || /e/i.test(step)) return null;
+            const dotIndex = step.indexOf('.');
+            if (dotIndex === -1) return 0;
+            const fraction = step.slice(dotIndex + 1).replace(/0+$/, '');
+            return fraction.length;
+        }
+
+        function formatDateDisplay(value) {
+            const text = String(value ?? '').trim();
+            if (!text) return '';
+            const match = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+            if (match) {
+                return `${match[3]}-${match[2]}-${match[1]}`;
+            }
+            const parsed = new Date(text);
+            if (Number.isNaN(parsed.getTime())) return value;
+            const dd = String(parsed.getDate()).padStart(2, '0');
+            const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+            const yyyy = parsed.getFullYear();
+            return `${dd}-${mm}-${yyyy}`;
+        }
+
+        function formatDateTimeDisplay(value) {
+            const text = String(value ?? '').trim();
+            if (!text) return '';
+            const match = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+            if (match) {
+                const hh = match[4] || '00';
+                const mm = match[5] || '00';
+                const ss = match[6] || '00';
+                return `${match[3]}-${match[2]}-${match[1]} ${hh}:${mm}:${ss}`;
+            }
+            const parsed = new Date(text);
+            if (Number.isNaN(parsed.getTime())) return value;
+            const dd = String(parsed.getDate()).padStart(2, '0');
+            const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+            const yyyy = parsed.getFullYear();
+            const hh = String(parsed.getHours()).padStart(2, '0');
+            const mi = String(parsed.getMinutes()).padStart(2, '0');
+            const ss = String(parsed.getSeconds()).padStart(2, '0');
+            return `${dd}-${mm}-${yyyy} ${hh}:${mi}:${ss}`;
+        }
+
+        function formatTimeDisplay(value) {
+            const text = String(value ?? '').trim();
+            if (!text) return '';
+            const match = text.match(/^(\d{2}):(\d{2})(?::(\d{2}))?/);
+            if (!match) return value;
+            return `${match[1]}:${match[2]}:${match[3] || '00'}`;
+        }
+
+        function formatPhoneDisplay(value) {
+            const digits = String(value ?? '').replace(/\D+/g, '');
+            if (digits.length !== 10) return value;
+            return digits.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+        }
+
+        function formatNumberDisplay(value, digits) {
+            if (value === null || value === undefined) return '';
+            const numeric = Number(String(value).replace(/,/g, '').trim());
+            if (!Number.isFinite(numeric)) return value;
+            const decimalDigits = Number.isInteger(digits) && digits >= 0 ? digits : 0;
+            return numeric.toLocaleString('en-US', {
+                minimumFractionDigits: decimalDigits,
+                maximumFractionDigits: decimalDigits
+            });
+        }
+
+        function getFieldDisplayType(field) {
+            const fieldType = String(field?.input_type || field?.type || '').toLowerCase().trim();
+            if (fieldType === 'date') return 'date';
+            if (fieldType === 'time') return 'time';
+            if (fieldType === 'datetime' || fieldType === 'timestamp') return 'datetime';
+            if (fieldType === 'number' ) return 'number';
+            if (fieldType === 'money'  || fieldType === 'int' || fieldType === 'integer') return 'money';
+            if (fieldType === 'phone' ) return 'phone';
+            return '';
+        }
+
+        function getFormattedValue(field, rawValue) {
+            if (rawValue === null || rawValue === undefined) return '';
+
+            const map = optionLabelMaps[field.name];
+            if (map) {
+                const key = String(rawValue);
+                if (Object.prototype.hasOwnProperty.call(map, key)) {
+                    return map[key];
+                }
+            }
+
+            const displayType = getFieldDisplayType(field);
+            if (!displayType) return rawValue;
+
+            if (displayType === 'date') return formatDateDisplay(rawValue);
+            if (displayType === 'time') return formatTimeDisplay(rawValue);
+            if (displayType === 'datetime') return formatDateTimeDisplay(rawValue);
+            if (displayType === 'phone' ) return formatPhoneDisplay(rawValue);
+            if (displayType === 'money' ) return formatNumberDisplay(rawValue, 0);
+            if (displayType === 'number') {
+                const digits = getDecimalDigitsFromExtra(field?.extra || '');
+                return formatNumberDisplay(rawValue, Number.isInteger(digits) ? digits : 0);
+            }
+
+            return rawValue;
+        }
+
+        function hasNonEmptyValue(value) {
+            if (value === null || value === undefined) return false;
+            return String(value).trim() !== '';
+        }
+
+        function buildFieldUrl(field, rawValue) {
+            const template = String(field?.url_of_this || '').trim();
+            if (!template) return '';
+            if (!hasNonEmptyValue(rawValue)) return '';
+
+            const raw = String(rawValue);
+            const encoded = encodeURIComponent(raw);
+            return template.replace(/\{\$value\}|\$\{value\}|\$value/g, encoded);
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function expandTemplateUrl(template, row) {
+            if (!template || typeof template !== 'string') return '';
+            return template.replace(/\{([A-Za-z0-9_]+)\}/g, (match, key) => {
+                const value = row && Object.prototype.hasOwnProperty.call(row, key) ? row[key] : '';
+                return encodeURIComponent(value == null ? '' : String(value));
+            });
+        }
+
+        function fixRelativeSrcs(html) {
+            if (!html) return html;
+            try {
+                const container = document.createElement('div');
+                container.innerHTML = html;
+                const els = container.querySelectorAll('[src]');
+                els.forEach(el => {
+                    const s = el.getAttribute('src') || '';
+                    const t = String(s).trim();
+                    if (!t) return;
+                    if (/^(https?:)?\/\//i.test(t)) return;
+                    el.setAttribute('src', t);
+                });
+                const srcsetEls = container.querySelectorAll('[srcset]');
+                srcsetEls.forEach(el => {
+                    const ss = el.getAttribute('srcset') || '';
+                    if (!ss) return;
+                    const items = ss.split(',').map(part => {
+                        const p = part.trim();
+                        if (!p) return '';
+                        const parts2 = p.split(/\s+/, 2);
+                        const url = parts2[0];
+                        const desc = parts2[1] || '';
+                        if (/^(https?:)?\/\//i.test(url)) return desc ? (url + ' ' + desc) : url;
+                        const newUrl = url.startsWith('/') ? 'https://dulichreal.com' + url : 'https://dulichreal.com/' + url;
+                        return desc ? (newUrl + ' ' + desc) : newUrl;
+                    }).filter(Boolean);
+                    if (items.length) el.setAttribute('srcset', items.join(', '));
+                });
+                return container.innerHTML;
+            } catch (e) {
+                return html;
+            }
+        }
+
+        function getMultiOptionDisplayHtml(field, rawValue) {
+            if (rawValue === null || rawValue === undefined) return '';
+            const map = optionLabelMaps[field.name] || {};
+            const text = String(rawValue).trim();
+            if (!text) return '';
+            let values = [];
+            if (text.startsWith('[') && text.endsWith(']')) {
+                try {
+                    const arr = JSON.parse(text);
+                    if (Array.isArray(arr)) values = arr.map(v => String(v));
+                } catch (_) {
+                    values = [];
+                }
+            }
+            if (values.length === 0) {
+                values = text.split(',').map(s => s.trim()).filter(Boolean);
+            }
+            return values
+                .map(v => map[v] ?? v)
+                .map(label => `<span class="one-role">${escapeHtml(label)}</span>`)
+                .join(' ');
+        }
+
+        function isCheckedValue(value) {
+            if (value === true || value === 1) return true;
+            if (typeof value === 'string') {
+                const v = value.trim().toLowerCase();
+                return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+            }
+            return false;
+        }
+
+        function canAccessRowBySelfRecord(row) {
+            if (!Array.isArray(currentSelfRecordFields) || currentSelfRecordFields.length === 0) return true;
+            if (!currentUserId) return false;
+            return currentSelfRecordFields.some(fieldName => String(row?.[fieldName] ?? '') === currentUserId);
+        }
+
+        function hasActionForRow(meta, row) {
+            if (!meta || !row) return false;
+            const canAccess = canAccessRowBySelfRecord(row);
+            const hasCrud = (Boolean(meta.can_edit) || Boolean(meta.can_delete)) && canAccess;
+            const hasDetail = Boolean(meta.new_edit_url && String(meta.new_edit_url).trim() !== '');
+            const hasSubLinks = Array.isArray(row.sub_links) && row.sub_links.length > 0;
+            return hasCrud || hasDetail || hasSubLinks;
+        }
+
+        function shouldShowActionsColumn(meta, rows) {
+            return Array.isArray(rows) && rows.some(row => hasActionForRow(meta, row));
+        }
+
+        function parseJsonLoose(text) {
+            const raw = String(text || '').trim();
+            if (!raw) return null;
+            try {
+                return JSON.parse(raw);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function getObjectValueIgnoreCase(source, candidateKeys) {
+            if (!source || typeof source !== 'object' || Array.isArray(source)) return undefined;
+            const entries = Object.entries(source);
+            for (const candidateKey of (candidateKeys || [])) {
+                const found = entries.find(([key]) => String(key || '').trim().toLowerCase() === String(candidateKey || '').trim().toLowerCase());
+                if (found) return found[1];
+            }
+            return undefined;
+        }
+
+        function normalizeCustomActionButton(raw) {
+            if (!raw) return null;
+            if (typeof raw === 'string') {
+                const text = String(raw).trim();
+                return text ? { label: text, function_code: text } : null;
+            }
+            if (typeof raw !== 'object' || Array.isArray(raw)) return null;
+
+            const labelKeys = ['label', 'name', 'title', 'text', 'button_label', 'button_text', 'button'];
+            const functionKeys = ['function', 'func', 'function_code', 'code', 'value', 'pms_function', 'action'];
+            let label = '';
+            let functionCode = '';
+
+            for (const key of labelKeys) {
+                const value = raw[key];
+                if (value !== undefined && value !== null && String(value).trim() !== '') {
+                    label = String(value).trim();
+                    break;
+                }
+            }
+            for (const key of functionKeys) {
+                const value = raw[key];
+                if (value !== undefined && value !== null && String(value).trim() !== '') {
+                    functionCode = String(value).trim();
+                    break;
+                }
+            }
+
+            if (!functionCode) {
+                const entries = Object.entries(raw).filter(([key, value]) => {
+                    return key && value !== undefined && value !== null && String(value).trim() !== '';
+                });
+                if (entries.length === 1) {
+                    const [entryKey, entryValue] = entries[0];
+                    if (typeof entryValue === 'string') {
+                        label = entryKey;
+                        functionCode = entryValue.trim();
+                    }
+                }
+            }
+
+            if (!functionCode) return null;
+            return {
+                label: label || functionCode,
+                function_code: functionCode
+            };
+        }
+
+        function getListCustomActionButtonsFromMeta() {
+            const sources = [
+                meta && meta.buttons,
+                meta && meta.custom_buttons,
+                meta && meta.action_buttons,
+                meta && meta.extra_list,
+                meta && meta.table_extra_list
+            ];
+            const allButtons = [];
+
+            const collectButtonsFromSource = (source) => {
+                if (source === null || source === undefined) return;
+                const parsed = typeof source === 'string' ? parseJsonLoose(source) : source;
+                const candidates = [];
+                if (Array.isArray(parsed)) {
+                    candidates.push(parsed);
+                } else if (parsed && typeof parsed === 'object') {
+                    const directButtons = getObjectValueIgnoreCase(parsed, ['buttons', 'custom_buttons', 'action_buttons', 'pms_buttons']);
+                    if (directButtons !== undefined) {
+                        candidates.push(directButtons);
+                    } else {
+                        candidates.push(parsed);
+                    }
+                } else if (parsed !== null && parsed !== undefined) {
+                    candidates.push(parsed);
+                }
+
+                candidates.forEach(candidate => {
+                    const collect = (value) => {
+                        if (!value) return [];
+                        if (Array.isArray(value)) {
+                            const result = [];
+                            value.forEach(entry => {
+                                if (!entry) return;
+                                if (typeof entry === 'string') {
+                                    const btn = normalizeCustomActionButton(entry);
+                                    if (btn) result.push(btn);
+                                    return;
+                                }
+                                if (typeof entry === 'object') {
+                                    const direct = normalizeCustomActionButton(entry);
+                                    if (direct) {
+                                        result.push(direct);
+                                        return;
+                                    }
+                                    Object.entries(entry).forEach(([key, val]) => {
+                                        if (val === undefined || val === null || String(val).trim() === '') return;
+                                        const btn = normalizeCustomActionButton({ label: key, function: val });
+                                        if (btn) result.push(btn);
+                                    });
+                                }
+                            });
+                            return result;
+                        }
+                        if (typeof value === 'object') {
+                            const result = [];
+                            Object.entries(value).forEach(([key, val]) => {
+                                if (val === undefined || val === null || String(val).trim() === '') return;
+                                if (typeof val === 'object' && !Array.isArray(val)) {
+                                    const direct = normalizeCustomActionButton({ label: key, ...val });
+                                    if (direct) result.push(direct);
+                                    return;
+                                }
+                                const btn = normalizeCustomActionButton({ label: key, function: val });
+                                if (btn) result.push(btn);
+                            });
+                            return result;
+                        }
+                        const btn = normalizeCustomActionButton(value);
+                        return btn ? [btn] : [];
+                    };
+                    allButtons.push(...collect(candidate));
+                });
+            };
+
+            sources.forEach(source => collectButtonsFromSource(source));
+
+            const deduped = [];
+            const seen = new Set();
+            allButtons.forEach(button => {
+                if (!button || !button.function_code) return;
+                const dedupeKey = String(button.label || '') + '|' + String(button.function_code || '');
+                if (seen.has(dedupeKey)) return;
+                seen.add(dedupeKey);
+                deduped.push(button);
+            });
+            return deduped;
+        }
+
+        function renderListCustomButtons() {
+            const wrapper = document.querySelector('.cms-table-wrapper');
+            if (!wrapper) return;
+
+            const existing = wrapper.querySelector('.cms-list-custom-buttons');
+            if (existing) existing.remove();
+
+            const buttons = getListCustomActionButtonsFromMeta();
+            if (!buttons.length) return;
+
+            const bar = document.createElement('div');
+            bar.className = 'cms-list-custom-buttons';
+            bar.style.display = 'flex';
+            bar.style.flexWrap = 'wrap';
+            bar.style.gap = '8px';
+            bar.style.margin = '0 0 12px';
+
+            buttons.forEach(buttonConfig => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'cms-btn cms-btn-action';
+                btn.innerText = buttonConfig.label || buttonConfig.function_code || 'Action';
+                btn.style.marginRight = '6px';
+                btn.addEventListener('click', async () => {
+                    const funcCode = buttonConfig.function_code;
+                    if (!funcCode) return;
+                    const originalText = btn.innerText;
+                    btn.disabled = true;
+                    btn.innerText = 'Đang xử lý...';
+                    try {
+                        const targetTable = (meta && meta.table) ? meta.table : (tableName || '');
+                        if (!targetTable) return;
+                        const requestUrl = `/api/generic.php?action=do_pms_function&function=${encodeURIComponent(funcCode)}&table=${encodeURIComponent(targetTable)}`;
+                        const res = await fetch(requestUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + token
+                            },
+                            body: JSON.stringify({
+                                function: funcCode,
+                                args: [],
+                                form: {},
+                                id: 'list'
+                            })
+                        });
+                        const jr = await res.json();
+                        if (jr && jr.calc_message) { alert(jr.calc_message); }
+                        if (jr && jr.message && jr.success === false) { alert(jr.message); }
+                        if (jr && jr.success !== false) {
+                            const pageToReload = Number.isFinite(currentPage) ? currentPage : 1;
+                            await loadData(targetTable, pageToReload);
+                        }
+                    } finally {
+                        btn.disabled = false;
+                        btn.innerText = originalText;
+                    }
+                });
+                bar.appendChild(btn);
+            });
+
+            wrapper.insertBefore(bar, wrapper.firstChild);
+        }
+
+        function renderTable(meta, rows, primaryKey) {
+            const table = document.getElementById('cms-table');
+            table.innerHTML = '';
+            const thead = document.createElement('thead');
+            const tr = document.createElement('tr');
+            (meta.fields || []).forEach(f => {
+                if (f.show_list) {
+                    const th = document.createElement('th');
+                    th.innerText = f.label && f.label.trim() ? f.label : f.name;
+                    tr.appendChild(th);
+                }
+            });
+            const showActions = shouldShowActionsColumn(meta, rows);
+            if (showActions) {
+                const th = document.createElement('th');
+                th.innerText = 'Thao tác';
+                tr.appendChild(th);
+            }
+            thead.appendChild(tr);
+            table.appendChild(thead);
+            renderFilterRow(table, meta, rows);
+            window.cmsCurrentRows = rows;
+            window.cmsCurrentMeta = meta;
+            window.cmsCurrentPrimaryKey = primaryKey;
+            renderTableBody(meta, rows, primaryKey);
+            table.classList.remove('cms-hidden');
+        }
+
+        function renderTableBody(meta, rows, primaryKey) {
+            const table = document.getElementById('cms-table');
+            const oldTbody = table.querySelector('tbody');
+            if (oldTbody) oldTbody.remove();
+
+            const tbody = document.createElement('tbody');
+            rows.forEach(row => {
+                const tr = document.createElement('tr');
+                const currentIndex = rows.indexOf(row);
+                let firstCellPlaced = false;
+                (meta.fields || []).forEach(f => {
+                    if (f.show_list) {
+                        const td = document.createElement('td');
+                        const fieldType = String(f.input_type || f.type || '').toLowerCase();
+                        if (fieldType === 'checkbox') {
+                            if (f.q_code) {
+                                td.innerHTML = getMultiOptionDisplayHtml(f, row[f.name]);
+                            } else {
+                                const checked = isCheckedValue(row[f.name]);
+                                td.innerHTML = checked
+                                    ? '<i class="fa-solid fa-check cms-check-icon" aria-label="checked"></i>'
+                                    : '<i class="fa-solid fa-xmark cms-uncheck-icon" aria-label="unchecked"></i>';
+                            }
+                        } else if (fieldType === 'file') {
+                            const raw = row[f.name] || '';
+                            if (raw) {
+                                const href = String(raw);
+                                try {
+                                    const parts = href.split('/');
+                                    const name = parts[parts.length - 1] || href;
+                                    td.innerHTML = `<a href="${escapeHtml(href)}" target="_blank" rel="noopener">${escapeHtml(name)}</a>`;
+                                } catch (e) { td.innerText = href; }
+                            } else {
+                                td.innerText = '';
+                            }
+                        } else if (fieldType === 'image') {
+                            const raw = row[f.name] || '';
+                            if (raw) {
+                                const href = String(raw);
+                                try {
+                                    const parts = href.split('/');
+                                    const name = parts[parts.length - 1] || href;
+                                    td.innerHTML = `<a href="${escapeHtml(href)}" target="_blank" rel="noopener"><img src="${escapeHtml(href)}" alt="${escapeHtml(name)}" class="img-thumbnail" style="max-width: 150px; max-height: 150px;" /></a>`;
+                                } catch (e) { td.innerText = href; }
+                            } else {
+                                td.innerText = '';
+                            }
+                        } else {
+                            const val = String(getFormattedValue(f, row[f.name]) ?? '');
+                            const urlOfThis = buildFieldUrl(f, row[f.name]);
+                            if (fieldType === 'textarea' || fieldType === 'html' || (f.name && String(f.name).toLowerCase().includes('content'))) {
+                                const fixedHtml = fixRelativeSrcs(val);
+                                td.innerHTML = `<div class="cms-html-content">${fixedHtml}</div>`;
+                            } else if (urlOfThis) {
+                                const a = document.createElement('a');
+                                a.href = urlOfThis;
+                                a.target = '_blank';
+                                a.rel = 'noopener';
+                                a.innerText = val;
+                                td.appendChild(a);
+                            } else {
+                                td.innerText = val;
+                            }
+                        }
+
+                        if (!firstCellPlaced) {
+                            firstCellPlaced = true;
+                            if (meta.pos_rank_column_name && meta.can_edit && primaryKey && row[primaryKey] !== undefined) {
+                                const targetPrev = currentIndex > 0 ? rows[currentIndex - 1] : null;
+                                const targetNext = currentIndex < rows.length - 1 ? rows[currentIndex + 1] : null;
+                                const moveWrap = document.createElement('span');
+                                moveWrap.style.marginRight = '8px';
+                                if (targetPrev) {
+                                    const btnUp = document.createElement('button');
+                                    btnUp.className = 'cms-btn cms-btn-move';
+                                    btnUp.style.marginRight = '4px';
+                                    btnUp.innerText = '↑';
+                                    btnUp.title = 'Đổi vị trí lên trên';
+                                    btnUp.onclick = () => swapRowOrder(row[primaryKey], targetPrev[primaryKey]);
+                                    moveWrap.appendChild(btnUp);
+                                }
+                                if (targetNext) {
+                                    const btnDown = document.createElement('button');
+                                    btnDown.className = 'cms-btn cms-btn-move';
+                                    btnDown.style.marginRight = '4px';
+                                    btnDown.innerText = '↓';
+                                    btnDown.title = 'Đổi vị trí xuống dưới';
+                                    btnDown.onclick = () => swapRowOrder(row[primaryKey], targetNext[primaryKey]);
+                                    moveWrap.appendChild(btnDown);
+                                }
+                                if (moveWrap.childNodes.length) td.insertBefore(moveWrap, td.firstChild);
+                            }
+                        }
+
+                        tr.appendChild(td);
+                    }
+                });
+
+                const canRowEdit = meta.can_edit && canAccessRowBySelfRecord(row);
+                const canRowDelete = meta.can_delete && canAccessRowBySelfRecord(row);
+                const hasDetailLink = Boolean(meta.new_edit_url && String(meta.new_edit_url).trim() !== '');
+                if (shouldShowActionsColumn(meta, rows)) {
+                    const td = document.createElement('td');
+                    td.className = 'cms-actions';
+                    if (canRowEdit && primaryKey && row[primaryKey] !== undefined) {
+                        const btnEdit = document.createElement('button');
+                        btnEdit.className = 'cms-btn cms-btn-edit';
+                        btnEdit.innerText = 'Sửa';
+                        btnEdit.onclick = () => {
+                            const urlParams = new URLSearchParams(window.location.search);
+                            const extras = new URLSearchParams();
+                            for (const [k, v] of urlParams.entries()) {
+                                if (!/_id$/i.test(k)) continue;
+                                extras.set(k, v);
+                            }
+                            if (currentFilters) {
+                                for (const [k, v] of Object.entries(currentFilters)) {
+                                    if (!/_id$/i.test(k)) continue;
+                                    extras.set(k, v);
+                                }
+                            }
+                            const extraPart = extras.toString() ? '&' + extras.toString() : '';
+                            window.location.href = `cms-edit.html?table=${encodeURIComponent(meta.table)}&id=${row[primaryKey]}` + extraPart;
+                        };
+                        td.appendChild(btnEdit);
+                    }
+                    if (canRowDelete && primaryKey && row[primaryKey] !== undefined) {
+                        const btnDel = document.createElement('button');
+                        btnDel.className = 'cms-btn cms-btn-delete';
+                        btnDel.innerText = 'Xóa';
+                        btnDel.onclick = () => {
+                            if (confirm('Bạn chắc chắn muốn xóa bản ghi này?')) {
+                                deleteRecord(meta.table, row[primaryKey]);
+                            }
+                        };
+                        td.appendChild(btnDel);
+                    }
+                    if (hasDetailLink) {
+                        const detailUrl = expandTemplateUrl(meta.new_edit_url, row);
+                        if (detailUrl) {
+                            const btnDetail = document.createElement('button');
+                            btnDetail.className = 'cms-btn cms-btn-detail';
+                            btnDetail.innerText = 'Chi tiết';
+                            btnDetail.onclick = () => {
+                                window.location.href = detailUrl;
+                            };
+                            td.appendChild(btnDetail);
+                        }
+                    }
+                    if (Array.isArray(row.sub_links) && row.sub_links.length > 0) {
+                        row.sub_links.forEach(sl => {
+                            try {
+                                const btn = document.createElement('button');
+                                btn.type = 'button';
+                                btn.className = 'cms-btn cms-btn-sub';
+                                btn.style.marginLeft = '6px';
+                                btn.title = String(sl.url || '');
+                                btn.innerText = String(sl.label || sl.url || 'Chi tiết');
+                                btn.onclick = () => { window.location.href = String(sl.url || '#'); };
+                                td.appendChild(btn);
+                            } catch (e) {}
+                        });
+                    }
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+        }
+        async function swapRowOrder(currentId, otherId) {
+            if (!window.cmsCurrentMeta || !window.cmsCurrentMeta.pos_rank_column_name) {
+                alert('Bảng này không cho phép thay đổi thứ tự.');
+                return;
+            }
+            try {
+                const payload = { id: String(currentId), other_id: String(otherId) };
+                const res = await fetch(`/api/generic.php?action=swap_rank&table=${encodeURIComponent(tableName)}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    if (currentFilters && Object.keys(currentFilters).length > 0) {
+                        const params = new URLSearchParams();
+                        for (const [k, v] of Object.entries(currentFilters)) {
+                            params.append(k, v);
+                        }
+                        await loadDataWithFilters(tableName, currentPage, params);
+                    } else {
+                        await loadData(tableName, currentPage);
+                    }
+                } else {
+                    alert(data.message || 'Không thể đổi vị trí.');
+                }
+            } catch (err) {
+                alert('Lỗi kết nối máy chủ.');
+            }
+        }
+
+        function cmsAddRecord() {
+            if (!tableName) { alert('Chưa chọn bảng!'); return; }
+            const urlParams = new URLSearchParams(window.location.search);
+            const extras = new URLSearchParams();
+            for (const [k, v] of urlParams.entries()) {
+                if (!/_id$/i.test(k)) continue;
+                extras.set(k, v);
+            }
+            if (currentFilters) {
+                for (const [k, v] of Object.entries(currentFilters)) {
+                    if (!/_id$/i.test(k)) continue;
+                    extras.set(k, v);
+                }
+            }
+            const extraPart = extras.toString() ? '&' + extras.toString() : '';
+            window.location.href = `cms-edit.html?table=${encodeURIComponent(tableName)}&id=new` + extraPart;
+        }
+
+        async function deleteRecord(table, id) {
+            try {
+                const res = await fetch(`/api/generic.php?action=delete&table=${encodeURIComponent(table)}&id=${encodeURIComponent(id)}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Xóa thất bại');
+                }
+            } catch (err) {
+                alert('Lỗi kết nối máy chủ');
+            }
+        }
+
+        function renderFilterRow(table, meta, rows) {
+            const tfilter = document.createElement('thead');
+            tfilter.className = 'cms-filter-row';
+            const trFilter = document.createElement('tr');
+
+            for (const f of (meta.fields || [])) {
+                if (!f.show_list) continue;
+
+                const td = document.createElement('td');
+                td.className = 'cms-filter-cell';
+
+                if (f.q_code && String(f.q_code).trim() !== '') {
+                    const select = document.createElement('select');
+                    select.className = 'cms-filter-select';
+                    select.setAttribute('data-field', f.name);
+                    if (hasSelect2Extra(f.extra)) {
+                        select.setAttribute('data-select2-enabled', '1');
+                    }
+
+                    const optAll = document.createElement('option');
+                    optAll.value = '';
+                    optAll.text = 'Tất cả';
+                    select.appendChild(optAll);
+
+                    const map = optionLabelMaps[f.name] || {};
+                    const list = optionLabelLists[f.name];
+                    if (Array.isArray(list) && list.length) {
+                        list.forEach(optItem => {
+                            const opt = document.createElement('option');
+                            opt.value = sanitizeControlChars(String(optItem.value ?? ''));
+                            opt.text = sanitizeControlChars(optItem.label ?? optItem.value);
+                            select.appendChild(opt);
+                        });
+                    } else {
+                        for (const [value, label] of Object.entries(map)) {
+                            const opt = document.createElement('option');
+                            opt.value = sanitizeControlChars(String(value));
+                            opt.text = sanitizeControlChars(label);
+                            select.appendChild(opt);
+                        }
+                    }
+
+                    if (currentFilters[f.name]) {
+                        select.value = currentFilters[f.name];
+                    }
+
+                    select.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            applyFilters(meta);
+                        }
+                    });
+
+                    td.appendChild(select);
+                } else {
+                    const input = document.createElement('input');
+                    const inputType = String(f.input_type || f.type || '').toLowerCase().trim();
+                    input.type = inputType === 'date' ? 'date' : 'text';
+                    input.className = 'cms-filter-input';
+                    if (input.type === 'text') {
+                        input.placeholder = `Lọc ${f.label || f.name}...`;
+                    }
+                    input.setAttribute('data-field', f.name);
+                    if (currentFilters[f.name]) {
+                        input.value = currentFilters[f.name];
+                    }
+                    input.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            applyFilters(meta);
+                        }
+                    });
+                    td.appendChild(input);
+                }
+
+                trFilter.appendChild(td);
+            }
+
+            const showActionsFilter = shouldShowActionsColumn(meta, rows);
+            if (showActionsFilter) {
+                const td = document.createElement('td');
+                td.className = 'cms-filter-cell cms-filter-actions';
+
+                const btnFilter = document.createElement('button');
+                btnFilter.className = 'cms-btn cms-btn-filter';
+                btnFilter.innerText = 'Lọc';
+                btnFilter.onclick = () => applyFilters(meta);
+
+                const btnClear = document.createElement('button');
+                btnClear.className = 'cms-btn cms-btn-clear';
+                btnClear.innerText = 'Xóa lọc';
+                btnClear.onclick = () => clearFilters();
+
+                td.appendChild(btnFilter);
+                td.appendChild(btnClear);
+                trFilter.appendChild(td);
+            }
+
+            tfilter.appendChild(trFilter);
+            table.insertBefore(tfilter, table.getElementsByTagName('tbody')[0]);
+            try { initFilterSelect2(); } catch (e) {}
+        }
+
+        function clearFilters() {
+            document.querySelectorAll('.cms-filter-input').forEach(input => { input.value = ''; });
+            document.querySelectorAll('.cms-filter-select').forEach(select => { select.value = ''; });
+            currentFilters = {};
+            loadData(tableName, 1);
+        }
+
+        function applyFilters(meta) {
+            const filters = {};
+            document.querySelectorAll('.cms-filter-input').forEach(input => {
+                if (input.value.trim()) {
+                    filters[input.getAttribute('data-field')] = input.value.trim();
+                }
+            });
+            document.querySelectorAll('.cms-filter-select').forEach(select => {
+                if (select.value) {
+                    filters[select.getAttribute('data-field')] = select.value;
+                }
+            });
+            currentFilters = filters;
+            const params = new URLSearchParams();
+            for (const [fieldName, value] of Object.entries(filters)) {
+                params.append(fieldName, value);
+            }
+            loadDataWithFilters(tableName, 1, params);
+        }
+
+        async function loadDataWithFilters(table, page, filterParams, get_hash = 0) {
+            currentPage = page;
+            if (!get_hash) localStorage.setItem(`cms_data_hash_${formFile || table}`, '');
+            const paramName = formFile ? 'form_file' : 'table';
+            const paramValue = formFile || table;
+            let url = `/api/generic.php?get_hash=${get_hash}&action=list&${paramName}=${encodeURIComponent(paramValue)}&page=${page}&limit=${limit}`;
+            if (filterParams) {
+                url += '&' + filterParams.toString();
+            }
+            let dataRes = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+            let data = await dataRes.json();
+            if (!data.success) {
+                document.getElementById('cms-error').innerText = data.message || 'Không lấy được dữ liệu';
+                document.getElementById('cms-error').classList.remove('cms-hidden');
+                return;
+            }
+            const currentHash = localStorage.getItem(`cms_data_hash_${paramValue}`) || '';
+            if (data.data_hash == currentHash) return;
+            localStorage.setItem(`cms_data_hash_${paramValue}`, data.data_hash || '');
+            url = `/api/generic.php?action=list&${paramName}=${encodeURIComponent(paramValue)}&page=${page}&limit=${limit}`;
+            if (filterParams) {
+                url += '&' + filterParams.toString();
+            }
+            dataRes = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+            data = await dataRes.json();
+            document.getElementById('cms-table-title').innerText = h2_title + ` - tổng cộng : ${formatNumberDisplay(data.total)} records`;
+            primaryKey = data.primary_key || '';
+            renderTable(meta, data.rows || [], primaryKey);
+            renderPaginationWithFilters(data.total, data.page, data.limit, filterParams);
+        }
+
+        function renderPagination(total, page, limit) {
+            let pag = document.getElementById('cms-pagination');
+            if (!pag) {
+                pag = document.createElement('div');
+                pag.id = 'cms-pagination';
+                pag.className = 'cms-pagination';
+                document.querySelector('.cms-list-container').appendChild(pag);
+            }
+            pag.innerHTML = '';
+            if (!total || total <= limit) return;
+            const totalPages = Math.ceil(total / limit);
+            for (let i = 1; i <= totalPages; i++) {
+                const btn = document.createElement('button');
+                btn.innerText = i;
+                if (i === page) btn.disabled = true;
+                btn.onclick = () => loadData(tableName, i);
+                pag.appendChild(btn);
+            }
+        }
+
+        function renderPaginationWithFilters(total, page, limit, filterParams) {
+            let pag = document.getElementById('cms-pagination');
+            if (!pag) {
+                pag = document.createElement('div');
+                pag.id = 'cms-pagination';
+                pag.className = 'cms-pagination';
+                document.querySelector('.cms-list-container').appendChild(pag);
+            }
+            pag.innerHTML = '';
+            if (!total || total <= limit) return;
+            const totalPages = Math.ceil(total / limit);
+            for (let i = 1; i <= totalPages; i++) {
+                const btn = document.createElement('button');
+                btn.innerText = i;
+                if (i === page) btn.disabled = true;
+                btn.onclick = () => {
+                    if (filterParams && filterParams.toString().length > 0) {
+                        loadDataWithFilters(tableName, i, filterParams);
+                    } else {
+                        loadData(tableName, i);
+                    }
+                };
+                pag.appendChild(btn);
+            }
+        }
+    </script>
+</body>
+</html>

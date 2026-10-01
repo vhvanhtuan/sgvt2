@@ -1,0 +1,27 @@
+RewriteEngine On
+
+# Redirect www → non-www
+RewriteCond %{HTTP_HOST} ^www\.dulichreal\.com [NC]
+RewriteRule ^(.*)$ https://dulichreal.com/$1 [L,R=301]
+RewriteCond %{HTTP_HOST} ^www\.thuexededang\.com [NC]
+RewriteRule ^(.*)$ https://thuexededang.com/$1 [L,R=301]
+
+# Do not rewrite API requests to React SPA
+RewriteRule ^api/ - [L]
+
+# Rewrite tour detail URLs: tour-...-t-123.html => index.html (React SPA)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^tour.*-t-(\d+)\.html$ /index.html [L]
+
+# React SPA fallback: all other routes to index.html
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ /index.html [L]
+
+# php -- BEGIN cPanel-generated handler, do not edit
+# Set the “alt-php83” package as the default “PHP” programming language.
+<IfModule mime_module>
+  AddHandler application/x-httpd-alt-php83___lsphp .php .php8 .phtml
+</IfModule>
+# php -- END cPanel-generated handler, do not edit

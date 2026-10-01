@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trang Tài xế</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="cms.css">
+  <link rel="stylesheet" href="cms-chat.css">
+</head>
+<body>
+  <div class="container py-3">
+    <h2 class="text-center mb-3">Trang Tài xế</h2>
+    <div class="card mb-3"><div id="profile" class="card-body"></div></div>
+
+    <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+        <button id="btn-schedule" class="btn btn-primary">Lịch công tác</button>
+      <button id="btn-messages" class="btn btn-primary">Tin nhắn</button>
+      <button id="btn-payments" class="btn btn-primary">Lương & Thanh toán</button>
+      <button id="btn-docs" class="btn btn-primary">Giấy tờ</button>
+      <button id="btn-gps" class="btn btn-primary" style="display:none">GPS Sessions</button>
+
+      <div class="ms-auto d-flex gap-2 align-items-center">
+        <select id="status-select" class="form-select form-select-sm">
+          <option value="available">Rảnh</option>
+          <option value="busy">Đang chạy</option>
+          <option value="off">Nghỉ</option>
+        </select>
+        <button id="btn-set-status" class="btn btn-outline-secondary btn-sm">Cập nhật trạng thái</button>
+        <button id="btn-logout" class="btn btn-outline-danger btn-sm">Đăng xuất</button>
+      </div>
+    </div>
+
+    <div id="content" class="card"><div class="card-body" id="content-body" style="min-height:300px"></div></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="cms-chat.js"></script>
+
+  <script>
+    const token = localStorage.getItem('cms_token');
+    // Absolute API base (override via window.__API_BASE__ if needed)
+    // Use same-origin by default; can be overridden by setting window.__API_BASE__
+    const API_BASE = window.__API_BASE__ || '';
+    // Redirect relative /api/ URLs to absolute API base to avoid origin mismatches
+    (function(){
+      const _fetch = window.fetch.bind(window);
+      window.fetch = function(input, init){
+        try {
+          if (typeof input === 'string' && input.startsWith('/api/')) input = API_BASE + input;
+          else if (input instanceof Request && input.url && input.url.startsWith('/api/')) input = new Request(API_BASE + input.url, input);
+        } catch(e){}
+        return _fetch(input, init);
+      };
+    })();
+    if (!token) location.href = 'cms-login.html';
+
+    // defaults: enable auto-refresh by default, not composing, and messages refresh interval
+    try { window.autoRefreshEnabled = true; window.isComposing = false; window.messagesRefreshInterval = 5000; } catch(e){}
+
+    function escapeHtml(value){
+      return String(value === null || typeof value === 'undefined' ? '' : value)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
+    }
+
+    // Normalize reply titles: collapse repeated "Re: Re: ..." into a single "Re: " prefix
+    function makeReplyTitle(title){
+      const t = String(title || '').trim();
+      // remove any leading repeated "Re:" (case-insensitive), e.g. "Re: Re:  RE:  "
+      const stripped = t.replace(/^(?:\s*(?:re)\s*:\s*)+/i, '').trim();
+      return 'Re: ' + stripped;
+    }
+
+    async function apiGET(action, params={}){
+      const qs = new URLSearchParams(Object.assign({action}, params));
+      const res = await fetch('/api/generic.php?'+qs.toString(), {headers:{'Authorization':'Bearer '+token}});
+      return await res.json();
+    }
+
+    // Return true if current user has role_id 135 (tài xế)
+    function isDriver() {
+//      return true; // for testing; comment out to use real role check
+      try {
+        const raw = localStorage.getItem('cms_user_roles') || '';
+        const roles = normalizeRolesInput(raw);
+        return roles.some(r => r === '135');
+      } catch(e) { return false; }
+    }
+
+    function sendDriverGPS(){
+      return new Promise((resolve)=>{
+          // Only drivers should send GPS/status updates
+          if (!isDriver()) return resolve();
+          if (!navigator || !navigator.geolocation) return resolve();
+        try {
+          navigator.geolocation.getCurrentPosition(function(pos){
+            const coords = pos.coords || {};
+            const payload = {
+              lat: coords.latitude,
+              lng: coords.longitude,
+              accuracy: coords.accuracy,
+              heading: coords.heading || null,
+              speed: coords.speed || null,
+              device_info: navigator.userAgent || null
+            };
+            fetch('/api/generic.php?action=driver_status_set', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body: JSON.stringify(payload)})
+              .then(()=>resolve()).catch(()=>resolve());
+          }, function(err){ resolve(); }, {enableHighAccuracy:true, maximumAge:10000, timeout:5000});
+        } catch(e){ resolve(); }
+      });
+    }
+
+    async function loadProfile(){
+      const r = await apiGET('driver_profile');
+      if (!r.success) return document.getElementById('profile').innerText = 'Lỗi: '+(r.message||'');
+      const u = r.user || {};
+      const p = r.profile || {};
+      // expose current user id to other functions
+      window.currentUserId = String(u.user_id || '');
+      document.getElementById('profile').innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:1.1rem;font-weight:600">${escapeHtml(u.first_name || '')} ${escapeHtml(u.last_name || '')}</div>
+            <div style="font-size:0.9rem;color:#666">Email: ${escapeHtml(u.e_mail || '')} | ID: ${escapeHtml(u.user_id || '')}</div>
+          </div>
+          <div style="text-align:right">
+            <div>Status: <strong>${escapeHtml(u.driver_status || u.available || '')}</strong></div>
+            <div style="font-size:0.85rem;color:#666">Roles: ${escapeHtml((localStorage.getItem('cms_user_roles')||''))}</div>
+          </div>
+        </div>
+        <div style="margin-top:8px">Mobile: ${escapeHtml(u.mobile || '')} &nbsp; Phone: ${escapeHtml(u.phone || '')}</div>
+        <div style="margin-top:6px">Số CMND/Hộ chiếu: ${escapeHtml(u.id_numbers || '')}</div>
+        <div style="margin-top:6px">Bus info: ${escapeHtml(u.bus_info || '')}</div>
+        <div style="margin-top:10px;border-top:1px dashed #e0e0e0;padding-top:8px">
+          <strong>Giấy tờ / Thông tin cá nhân</strong><br>
+          <div>Bằng lái: ${escapeHtml(p.license_number || '(chưa cập nhật)')} &nbsp; Loại: ${escapeHtml(p.license_class || '')}</div>
+          <div>Ngày cấp: ${escapeHtml(p.license_issued || '')} &nbsp; Hết hạn: ${escapeHtml(p.license_expires || '')}</div>
+          <div>Ngân hàng: ${escapeHtml(p.bank_name || '')} &nbsp; Tài khoản: ${escapeHtml(p.bank_account || '')}</div>
+        </div>
+      `;
+      // Set status-select according to driver_status (fallback to available)
+      try {
+        const sel = document.getElementById('status-select');
+        let currentStatus = (u.driver_status || u.available || '').toString().trim();
+        if (!currentStatus) currentStatus = 'available';
+        if (sel) {
+          let found = false;
+          for (let i=0;i<sel.options.length;i++) if (sel.options[i].value === currentStatus) { found = true; break; }
+          if (0 && !found) {
+            const opt = document.createElement('option'); opt.value = currentStatus; opt.text = currentStatus; sel.appendChild(opt);
+          }
+          sel.value = currentStatus;
+        }
+      } catch (e) {}
+      // If current user is not a driver, disable status controls
+      try { if (!isDriver()) { const ss = document.getElementById('status-select'); const bs = document.getElementById('btn-set-status'); if (ss) ss.disabled = true; if (bs) bs.disabled = true; } } catch(e){}
+      loadMessages();
+      try { setupGpsFeature(); } catch(e) {}
+    }
+
+    async function loadSchedule(){
+      document.getElementById('content-body').innerHTML = 'Đang tải...';
+      const r = await apiGET('driver_schedule');
+      if (!r.success) return document.getElementById('content-body').innerText = 'Lỗi: '+(r.message||'');
+      const rows = r.rows || [];
+      if (rows.length === 0) return document.getElementById('content-body').innerText = 'Không có lịch.';
+      let html = '<div class="table-responsive"><table class="table table-striped table-bordered"><thead><tr>' +
+                 '<th>Ngày bắt đầu</th><th>Đến</th><th>Xe</th><th>Khách</th><th>Loại</th><th>Trạng thái</th>' +
+                 '</tr></thead><tbody>';
+      rows.forEach(row => {
+        const plate = row.source_name_text || row.bus_plate_number || row.bus_id || '';
+        const activity = row.activity_type_text || (row.activity_type ? ('#'+row.activity_type) : '');
+        const status = row.acti_status_text || (row.acti_status ? ('#'+row.acti_status) : '');
+        const cust = row.customer_name || row.customer_mobile || '';
+        html += `<tr><td>${row.from_day||''}</td><td>${row.to_day||''}</td><td>${escapeHtml(plate)}</td><td>${escapeHtml(cust)}</td><td>${escapeHtml(activity)}</td><td>${escapeHtml(status)}</td></tr>`;
+      });
+      html += '</tbody></table></div>';
+      document.getElementById('content-body').innerHTML = html;
+    }
+
+    // Initialize bindings for message UI elements (compose, refresh, auto-toggle, mark-read, reply)
+    function initMessageBindings(){
+      try {
+        // Save tab selection when user clicks a tab
+        Array.from(document.querySelectorAll('#msgTabs button[data-bs-target]')).forEach(b=>{
+          b.removeEventListener('click', function(){});
+          b.addEventListener('click', function(){
+            try { sessionStorage.setItem('msg_active_tab', this.getAttribute('data-bs-target')); } catch(e){}
+          });
+        });
+      } catch(e){}
+      try { var bs = bootstrap; } catch(e) {}
+
+      try { if (document.getElementById('btn-compose')) document.getElementById('btn-compose').addEventListener('click', showCompose); } catch(e){}
+      // refresh controls
+      try {
+        const refreshBtn = document.getElementById('btn-refresh-messages');
+        const autoBtn = document.getElementById('btn-toggle-auto-refresh');
+        if (refreshBtn) refreshBtn.addEventListener('click', ()=>{ try{ sessionStorage.setItem('msg_active_tab', document.querySelector('.tab-pane.show.active') ? '#'+document.querySelector('.tab-pane.show.active').id : null); }catch(e){} loadMessages(true); });
+        if (autoBtn) {
+          autoBtn.addEventListener('click', ()=>{
+            window.autoRefreshEnabled = !window.autoRefreshEnabled;
+            autoBtn.innerText = 'Auto: đang ' + (window.autoRefreshEnabled ? 'Bật' : 'Tắt');
+            if (window.autoRefreshEnabled) startMessagesTimer(); else stopMessagesTimer();
+          });
+          try { if (window.autoRefreshEnabled) autoBtn.innerText = 'Auto: đang Bật'; else autoBtn.innerText = 'Auto: đang Tắt'; } catch(e){}
+        }
+      } catch(e){}
+
+      try {
+        Array.from(document.getElementsByClassName('btn-mark-read')).forEach(b=>{
+          b.removeEventListener('click', function(){});
+          b.addEventListener('click', async function(){
+            const id = this.getAttribute('data-id');
+            try {
+              const parent = this.closest('.tab-pane');
+              if (parent && parent.id) sessionStorage.setItem('msg_active_tab', '#'+parent.id);
+            } catch(e){}
+            try { await fetch('/api/generic.php?action=driver_message_mark_read', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body: JSON.stringify({id})}); } catch(e){}
+            loadMessages();
+          });
+        });
+      } catch(e){}
+
+      try {
+        Array.from(document.getElementsByClassName('btn-reply')).forEach(b=>{
+          b.removeEventListener('click', function(){});
+          b.addEventListener('click', function(){
+            const otherId = this.getAttribute('data-other-id');
+            const title = this.getAttribute('data-title') || '';
+            try { sessionStorage.setItem('msg_active_tab', '#tab-'+otherId); } catch(e){}
+            const replyTitle = makeReplyTitle(title);
+            showCompose(otherId, replyTitle, '');
+          });
+        });
+      } catch(e){}
+    }
+
+    // Messages
+    async function loadMessages(force = false, extraParams = {}){
+      // avoid interrupting compose mode
+      try { if (window.isComposing && !force) return; } catch(e){}
+      // prevent overlapping calls
+        try { if (window._messagesLock && !force) { console.debug('loadMessages skipped due to lock'); return; } } catch(e){}
+        // If a load is already in progress and caller requested a forced reload,
+        // avoid firing a second simultaneous request — retry shortly instead.
+        if (window._messagesLock && force) {
+          try {
+            if (!window._messagesRetryScheduled) {
+              window._messagesRetryScheduled = true;
+              console.debug('loadMessages deferred due to active lock, will retry once');
+              setTimeout(()=>{ try{ window._messagesRetryScheduled = false; loadMessages(force, extraParams); }catch(e){} }, 250);
+            } else {
+              console.debug('loadMessages retry already scheduled, skipping extra schedule');
+            }
+          } catch(e){}
+          return;
+        }
+      try { window._messagesLock = true; } catch(e){}
+      console.debug('loadMessages start', {force, time: Date.now()});
+      const contentEl = document.getElementById('content-body');
+      const hadContent = contentEl && contentEl.innerHTML && contentEl.innerHTML.trim() !== '';
+      // Only show loading when there's no previous content or caller forces it
+      if (!hadContent || force) {
+        try { if (contentEl) contentEl.innerHTML = 'Đang tải tin nhắn...'; } catch(e){}
+      }
+      const r = await apiGET('driver_messages', extraParams);
+      if (!r.success) { try{ window._messagesLock = false; }catch(e){}; return document.getElementById('content-body').innerText = 'Lỗi: '+(r.message||''); }
+      const rows = r.messages || [];
+
+      // Prefer server-provided hash when available to detect changes cheaply
+      try {
+        if (r && r.messages_hash) {
+          // If caller forced refresh (force===true or extraParams provided), skip short-circuit
+          const callerForced = !!force || (extraParams && Object.keys(extraParams).length > 0);
+          if (!callerForced && window._lastMessagesSnapshot && window._lastMessagesSnapshot === r.messages_hash) {
+              // no change -> restore last rendered HTML if DOM is empty/loading
+              try{
+                const cb = document.getElementById('content-body');
+                const emptyOrLoading = !cb || !cb.innerHTML || cb.innerHTML.trim() === '' || cb.innerHTML.indexOf('Đang tải tin nhắn') !== -1;
+                if (emptyOrLoading && window._lastMessagesHTML) {
+                  try { cb.innerHTML = window._lastMessagesHTML; } catch(e){}
+                  try { initMessageBindings(); } catch(e){}
+                }
+                window._messagesLock = false;
+              }catch(e){}
+              return;
+            }
+          window._lastMessagesSnapshot = r.messages_hash;
+        }
+      } catch(e) { /* ignore and continue rendering */ }
+      // Fallback: mark sent/received for grouping (kept for compatibility)
+      const me = String(window.currentUserId || '');
+      rows.forEach(m => { m._sent_by_me = String(m.sender_id || '') === me; });
+      // Add compose + refresh controls
+      let html = '<div class="mb-2">'
+               + '<button id="btn-compose" class="btn btn-sm btn-outline-primary">Soạn tin</button> '
+               + '<button id="btn-refresh-messages" class="btn btn-sm btn-outline-secondary">Tải lại</button> '
+               + '<button id="btn-toggle-auto-refresh" class="btn btn-sm btn-outline-secondary">Auto: đang Bật</button>'
+               + '</div>';
+      if (rows.length === 0) {
+        html += '<div>Không có tin nhắn.</div>';
+        document.getElementById('content-body').innerHTML = html;
+        try { window._lastMessagesHTML = html; } catch(e){}
+        try { initMessageBindings(); } catch(e){}
+        try{ window._messagesLock = false; }catch(e){}
+        return;
+      }
+
+      // Group messages into conversations by the other participant (so we see sent + received)
+      const groups = {};
+      rows.forEach(m => {
+        // API returns: sender_id (m.user_id) and receiver_id (m.receiver_id)
+        const from = m.sender_id ? String(m.sender_id) : '';
+        const to = m.receiver_id ? String(m.receiver_id) : '';
+        const other = (from === me) ? to : (from || to || 'unknown');
+        const otherName = (other === from) ? (m.sender_name || ('User ' + other)) : (m.receiver_name || ('User ' + other));
+        if (!groups[other]) groups[other] = { name: otherName, msgs: [] };
+        // mark direction so UI can show 'Bạn' for sent messages
+        m._sent_by_me = (from === me);
+        groups[other].msgs.push(m);
+      });
+
+      // Build nav tabs and tab content (Bootstrap tabs)
+      html += '<ul class="nav nav-tabs mb-2" id="msgTabs" role="tablist">';
+      let first = true;
+      const savedActive = sessionStorage.getItem('msg_active_tab') || null;
+      Object.keys(groups).forEach((sid, idx) => {
+        const g = groups[sid];
+        const unread = g.msgs.filter(x=>!x.is_read).length;
+        const label = escapeHtml(g.name) + (unread ? ` <span class="badge bg-danger ms-1">${unread}</span>` : '');
+        const target = `#tab-${sid}`;
+        const isActive = savedActive ? (savedActive === target) : first;
+        html += `<li class="nav-item" role="presentation"><button class="nav-link ${isActive? 'active':''}" id="tab-${sid}-tab" data-bs-toggle="tab" data-bs-target="${target}" type="button" role="tab" aria-controls="tab-${sid}" aria-selected="${isActive? 'true':'false'}">${label}</button></li>`;
+        first = false;
+      });
+      html += '</ul>';
+
+      html += '<div class="tab-content" id="msgTabContent">';
+      first = true;
+      Object.keys(groups).forEach((sid) => {
+        const g = groups[sid];
+        const targetId = `tab-${sid}`;
+        const paneSelector = `#${targetId}`;
+        const isActivePane = (sessionStorage.getItem('msg_active_tab') === paneSelector) || (sessionStorage.getItem('msg_active_tab') === null && first);
+        html += `<div class="tab-pane fade ${isActivePane? 'show active':''}" id="tab-${sid}" role="tabpanel" aria-labelledby="tab-${sid}-tab">`;
+        html += '<div class="list-group">';
+        // sort messages in chronological order (old -> new)
+        g.msgs.sort((a,b)=> new Date(a.created_at) - new Date(b.created_at));
+        g.msgs.forEach(m => {
+          const senderLabel = m._sent_by_me ? '<strong>Bạn</strong>' : escapeHtml(m.sender_name || '');
+          html += `<div class="list-group-item ${m.is_read? '':'bg-light'}"><div class="d-flex w-100 justify-content-between"><h6 class="mb-1">${senderLabel} — ${escapeHtml(m.title)}</h6><small class="text-muted">${m.created_at}</small></div><p class="mb-1">${escapeHtml(m.body)}</p><div class="d-flex gap-2">`;
+          // Only show mark-read for messages received by me
+          if (!m._sent_by_me) {
+            html += `<button data-id="${m.id}" class="btn btn-sm btn-outline-secondary btn-mark-read" ${m.is_read ? 'disabled' : ''}>Đánh dấu đã đọc</button>`;
+          }
+          // Reply should target the other participant (sid)
+          html += `<button data-other-id="${escapeHtml(sid)}" data-other-name="${escapeHtml(g.name)}" data-title="${escapeHtml(m.title)}" class="btn btn-sm btn-outline-primary btn-reply">Trả lời</button>`;
+          html += `</div></div>`;
+        });
+        html += '</div>'; // list-group
+        html += '</div>'; // tab-pane
+        first = false;
+      });
+      html += '</div>'; // tab-content
+
+      document.getElementById('content-body').innerHTML = html;
+      try { window._lastMessagesHTML = html; } catch(e){}
+      try { initMessageBindings(); } catch(e){}
+
+      // start auto-refresh if enabled (timer already started on page init)
+      try { if (window.autoRefreshEnabled === undefined) window.autoRefreshEnabled = true; } catch(e){}
+      try{ window._messagesLock = false; }catch(e){}
+    }
+
+    async function showCompose(prefillTo = '', prefillTitle = '', prefillBody = ''){
+      // mark composing state so auto-refresh can pause
+      try { window.isComposing = true; } catch(e){}
+      // remember target tab (so we can restore after send/cancel)
+      try {
+        window._composeTargetTab = null;
+        const activePane = document.querySelector('.tab-pane.show.active');
+        window._previousActiveTab = activePane ? '#'+activePane.id : (sessionStorage.getItem('msg_active_tab') || null);
+        if (prefillTo) {
+          try { sessionStorage.setItem('msg_active_tab', '#tab-'+String(prefillTo)); window._composeTargetTab = '#tab-'+String(prefillTo); } catch(e){}
+        }
+      } catch(e){}
+      // Load receiver options from backend endpoint
+      let optionsHtml = '<select id="compose-to" class="form-select mb-2"><option value="">-- Chọn người nhận --</option>';
+      try {
+        const r = await apiGET('message_receivers');
+        if (r && r.success && Array.isArray(r.options)) {
+          r.options.forEach(o => {
+            const v = escapeHtml(o.value);
+            const l = escapeHtml(o.label);
+            optionsHtml += `<option value="${v}">${l}</option>`;
+          });
+        }
+      } catch (e) {}
+      optionsHtml += '</select>';
+      document.getElementById('content-body').innerHTML = `<div class="card"><div class="card-body"><h5>Soạn tin</h5><div class="mb-2"><label class="form-label">Gửi tới user_id:</label>${optionsHtml}</div><div class="mb-2"><label class="form-label">Tiêu đề:<input id="compose-title" class="form-control"/></label></div><div class="mb-2"><label class="form-label">Nội dung:<textarea id="compose-body" class="form-control" rows="6"></textarea></label></div><div class="d-flex gap-2"><button id="compose-send" class="btn btn-primary btn-sm">Gửi</button><button id="compose-cancel" class="btn btn-secondary btn-sm">Hủy</button></div></div></div>`;
+      // compose-cancel handled by delegated handler on #content-body
+      // If prefillTo provided, try to set select value; if option missing, append it
+      if (prefillTo) {
+        const sel = document.getElementById('compose-to');
+        if (sel) {
+          let found = false;
+          for (let i=0;i<sel.options.length;i++) { if (sel.options[i].value === String(prefillTo)) { found = true; break; } }
+          if (!found) {
+            const opt = document.createElement('option'); opt.value = String(prefillTo); opt.text = `User ${String(prefillTo)}`; sel.appendChild(opt);
+          }
+          sel.value = String(prefillTo);
+        }
+      }
+      if (prefillTitle) document.getElementById('compose-title').value = prefillTitle;
+      if (prefillBody) document.getElementById('compose-body').value = prefillBody;
+
+      // compose-send handled by delegated handler on #content-body
+    }
+
+    // Payments
+    async function loadPayments(){
+      document.getElementById('content-body').innerHTML = 'Đang tải lương...';
+      const r = await apiGET('driver_payments');
+      if (!r.success) return document.getElementById('content-body').innerText = 'Lỗi: '+(r.message||'');
+      const rows = r.payments || [];
+      if (rows.length === 0) return document.getElementById('content-body').innerText = 'Không có bản ghi lương.';
+      let html = '<div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>Tháng</th><th>Lương cơ bản</th><th>Phụ cấp</th><th>Thưởng</th><th>Thuế</th><th>Thực nhận</th><th>Trạng thái</th></tr></thead><tbody>';
+      rows.forEach(p=>{
+        html += `<tr><td>${p.for_month||''}</td><td>${p.base_salary||0}</td><td>${p.allowances||0}</td><td>${p.bonus||0}</td><td>${p.tax||0}</td><td>${p.net_amount||0}</td><td>${p.paid_at?('Đã trả '+p.paid_at):'Chưa trả'}</td></tr>`;
+      });
+      html += '</tbody></table></div>';
+      document.getElementById('content-body').innerHTML = html;
+    }
+
+    // Documents
+    async function loadDocuments(){
+      document.getElementById('content-body').innerHTML = 'Đang tải giấy tờ...';
+      const r = await apiGET('driver_documents');
+      if (!r.success) return document.getElementById('content-body').innerText = 'Lỗi: '+(r.message||'');
+      const rows = r.documents || [];
+      let html = '<div class="mb-2"><button id="btn-refresh-docs" class="btn btn-sm btn-outline-secondary">Tải lại</button></div>';
+      if (rows.length === 0) html += '<div>Chưa có giấy tờ.</div>';
+      else {
+        html += '<ul class="list-group">';
+        rows.forEach(d=> html += `<li class="list-group-item"><b>${d.doc_type}</b> — <a href="${d.file_url}">${d.file_url}</a> <small class="text-muted">${d.uploaded_at}</small></li>`);
+        html += '</ul>';
+      }
+      document.getElementById('content-body').innerHTML = html;
+      document.getElementById('btn-refresh-docs').addEventListener('click', loadDocuments);
+    }
+
+    // GPS Sessions: integrated view (only for roles 11,119,20, or super 20)
+    function normalizeRolesInput(raw) {
+      if (!raw) return [];
+      try {
+        if (Array.isArray(raw)) return raw.map(r=>String(r));
+        if (typeof raw === 'string') {
+          // could be JSON array or comma-separated
+          const trimmed = raw.trim();
+          if (trimmed[0] === '[') {
+            try { return JSON.parse(trimmed).map(r=>String(r)); } catch(e) {}
+          }
+          return trimmed.split(',').map(s=>s.trim()).filter(s=>s!=='').map(s=>String(s));
+        }
+        return [String(raw)];
+      } catch(e){ return [] }
+    }
+
+    function isGpsAllowed() {
+      try {
+        const raw = localStorage.getItem('cms_user_roles') || '';
+        const roles = normalizeRolesInput(raw);
+        const allowed = roles.some(r => r === '11' || r === '119' || r === '20');
+        return allowed;
+      } catch(e) { return false; }
+    }
+
+    let _lastSessionsHash = null;
+    async function loadGpsSessions(force=false) {
+      const el = document.getElementById('content-body');
+      if (!el) return;
+      try { if (!force) { /* no-op */ } } catch(e){}
+      try {
+        const res = await fetch('/api/generic.php?action=gps_sessions', {headers:{'Authorization':'Bearer '+token}});
+        const j = await res.json();
+        if (!j.success) { el.innerText = 'Lỗi: ' + (j.message || ''); return; }
+        const hash = j.sessions_hash || '';
+        if (!force && _lastSessionsHash && _lastSessionsHash === hash) return; // no change
+        _lastSessionsHash = hash;
+        const rows = j.sessions || [];
+        if (rows.length === 0) { el.innerText = 'Không có dữ liệu GPS.'; return; }
+        let html = '<div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr>' +
+                   '<th>User ID</th><th>Name</th><th>Status</th><th>Note</th><th>Lat</th><th>Lng</th><th>Accuracy</th><th>Heading</th><th>Speed</th><th>G-Map</th><th>Time</th>' +
+                   '</tr></thead><tbody>';
+        rows.forEach(r=>{
+          const gmap = r.gmap_url ? ('<a target="_blank" rel="noopener" href="'+ (r.gmap_url) +'">View</a>') : '';
+          html += '<tr>' +
+                  '<td>'+(r.user_id||'')+'</td>' +
+                  '<td>'+(r.first_name||'')+'</td>' +
+                  '<td>'+(r.status||'')+'</td>' +
+                  '<td>'+(r.note||'')+'</td>' +
+                  '<td>'+(r.lat||'')+'</td>' +
+                  '<td>'+(r.lng||'')+'</td>' +
+                  '<td>'+(r.accuracy||'')+'</td>' +
+                  '<td>'+(r.heading||'')+'</td>' +
+                  '<td>'+(r.speed||'')+'</td>' +
+                  '<td>'+gmap+'</td>' +
+                  '<td>'+(r.created_at||'')+'</td>' +
+                  '</tr>';
+        });
+        html += '</tbody></table></div>';
+        el.innerHTML = html;
+      } catch(e) {
+        el.innerText = 'Lỗi kết nối';
+      }
+    }
+
+    // Show GPS button if allowed and start 15s updates when visible
+    function setupGpsFeature() {
+      try {
+        const btn = document.getElementById('btn-gps');
+        if (!btn) return;
+        if (isGpsAllowed()) {
+          btn.style.display = '';
+          btn.addEventListener('click', function(){
+            loadGpsSessions(true);
+          });
+          // start background polling to update when changed
+          if (!window._gpsSessionsPoll) {
+            window._gpsSessionsPoll = setInterval(function(){ try{ loadGpsSessions(); }catch(e){} }, 15000);
+          }
+        } else {
+          btn.style.display = 'none';
+        }
+      } catch(e) {}
+    }
+
+    // Status — send status without collecting GPS here; GPS is sent only by GPSTimer
+    document.getElementById('btn-set-status').addEventListener('click', async ()=>{
+      const s = document.getElementById('status-select').value;
+      const note = prompt('Ghi chú (tuỳ chọn):','');
+      try {
+        const res = await fetch('/api/generic.php?action=driver_status_set', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body: JSON.stringify({status:s,note})});
+        const j = await res.json(); if (j.success) alert('Cập nhật xong'); else alert('Lỗi');
+      } catch (e) { alert('Lỗi'); }
+    });
+
+    document.getElementById('btn-logout').addEventListener('click', ()=>{
+      localStorage.removeItem('cms_token');
+      localStorage.removeItem('cms_user_id');
+      localStorage.removeItem('cms_user_email');
+      localStorage.removeItem('cms_user_roles');
+      window.location.href = 'cms-login.html';
+    });
+
+    document.getElementById('btn-schedule').addEventListener('click', loadSchedule);
+    document.getElementById('btn-messages').addEventListener('click', loadMessages);
+    document.getElementById('btn-payments').addEventListener('click', loadPayments);
+    document.getElementById('btn-docs').addEventListener('click', loadDocuments);
+
+    // Delegated handler on content-body to ensure Compose buttons work reliably
+    try {
+      const contentBody = document.getElementById('content-body');
+      if (contentBody) {
+        contentBody.addEventListener('click', async function(evt){
+          const t = evt.target;
+          if (!t) return;
+          try { console.debug('content-body clicked', {id: t.id, cls: t.className, text: t.innerText}); } catch(e){}
+          // Hủy (cancel)
+          const cancelBtn = (t && t.closest) ? t.closest('#compose-cancel') : (t.id === 'compose-cancel' ? t : null);
+            if (cancelBtn) {
+              evt.preventDefault(); evt.stopPropagation();
+              if (window._composeCancelLock) { console.debug('compose cancel blocked by lock'); return; }
+              try { window._composeCancelLock = true; } catch(e){}
+              try { window.isComposing = false; } catch(e){}
+              let restore = null;
+              try { restore = window._composeTargetTab || window._previousActiveTab; if (restore) sessionStorage.setItem('msg_active_tab', restore); } catch(e){}
+              try { await loadMessages(true, {from:'cancel'}); } catch(e){}
+              if (restore) {
+                try { const btn = document.querySelector(`#msgTabs button[data-bs-target="${restore}"]`); if (btn) { try { new bootstrap.Tab(btn).show(); } catch(e) { btn.click(); } } } catch(e){}
+              }
+              try { window._composeCancelLock = false; } catch(e){}
+              return;
+            }
+          // Gửi (send)
+          const sendBtn = (t && t.closest) ? t.closest('#compose-send') : (t.id === 'compose-send' ? t : null);
+          if (sendBtn) {
+            evt.preventDefault(); evt.stopPropagation();
+            if (window._composeSendingLock) { console.debug('compose send blocked by lock'); return; }
+            try { window._composeSendingLock = true; } catch(e){}
+            const sel = document.getElementById('compose-to');
+            const titleEl = document.getElementById('compose-title');
+            const bodyEl = document.getElementById('compose-body');
+            const to = sel ? sel.value.trim() : '';
+            const title = titleEl ? titleEl.value.trim() : '';
+            const body = bodyEl ? bodyEl.value.trim() : '';
+            if (!to || !title) return alert('Nhập người nhận và tiêu đề');
+            try {
+              const res = await fetch('/api/generic.php?action=driver_message_create', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body: JSON.stringify({to_user_id:to, title, body})});
+              const j = await res.json();
+              try { window.isComposing = false; } catch(e){}
+              let restore = null;
+              try { restore = window._composeTargetTab || window._previousActiveTab; if (restore) sessionStorage.setItem('msg_active_tab', restore); } catch(e){}
+              if (j && j.success) {
+                try { console.debug('message sent', j); } catch(e){}
+                try { await loadMessages(true, {from:'send'}); } catch(e){}
+                if (restore) { try { const btn = document.querySelector(`#msgTabs button[data-bs-target="${restore}"]`); if (btn) { try { new bootstrap.Tab(btn).show(); } catch(e){ btn.click(); } } } catch(e){} }
+              } else {
+                console.error('message send error', j && j.message);
+              }
+            } catch (e) { console.error('message send exception', e); }
+            try { window._composeSendingLock = false; } catch(e){}
+            return;
+          }
+        });
+      }
+    } catch(e){}
+
+    // Load profile first (which will also load messages)
+    loadProfile();
+
+    // NOTE: legacy startAutoRefresh/stopAutoRefresh removed; use startMessagesTimer()/stopMessagesTimer()
+
+    // Separate timers: messages refresh (5s) and GPS update (30s)
+    function startMessagesTimer(){
+      try { if (window._messagesTimer) clearInterval(window._messagesTimer); } catch(e){}
+      const interval = (window.messagesRefreshInterval && Number(window.messagesRefreshInterval)) || 5000;
+      // do not call immediately here; initial loadMessages() is triggered by loadProfile()
+      window._messagesTimer = setInterval(function(){ try { if (document.hidden) return; } catch(e){} try { if (window.isComposing) return; } catch(e){} loadMessages(); }, interval);
+    }
+    function stopMessagesTimer(){ if (window._messagesTimer) { clearInterval(window._messagesTimer); window._messagesTimer = null; } }
+
+    function startGPSTimer(intervalMs = 10000){
+      try { if (window._gpsTimer) clearInterval(window._gpsTimer); } catch(e){}
+      window._gpsTimer = setInterval(function(){ try { if (window._gpsLock) return; window._gpsLock = true; sendDriverGPS().catch(()=>{}).finally(()=>{ window._gpsLock = false; }); } catch(e){ window._gpsLock = false; } }, intervalMs);
+    }
+    function stopGPSTimer(){ if (window._gpsTimer) { clearInterval(window._gpsTimer); window._gpsTimer = null; } }
+
+    // Pause/resume only messages timer on visibility change; keep GPSTimer running always
+    document.addEventListener('visibilitychange', function(){ if (document.hidden) { stopMessagesTimer(); } else { if (window.autoRefreshEnabled) startMessagesTimer(); } });
+
+    // Start timers
+    try { if (window.autoRefreshEnabled) startMessagesTimer(); startGPSTimer(); } catch(e){}
+    sendDriverGPS();
+  </script>
+</body>
+</html>

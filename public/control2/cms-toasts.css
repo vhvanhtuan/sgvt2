@@ -1,0 +1,48 @@
+/* Toasts styling for CMS
+   Based on user-supplied snippet and Bootstrap 5 toasts layout
+*/
+#cms-toast-container.toast-container {
+    z-index: 1080;
+    min-width: 320px;
+    max-width: 420px;
+}
+#cms-toast-container.toast-container .toast {
+    background-color: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    position: relative;
+    right: 0px;
+    bottom: 0px;
+    padding: 10px;
+    margin: 6px 6px;
+    border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+/* Header tweaks */
+#cms-toast-container .toast .toast-header {
+    background: transparent;
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    padding: var(--bs-toast-padding-y) var(--bs-toast-padding-x);
+    color: var(--bs-toast-header-color);
+    background-color: var(--bs-toast-header-bg);
+    background-clip: padding-box;
+    border-bottom: var(--bs-toast-border-width) solid var(--bs-toast-header-border-color);
+    border-top-left-radius: calc(var(--bs-toast-border-radius) - var(--bs-toast-border-width));
+    border-top-right-radius: calc(var(--bs-toast-border-radius) - var(--bs-toast-border-width));
+}
+#cms-toast-container .toast .toast-body {
+    padding: 8px;
+    color: #222;
+    font-size: 14px;
+}
+
+/* Small sender text */
+.cms-toast-sender { display:block; font-size:12px; color:#666; margin-bottom:6px }
+
+/* Link in body */
+#cms-toast-container .toast-body a { color: #ffffff; text-decoration: none; }
+
+/* Ensure container uses Bootstrap position helpers when present */
+.toast-container.position-fixed { right: 12px; bottom: 12px; }

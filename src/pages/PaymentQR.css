@@ -1,0 +1,15 @@
+.payment-qr-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 24px 0;
+  gap: 32px;
+}
+.payment-qr-info > div {
+  flex: 1;
+}
+.payment-qr-page img {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  background: #fafafa;
+}

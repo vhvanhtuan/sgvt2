@@ -1,0 +1,342 @@
+/* Sticky header for bus price table */
+.sticky-header {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 2;
+}
+.bus-price-list {
+  max-height: 400px;
+  overflow: auto;
+}
+.bus-price-list tbody tr:hover {
+  background-color: #f5f5f5;
+  cursor: pointer;
+}
+
+.recent-rental-quotes {
+  padding: 8px 0 4px;
+}
+
+.recent-rental-quotes__header h3 {
+  margin: 0 0 14px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.recent-rental-quotes__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.recent-rental-quotes__nav {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.recent-rental-quotes__nav-btn {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: #0f766e;
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  box-shadow: 0 8px 18px rgba(15, 118, 110, 0.25);
+  transition: transform 160ms ease, filter 160ms ease, background 160ms ease;
+}
+
+.recent-rental-quotes__nav-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+.recent-rental-quotes__nav-btn:active {
+  transform: translateY(0);
+}
+
+.recent-rental-quotes__track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(280px, 1fr);
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+}
+
+.recent-rental-quotes__track::-webkit-scrollbar {
+  height: 10px;
+}
+
+.recent-rental-quotes__track::-webkit-scrollbar-thumb {
+  background: rgba(15, 118, 110, 0.3);
+  border-radius: 999px;
+}
+
+.recent-rental-quotes__track::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.recent-rental-quotes__card {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  padding: 16px;
+  animation: quoteSlideUp 520ms ease both;
+  scroll-snap-align: start;
+}
+
+.recent-rental-quotes__card:nth-child(2n) {
+  animation-delay: 80ms;
+}
+
+.recent-rental-quotes__card:nth-child(3n) {
+  animation-delay: 140ms;
+}
+
+.recent-rental-quotes__card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.recent-rental-quotes__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #0f766e;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.recent-rental-quotes__route {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 12px;
+  min-height: 44px;
+}
+
+.recent-rental-quotes__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+  margin: 0;
+}
+
+.recent-rental-quotes__meta div {
+  background: rgba(15, 118, 110, 0.05);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.recent-rental-quotes__meta dt {
+  font-size: 11px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.recent-rental-quotes__meta dd {
+    color: #c2410c !important;
+    font-size: 100%;
+    font-weight: 600 !important;
+    margin: 0;
+}
+
+.recent-rental-quotes__notes {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(249, 115, 22, 0.08);
+  border: 1px solid rgba(249, 115, 22, 0.18);
+}
+
+.recent-rental-quotes__notes span {
+  display: inline-block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #c2410c;
+}
+
+.recent-rental-quotes__notes p {
+  margin: 0;
+  color: #1f2937;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+@keyframes quoteSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 576px) {
+  .recent-rental-quotes__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .recent-rental-quotes__track {
+    grid-auto-columns: 86%;
+  }
+
+  .recent-rental-quotes__meta {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bus-rental-2__header h1 {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 800;
+  color: #133a5e;
+}
+
+.bus-rental-2__steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.bus-rental-2__step {
+  border: 0;
+  border-radius: 14px;
+  background: #f5f7fb;
+  color: #415067;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.bus-rental-2__step.active {
+  background: #eaf1ff;
+  color: #0d59c6;
+}
+
+.bus-rental-2__step.done {
+  background: #edf8f4;
+  color: #0a7b46;
+}
+
+.bus-rental-2__circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #0d59c6;
+  color: #fff;
+  font-size: 14px;
+}
+
+.bus-rental-2__step.done .bus-rental-2__circle {
+  background: #0a7b46;
+}
+
+.bus-rental-2__step-panel {
+  animation: busRentalFadeIn 220ms ease;
+}
+
+.bus-rental-option-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid #d7e3f8;
+  background: #fff;
+  cursor: pointer;
+}
+
+.bus-rental-option-card.selected {
+  border-color: #0d59c6;
+  background: #eef4ff;
+}
+
+.bus-rental-option-card input,
+.bus-rental-option-row input {
+  accent-color: #0d59c6;
+}
+
+.bus-rental-option-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #d7e3f8;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+}
+
+@keyframes busRentalFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+  .bus-rental-2__steps {
+    grid-template-columns: 1fr;
+  }
+.bus-rental-2__steps {
+grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+}
+.option_mo_ta{
+    font-size: 90%;
+    color: #6b7280;
+    font-style: italic;
+}
+.bus_seat_calculation p{
+margin: 3px;
+}
+.bus_seat_calculation.enough{
+border: solid 2px greenyellow;
+background: white;
+}
+.bus_seat_calculation{
+border: solid 2px #ff7a7a;
+border-radius: 12px;
+padding: 10px 12px;
+background: antiquewhite;
+}
+.selected-bus-reply_notes{
+padding: 5px;
+background: antiquewhite;
+margin-top: 3px;
+border-radius: 9px;
+}
+.khach_chon{
+grid-template-columns: 160px minmax(0, 1fr) !important;
+background: #fffddf !important;
+}
+.contact-map-embed iframe{
+    width: 100%;
+    border: 0;
+}

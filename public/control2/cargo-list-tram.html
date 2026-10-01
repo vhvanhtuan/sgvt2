@@ -1,0 +1,2270 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Danh sách đơn hàng trạm</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="cms.css" />
+  <link rel="stylesheet" href="cargo.css" />
+  <link rel="stylesheet" href="scroll-top.css" />
+  <link rel="stylesheet" href="cms-chat.css">
+<link href="/html_logo.ico" rel="shortcut icon">
+
+  <style>
+    /* Filter Panel - Cargo List Specific */
+    .filter-panel { background: #fff; border: 1px solid #d9dee6; border-radius: 10px; padding: 16px; margin-bottom: 18px; box-shadow: 0 1px 10px rgba(0,0,0,0.03); display: block; }
+    .filter-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; align-items: end; }
+
+    /* Table Card & Actions */
+    .table-card { background: #fff; border: 1px solid #d9dee6; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 10px rgba(0,0,0,0.03); }
+    .table-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid #e5e9ef; }
+    .table-actions .summary-box { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+    .summary-badge { 
+      background: #e7f1ff; 
+      color: #0d47a1; 
+      border-radius: 8px; 
+      padding: 10px 12px; 
+      font-size: 13px; 
+      min-width: 110px;
+      font-weight: 500;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+    }
+    .table-scroll::-webkit-scrollbar { height: 8px; }
+    .table-scroll::-webkit-scrollbar-thumb { background: rgba(13, 110, 253, 0.35); border-radius: 999px; }
+    .table-scroll::-webkit-scrollbar-track { background: transparent; }
+
+    /* Table Styles */
+    table.list-table { width: 100%; border-collapse: collapse; min-width: 1020px; }
+    table.list-table th, table.list-table td { border-bottom: 1px solid #e7edf3; padding: 12px 10px; text-align: left; vertical-align: middle; }
+    table.list-table th { background: #f8f9fa; color: #1f3f6c; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+    table.list-table tbody tr { transition: background-color 0.15s ease; }
+    table.list-table tbody tr:hover { background: #f8fbff; }
+    table.list-table tbody tr.selected { background: #e7f1ff; }
+
+    /* Pagination */
+    .pagination { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; padding: 14px 18px; }
+    .pagination button { 
+      border: 1px solid #c4cdd7; 
+      background: #fff; 
+      padding: 8px 12px; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      color: #1f3f6c;
+      transition: all 0.15s ease;
+    }
+    .pagination button:hover { background: #f0f0f0; border-color: #999; }
+    .pagination button.active { background: #0d6efd; color: #fff; border-color: #0d6efd; }
+
+    /* Selected Details */
+    /* Utilities */
+    .checkbox-center { text-align: center; }
+    .text-right { text-align: right; }
+    a.action-link { color: #0d6efd; text-decoration: none; font-weight: 600; }
+    a.action-link:hover { text-decoration: underline; color: #0b5ed7; }
+    .empty-state { padding: 24px; text-align: center; color: #556f88; font-size: 16px; }
+    .tab-nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px; }
+    .tab-nav button { border: 1px solid #d9dee6; background: #fff; color: #1f3f6c; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.15s ease; }
+    .tab-nav button.active { background: #0d6efd; color: #fff; border-color: #0d6efd; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    @media (max-width: 768px) {
+      .filter-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div id="cms-header"></div>
+  <script src="header-loader.js"></script>
+  <div class="page-shell">
+    <div class="page-title">
+      <div>
+        <h1>Danh sách đơn hàng trạm</h1>
+        <div class="status-pill">Chọn đơn hàng để thao tác</div>
+      </div>
+      <div class="toolbar">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <label for="current-branch">VP làm việc</label>
+          <select id="current-branch">
+            <option value="">-- chọn VP --</option>
+          </select>
+        </div>
+        <button id="btn-create-new"><i class="fa fa-plus-circle"></i> Tạo mới</button>
+        <button id="btn-refresh"><i class="fa fa-sync"></i> Làm mới</button>
+        <button id="btn-scan" class="secondary hidden"><i class="fa fa-barcode"></i> Quét mã</button>
+        <button id="btn-move-onboard" class="btn btn-success"><i class="fa fa-upload"></i> Chuyển lên xe</button>
+        <button id="btn-move-back-to-outgoing" class="btn btn-danger"><i class="fa fa-download"></i> Xuống hàng lại VP gửi</button>
+        <button id="btn-move-offboard" class="btn btn-primary"><i class="fa fa-download"></i> Cho hàng xuống trạm</button>
+        <button id="btn-filter-on-off" class="btn btn-info"><i class="fa fa-download"></i> Tắt mở bộ lọc</button>
+      </div>
+    </div>
+
+    <div class="filter-panel" style="display: none;" id="filter-panel-div">
+      <div class="filter-grid">
+        <div class="field-group">
+          <label for="filter-search">Tìm kiếm</label>
+          <input type="search" id="filter-search" placeholder="Mã, người gửi, người nhận, số điện thoại..." />
+        </div>
+        <div class="field-group">
+          <label for="filter-status">Trạng thái</label>
+          <select id="filter-status"></select>
+        </div>
+        <div class="field-group">
+          <label for="filter-cod-service">Thu hộ</label>
+          <select id="filter-cod-service">
+            <option value="">-- Tất cả --</option>
+            <option value="1">Có thu hộ</option>
+            <option value="0">Không thu hộ</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label for="filter-paid">Đã trả</label>
+          <select id="filter-paid">
+            <option value="">-- Tất cả --</option>
+            <option value="1">Đã thu</option>
+            <option value="0">Chưa thu</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label for="filter-remaining">Còn lại</label>
+          <select id="filter-remaining">
+            <option value="">-- Tất cả --</option>
+            <option value="1">Đã thu</option>
+            <option value="0">Chưa thu</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label for="filter-dept">Phơi đang có hàng</label>
+          <select id="filter-dept"></select>
+        </div>
+        <div class="field-group">
+          <label for="filter-register">Ngày tạo</label>
+          <input type="date" id="filter-register" />
+        </div>
+        <div class="field-group">
+          <label for="filter-receiver-confirmed">Ngày trả hàng</label>
+          <input type="date" id="filter-receiver-confirmed" />
+        </div>
+        <div class="field-group">
+          <label for="filter-onboard">VP gửi</label>
+          <select id="filter-onboard"></select>
+        </div>
+        <div class="field-group">
+          <label for="filter-offboard">VP nhận</label>
+          <select id="filter-offboard"></select>
+        </div>
+        <div class="field-group">
+          <label for="filter-limit">Đơn/trang</label>
+          <select id="filter-limit">
+            <option value="15">15</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="100" selected>100</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <button id="btn-filter" class="secondary" style="width:100%;">Lọc</button>
+        </div>
+        <div class="field-group">
+          <button id="btn-reset-filter" class="secondary" style="width:100%;">Reset</button>
+        </div>
+        <div class="field-group">
+          <button id="btn-quick-filter-cr" class="secondary" style="width:100%;">Thu tiền CR</button>
+        </div>
+        <div class="field-group">
+          <button id="btn-quick-filter-cc" class="secondary" style="width:100%;">Thu tiền CC</button>
+        </div>
+        <div class="field-group">
+          <button id="btn-quick-filter-wait-board" class="secondary" style="width:100%;">Hàng chờ lên xe</button>
+        </div>
+        <div class="field-group">
+          <button id="btn-quick-filter-wait-deliver" class="secondary" style="width:100%;">Hàng chờ giao</button>
+        </div>
+      </div>
+    </div>
+<div id="history_info" style="position: fixed;bottom: 10px;"></div>
+
+    <div class="table-card">
+      <div class="table-actions">
+        <div class="summary-box">
+          <button id="btn-select-all" class="secondary"><i class="fa fa-check-square"></i> Chọn tất cả trang</button>
+          <button id="btn-clear-selection" class="secondary"><i class="fa fa-ban"></i> Bỏ chọn</button>
+          <button id="btn-print-orders" class="secondary"><i class="fa fa-print"></i> In đơn</button>
+          <button id="btn-collect-paid" class="secondary"><i class="fa fa-money-bill-wave"></i> Thu tiền đã trả</button>
+          <button id="btn-collect-remaining" class="secondary"><i class="fa fa-wallet"></i> Thu tiền còn lại</button>
+        </div>
+      </div>
+      <div class="tab-nav">
+        <button id="tab-outgoing" class="active">Hàng mới nhận</button>
+        <button id="tab-on-delivery">Hàng trên xe đi</button>
+        <button id="tab-on-delivery-to">Hàng trên xe đến</button>
+        <button id="tab-incoming">Hàng đến</button>
+        <button id="tab-delivered">Hàng đã giao</button>
+      </div>
+      <div class="tab-pane active" id="tab-pane-outgoing">
+        <div class="table-actions">
+          <div class="summary-box">
+            <div class="summary-badge" id="summary-total-outgoing">Tổng: 0 đơn</div>
+            <div class="summary-badge" id="summary-selected-outgoing">Đã chọn: 0 đơn</div>
+            <div class="summary-badge" id="summary-selected-amount-outgoing">Tổng tiền: 0 đ</div>
+            <div class="summary-badge" id="summary-paid-outgoing">Đã trả: 0 đ</div>
+            <div class="summary-badge" id="summary-remaining-outgoing">Còn lại: 0 đ</div>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="list-table" id="cargo-table-outgoing">
+            <thead>
+              <tr>
+                <th class="checkbox-center"><input type="checkbox" id="select-all-page-outgoing" /></th>
+                <th>Mã đơn</th>
+                <th>Người gửi</th>
+                <th>Hàng</th>
+                <th>VP gửi</th>
+                <th>VP nhận</th>
+                <th>Người nhận</th>
+                <th>Tổng tiền</th>
+                <th>Đã trả</th>
+                <th>Còn lại</th>
+                <th>Tạo bởi</th>
+                <th>Trạng thái</th>
+                <th>Ngày tạo</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="cargo-table-body-outgoing"></tbody>
+          </table>
+          <div id="cargo-empty-outgoing" class="empty-state" style="display:none;">Không có đơn hàng gửi phù hợp.</div>
+        </div>
+        <div class="pagination" id="pagination-outgoing"></div>
+      </div>
+      <div class="tab-pane" id="tab-pane-on-delivery">
+        <div class="table-actions">
+          <div class="summary-box">
+            <div class="summary-badge" id="summary-total-on-delivery">Tổng: 0 đơn</div>
+            <div class="summary-badge" id="summary-selected-on-delivery">Đã chọn: 0 đơn</div>
+            <div class="summary-badge" id="summary-selected-amount-on-delivery">Tổng tiền: 0 đ</div>
+            <div class="summary-badge" id="summary-paid-on-delivery">Đã trả: 0 đ</div>
+            <div class="summary-badge" id="summary-remaining-on-delivery">Còn lại: 0 đ</div>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="list-table" id="cargo-table-on-delivery">
+            <thead>
+              <tr>
+                <th class="checkbox-center"><input type="checkbox" id="select-all-page-on-delivery" /></th>
+                <th>Mã đơn</th>
+                <th>Người gửi</th>
+                <th>Hàng</th>
+                <th>VP gửi</th>
+                <th>VP nhận</th>
+                <th>Người nhận</th>
+                <th>Tổng tiền</th>
+                <th>Đã trả</th>
+                <th>Còn lại</th>
+                <th>PTTT</th>
+                <th>Trạng thái</th>
+                <th>Ngày tạo</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="cargo-table-body-on-delivery"></tbody>
+          </table>
+          <div id="cargo-empty-on-delivery" class="empty-state" style="display:none;">Không có đơn hàng đang trên xe phù hợp.</div>
+        </div>
+        <div class="pagination" id="pagination-on-delivery"></div>
+      </div>
+      <div class="tab-pane" id="tab-pane-on-delivery-to">
+        <div class="table-actions">
+          <div class="summary-box">
+            <div class="summary-badge" id="summary-total-on-delivery-to">Tổng: 0 đơn</div>
+            <div class="summary-badge" id="summary-selected-on-delivery-to">Đã chọn: 0 đơn</div>
+            <div class="summary-badge" id="summary-selected-amount-on-delivery-to">Tổng tiền: 0 đ</div>
+            <div class="summary-badge" id="summary-paid-on-delivery-to">Đã trả: 0 đ</div>
+            <div class="summary-badge" id="summary-remaining-on-delivery-to">Còn lại: 0 đ</div>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="list-table" id="cargo-table-on-delivery-to">
+            <thead>
+              <tr>
+                <th class="checkbox-center"><input type="checkbox" id="select-all-page-on-delivery-to" /></th>
+                <th>Mã đơn</th>
+                <th>Người gửi</th>
+                <th>Hàng</th>
+                <th>VP gửi</th>
+                <th>VP nhận</th>
+                <th>Người nhận</th>
+                <th>Tổng tiền</th>
+                <th>Đã trả</th>
+                <th>Còn lại</th>
+                <th>PTTT</th>
+                <th>Trạng thái</th>
+                <th>Ngày tạo</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="cargo-table-body-on-delivery-to"></tbody>
+          </table>
+          <div id="cargo-empty-on-delivery-to" class="empty-state" style="display:none;">Không có đơn hàng trên xe đến phù hợp.</div>
+        </div>
+        <div class="pagination" id="pagination-on-delivery-to"></div>
+      </div>
+      <div class="tab-pane" id="tab-pane-incoming">
+        <div class="table-actions">
+          <div class="summary-box">
+            <div class="summary-badge" id="summary-total-incoming">Tổng: 0 đơn</div>
+            <div class="summary-badge" id="summary-selected-incoming">Đã chọn: 0 đơn</div>
+            <div class="summary-badge" id="summary-selected-amount-incoming">Tổng tiền: 0 đ</div>
+            <div class="summary-badge" id="summary-paid-incoming">Đã trả: 0 đ</div>
+            <div class="summary-badge" id="summary-remaining-incoming">Còn lại: 0 đ</div>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="list-table" id="cargo-table-incoming">
+            <thead>
+              <tr>
+                <th class="checkbox-center"><input type="checkbox" id="select-all-page-incoming" /></th>
+                <th>Mã đơn</th>
+                <th>Người gửi</th>
+                <th>Hàng</th>
+                <th>VP gửi</th>
+                <th>VP nhận</th>
+                <th>Người nhận</th>
+                <th>Tổng tiền</th>
+                <th>Đã trả</th>
+                <th>Còn lại</th>
+                <th>PTTT</th>
+                <th>Trạng thái</th>
+                <th>Ngày tạo</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="cargo-table-body-incoming"></tbody>
+          </table>
+          <div id="cargo-empty-incoming" class="empty-state" style="display:none;">Không có đơn hàng đến phù hợp.</div>
+        </div>
+        <div class="pagination" id="pagination-incoming"></div>
+      </div>
+      <div class="tab-pane" id="tab-pane-delivered">
+        <div class="table-actions">
+          <div class="summary-box">
+            <div class="summary-badge" id="summary-total-delivered">Tổng: 0 đơn</div>
+            <div class="summary-badge" id="summary-selected-delivered">Đã chọn: 0 đơn</div>
+            <div class="summary-badge" id="summary-selected-amount-delivered">Tổng tiền: 0 đ</div>
+            <div class="summary-badge" id="summary-paid-delivered">Đã trả: 0 đ</div>
+            <div class="summary-badge" id="summary-remaining-delivered">Còn lại: 0 đ</div>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="list-table" id="cargo-table-delivered">
+            <thead>
+              <tr>
+                <th class="checkbox-center"><input type="checkbox" id="select-all-page-delivered" /></th>
+                <th>Mã đơn</th>
+                <th>Người gửi</th>
+                <th>Hàng</th>
+                <th>VP gửi</th>
+                <th>VP nhận</th>
+                <th>Người nhận</th>
+                <th>Tổng tiền</th>
+                <th>Đã trả</th>
+                <th>Còn lại</th>
+                <th>PTTT</th>
+                <th>Trạng thái</th>
+                <th>Ngày tạo</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="cargo-table-body-delivered"></tbody>
+          </table>
+          <div id="cargo-empty-delivered" class="empty-state" style="display:none;">Không có đơn hàng đã giao phù hợp.</div>
+        </div>
+        <div class="pagination" id="pagination-delivered"></div>
+      </div>
+    </div>
+
+  <button id="scrollTopBtn" class="scroll-top-btn" type="button" title="Lên đầu trang">↑</button>
+
+  <div id="move-onboard-modal" class="cargo-modal" role="dialog" aria-modal="true" aria-labelledby="moveOnboardTitle">
+    <div class="cargo-modal-backdrop"></div>
+    <div class="cargo-modal-dialog">
+      <div class="cargo-modal-header">
+        <h3 id="moveOnboardTitle">Chọn phơi chuyển lên xe</h3>
+        <button type="button" class="cargo-modal-close" aria-label="Đóng">&times;</button>
+      </div>
+      <div class="cargo-modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="modal-route-select" class="form-label">Tuyến</label>
+            <select id="modal-route-select" class="form-select"></select>
+          </div>
+          <div class="col-md-6">
+            <label for="modal-dept-date" class="form-label">Ngày</label>
+            <input type="date" id="modal-dept-date" class="form-control" />
+          </div>
+        </div>
+        <div class="table-responsive mt-4">
+          <table class="cargo-modal-table" id="modal-departures-table">
+            <thead>
+              <tr>
+                <th style="width: 60px;">Chọn</th>
+                <th>Giờ</th>
+                <th>Biển số</th>
+              </tr>
+            </thead>
+            <tbody id="modal-departures-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="cargo-modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-move-onboard">Hủy</button>
+        <button type="button" class="btn btn-primary" id="btn-confirm-move-onboard">Xác nhận chuyển lên xe</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="deliver-modal-container"></div>
+  <!-- Cargo Edit Modal (inline modal, form copied from cargo-edit.html) -->
+  <div id="cargo-edit-modal" class="cargo-modal" role="dialog" aria-modal="true" style="display:none;">
+    <div class="cargo-modal-backdrop"></div>
+    <div class="cargo-modal-dialog" style="">
+      <div class="cargo-modal-body" style="height:100%; padding:0px; overflow:auto;">
+        <div class="page-shell">
+          <div class="page-title">
+            <div>
+              <h1>Thêm đơn hàng gửi</h1>
+              <div class="status-bar">
+                <span class="status-pill" id="cargo-status-pill">Mới</span>
+                <span class="status-pill" id="cargo-code-pill">Mã: -</span>
+              </div>
+            </div>
+                        <div class="toolbar no-print">
+              <button class="cms-btn cms-btn-back" id="btn-back-2" type="button"><i class="fa fa-arrow-left"></i> Đóng</button>
+            </div>
+
+          </div>
+
+          <div class="card">
+            <div class="form-section-title">Thông tin người gửi và người nhận</div>
+            <div class="form-grid">
+              <div class="field-group" style="grid-column: span 6;">
+                <label for="pass_mobile">SDT người gửi</label>
+                <input type="text" id="pass_mobile" autocomplete="tel" />
+              </div>
+              <div class="field-group" style="grid-column: span 6;">
+                <label for="pass_name">Người gửi</label>
+                <input type="text" id="pass_name" />
+              </div>
+              <div class="field-group" style="grid-column: span 4;">
+                <label for="onboard_at">VP gửi <span style="color:#d00">*</span></label>
+                <select id="onboard_at" required></select>
+              </div>
+              <div class="field-group" style="grid-column: span 4;">
+                <label for="temp_onboard">Lấy hàng dọc đường</label>
+                <input type="text" id="temp_onboard" placeholder="Nhập địa điểm..." />
+              </div>
+              <div class="field-group inline" style="grid-column: span 4;">
+                <input type="checkbox" id="lay_tan_noi" />
+                <label for="lay_tan_noi">Lấy tận nơi</label>
+              </div>
+              <div class="field-group" style="grid-column: span 4;">
+                <label for="receiver_mobile">SDT người nhận</label>
+                <input type="text" id="receiver_mobile" autocomplete="tel" />
+              </div>
+              <div class="field-group" style="grid-column: span 4;">
+                <label for="reveiver_name">Người nhận</label>
+                <input type="text" id="reveiver_name" />
+              </div>
+              <div class="field-group" style="grid-column: span 4;">
+                <label for="offboard_at">VP nhận <span style="color:#d00">*</span></label>
+                <select id="offboard_at" required></select>
+              </div>
+              <div class="field-group" style="grid-column: span 4;">
+                <label for="temp_offboard">Giao hàng dọc đường</label>
+                <input type="text" id="temp_offboard" placeholder="Nhập địa điểm..." />
+              </div>
+              <div class="field-group inline" style="grid-column: span 4;">
+                <input type="checkbox" id="giao_tan_noi" />
+                <label for="giao_tan_noi">Giao tận nơi</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="form-section-title">Chi tiết hàng hóa</div>
+            <div style="overflow-x:auto;">
+              <table class="detail-table" id="details-table">
+                <thead>
+                  <tr>
+                    <th style="width: 75px;">SL</th>
+                    <th style="width: 120px;">Đơn vị tính</th>
+                    <th>Tên hàng</th>
+                    <th style="width: 140px;">Giá trị</th>
+                    <th>Ghi chú</th>
+                    <th style="width: 140px;">Cước phí</th>
+                    <th style="width: 80px;">Xóa</th>
+                  </tr>
+                </thead>
+                <tbody id="details-body"></tbody>
+              </table>
+            </div>
+            <!-- <button class="cms-btn" id="btn-add-row" type="button" style="margin-top:12px;"><i class="fa fa-plus"></i> Thêm dòng</button> -->
+          </div>
+
+          <div class="card">
+            <div class="form-section-title">Thanh toán và tổng cước</div>
+            <div class="summary-grid">
+              <div class="summary-item" style="grid-column: span 3;"><label for="ticket_vnd">Tổng giá trị hàng hóa</label><input type="text" id="ticket_vnd" inputmode="numeric" pattern="[0-9,\\.]*" /></div>
+              <div class="summary-item" style="grid-column: span 3;"><label for="sum_vnd">Tổng cước</label><input type="text" id="sum_vnd" inputmode="numeric" pattern="[0-9,\\.]*" /></div>
+              <div class="summary-item" style="grid-column: span 3;"><label for="payment_method">Hình thức thanh toán</label><select required id="payment_method"></select></div>
+              <div class="summary-item" style="grid-column: span 3;"><label for="sender_paid_vnd">Người gửi trả</label><input type="text" id="sender_paid_vnd" inputmode="numeric" pattern="[0-9,\\.]*" /></div>
+              <div class="summary-item" style="grid-column: span 3;"><label for="receiver_paid_vnd">Người nhận trả</label><input type="text" id="receiver_paid_vnd" inputmode="numeric" pattern="[0-9,\\.]*" /></div>
+              <div class="summary-item" style="grid-column: span 3; display:flex; flex-direction:column; gap:8px;"><div class="field-group inline"><input type="checkbox" id="cod_service" /><label for="cod_service">Thu hộ</label></div><label for="cod_vnd">Phí thu hộ</label><input type="text" id="cod_vnd" inputmode="numeric" pattern="[0-9,\\.]*" /></div>
+              <div class="summary-item" style="grid-column: span 6;"><label for="notes">Ghi chú</label><textarea id="notes"></textarea></div>
+            </div>
+          </div>
+            <div class="toolbar no-print">
+              <button class="cms-btn" id="btn-save" type="button"><i class="fa fa-save"></i> Lưu</button>
+              <button class="cms-btn" id="btn-print" type="button"><i class="fa fa-print"></i> Lưu, In tem và hóa đơn</button>
+              <button class="cms-btn" id="btn-new" type="button"><i class="fa fa-plus-circle"></i> Tạo đơn mới</button>
+              <button class="cms-btn danger" id="btn-cancel-order" type="button" style="display:none;"><i class="fa fa-ban"></i> Hủy đơn</button>
+              <button class="cms-btn cms-btn-back" id="btn-back" type="button"><i class="fa fa-arrow-left"></i> Đóng</button>
+            </div>
+
+          <div class="print-ready" id="print-section"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Non-blocking passenger search panel (anchored under phone inputs) -->
+  <div id="cargo-passenger-search-panel" style="display:none; position:absolute; z-index:1050; max-height:320px; overflow:auto; background:#fff; border:1px solid #ccc; border-radius:6px; box-shadow:0 6px 18px rgba(0,0,0,0.12); padding:8px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <h4 id="cargo-passenger-search-title" style="margin:0; font-size:14px;">Tìm khách hàng cũ</h4>
+      <button type="button" class="cargo-panel-close cms-btn" id="cargo-passenger-search-close" style="padding:4px 8px;">Đóng</button>
+    </div>
+    <div id="cargo-passenger-search-status" style="margin-bottom:8px;color:#333;font-size:13px;"></div>
+    <div style="overflow-x:auto;">
+      <table class="table table-bordered table-hover" style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead id="cargo-passenger-search-head">
+          <tr>
+            <th>SĐT</th>
+            <th>Người</th>
+            <th>VP</th>
+            <th>Địa điểm</th>
+            <th>Tên hàng</th>
+            <th>Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody id="cargo-passenger-search-body"></tbody>
+      </table>
+    </div>
+  </div>
+  <div id="collect-modal" class="cargo-modal" role="dialog" aria-modal="true" aria-labelledby="collectTitle">
+    <div class="cargo-modal-backdrop"></div>
+    <div class="cargo-modal-dialog">
+      <div class="cargo-modal-header">
+        <h3 id="collectTitle">Tạo phiếu thu</h3>
+        <button type="button" class="cargo-modal-close" aria-label="Đóng">&times;</button>
+      </div>
+      <div class="cargo-modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="collect-amount" class="form-label">Số tiền (VND)</label>
+            <input id="collect-amount" class="form-control" />
+          </div>
+          <div class="col-md-6">
+            <label for="collect-count" class="form-label">Tổng đơn</label>
+            <input id="collect-count" class="form-control" readonly />
+          </div>
+        </div>
+        <div class="mt-3">
+          <label for="collect-notes" class="form-label">Ghi chú</label>
+          <textarea id="collect-notes" class="form-control" rows="3"></textarea>
+        </div>
+      </div>
+      <div class="cargo-modal-footer">
+        <button type="button" class="btn btn-secondary" id="collect-cancel">Hủy</button>
+        <button type="button" class="btn btn-primary" id="collect-confirm">Xác nhận thu</button>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET','deliver-modal.html', false);
+      xhr.send(null);
+      if (xhr.status === 200) {
+        document.getElementById('deliver-modal-container').innerHTML = xhr.responseText;
+      } else {
+        document.getElementById('deliver-modal-container').innerHTML = '<!-- deliver modal load failed -->';
+      }
+    } catch (e) {
+      document.getElementById('deliver-modal-container').innerHTML = '<!-- deliver modal load error -->';
+    }
+  })();
+  </script>
+
+  <script>
+function formatNumberString(value) {
+    let raw = String(value || '');
+    raw = raw.replace(/[^0-9.,]/g, '');
+    raw = raw.replace(/,/g, '');
+    if (raw === '' || raw === '-' || raw === '.' || raw === '-.') {
+        return raw;
+    }
+    const parts = raw.split('.');
+    const intPart = parts[0].replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+    const decimals = parts.slice(1).join('').replace(/[^0-9]/g, '');
+    const formattedInt = intPart ? intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '0';
+    return formattedInt + (decimals ? '.' + decimals : '');
+}
+
+function parseNumericValue(value) {
+    if (value === undefined || value === null) return '';
+    let raw = String(value).replace(/[^0-9.,]/g, '').replace(/,/g, '');
+    const parts = raw.split('.');
+    if (parts.length <= 1) return raw;
+    return parts.shift() + '.' + parts.join('').replace(/\./g, '');
+}
+
+function sanitizeNumberInputValue(value) {
+    return formatNumberString(parseNumericValue(value));
+}
+
+function createOption(value, text) {
+    const option = document.createElement('option');
+    option.value = value ?? '';
+    option.textContent = text ?? (value ?? '');
+    return option;
+}
+
+function populateSelect(select, items) {
+    if (!select) return;
+    select.innerHTML = '<option value="">-- Chọn --</option>';
+    const list = Array.isArray(items) ? items : [];
+    list.forEach((item) => {
+        const id = item && (item.id ?? item.value ?? item.branch_id ?? item.payment_id ?? item.status_id ?? item.code ?? item.dept_id ?? '');
+        const label = item && (item.label || item.name || item.branch_name || item.payment || item.status_title || item.title || item.text || item.dept_name || item.code || id);
+        if (id !== '' || list.length === 1) {
+            select.appendChild(createOption(id, label));
+        }
+    });
+}
+
+  const today = new Date().toISOString().split("T")[0];
+  document.getElementById("modal-dept-date").setAttribute("min", today);
+    
+    const API_URL = '/api/cargo.php';
+    const token = localStorage.getItem('cms_token') || localStorage.getItem('api_token') || '';
+    if (!token) {
+      window.location.href = 'cms-login.html';
+    }
+
+    const state = {
+      meta: null,
+      activeTab: 'outgoing',
+      outgoing: { rows: [], selected: {}, page: 1, limit: 30, total: 0 },
+      on_delivery: { rows: [], selected: {}, page: 1, limit: 30, total: 0 },
+      on_delivery_to: { rows: [], selected: {}, page: 1, limit: 30, total: 0 },
+      incoming: { rows: [], selected: {}, page: 1, limit: 30, total: 0 },
+      delivered: { rows: [], selected: {}, page: 1, limit: 30, total: 0 },
+      filters: {
+        q: '',
+        status_id: '',
+        cod_service: '',
+        dept_id: '',
+        register_submit: '',
+        onboard_at: '',
+        offboard_at: '',
+        receiver_money_confirmer_at: ''
+      },
+      moveOnboard: {
+        selectedDeptId: null,
+        departures: []
+      },
+      deliver: {
+        cargo: null
+      }
+    };
+
+    const elems = {
+      search: document.getElementById('filter-search'),
+      status: document.getElementById('filter-status'),
+      dept: document.getElementById('filter-dept'),
+      registerDate: document.getElementById('filter-register'),
+      receiverConfirmedDate: document.getElementById('filter-receiver-confirmed'),
+      codService: document.getElementById('filter-cod-service'),
+      paidFilter: document.getElementById('filter-paid'),
+      remainingFilter: document.getElementById('filter-remaining'),
+      onboardBranch: document.getElementById('filter-onboard'),
+      history_info: document.getElementById('history_info'),
+      offboardBranch: document.getElementById('filter-offboard'),
+      currentBranch: document.getElementById('current-branch'),
+      limit: document.getElementById('filter-limit'),
+      filterBtn: document.getElementById('btn-filter'),
+      resetFilterBtn: document.getElementById('btn-reset-filter'),
+      quickFilterCrBtn: document.getElementById('btn-quick-filter-cr'),
+      quickFilterCcBtn: document.getElementById('btn-quick-filter-cc'),
+      quickFilterWaitBoardBtn: document.getElementById('btn-quick-filter-wait-board'),
+      quickFilterWaitDeliverBtn: document.getElementById('btn-quick-filter-wait-deliver'),
+      refreshBtn: document.getElementById('btn-refresh'),
+      selectAllPageOutgoing: document.getElementById('select-all-page-outgoing'),
+      selectAllPageOnDelivery: document.getElementById('select-all-page-on-delivery'),
+      selectAllPageIncoming: document.getElementById('select-all-page-incoming'),
+      selectAllPageDelivered: document.getElementById('select-all-page-delivered'),
+      selectAllButton: document.getElementById('btn-select-all'),
+      clearSelectionButton: document.getElementById('btn-clear-selection'),
+      moveOnboard: document.getElementById('btn-move-onboard'),
+      moveBackToOutgoing: document.getElementById('btn-move-back-to-outgoing'),
+      moveOffboard: document.getElementById('btn-move-offboard'),
+      filterOnOff: document.getElementById('btn-filter-on-off'),
+      deliverModal: document.getElementById('deliver-customer-modal'),
+      deliverCode: document.getElementById('deliver-code'),
+      deliverStatus: document.getElementById('deliver-status'),
+      deliverPassName: document.getElementById('deliver-pass-name'),
+      deliverPassMobile: document.getElementById('deliver-pass-mobile'),
+      deliverOnboardBranch: document.getElementById('deliver-onboard-branch'),
+      deliverOffboardBranch: document.getElementById('deliver-offboard-branch'),
+      deliverReceiverName: document.getElementById('deliver-receiver-name'),
+      deliverReceiverMobile: document.getElementById('deliver-receiver-mobile'),
+      deliverTotal: document.getElementById('deliver-total'),
+      deliverSenderPaid: document.getElementById('deliver-sender-paid'),
+      deliverReceiverPaid: document.getElementById('deliver-receiver-paid'),
+      deliverPaymentMethod: document.getElementById('deliver-payment-method'),
+      deliverNotes: document.getElementById('deliver-notes'),
+      deliverConfirm: document.getElementById('btn-confirm-deliver'),
+      deliverCancel: document.getElementById('btn-cancel-deliver'),
+      deliverClose: document.querySelector('#deliver-customer-modal .cargo-modal-close'),
+      tabOutgoingBtn: document.getElementById('tab-outgoing'),
+      tabOnDeliveryBtn: document.getElementById('tab-on-delivery'),
+      tabOnDeliveryToBtn: document.getElementById('tab-on-delivery-to'),
+      tabIncomingBtn: document.getElementById('tab-incoming'),
+      tabDeliveredBtn: document.getElementById('tab-delivered'),
+      tableBodyOutgoing: document.getElementById('cargo-table-body-outgoing'),
+      tableBodyOnDelivery: document.getElementById('cargo-table-body-on-delivery'),
+      tableBodyOnDeliveryTo: document.getElementById('cargo-table-body-on-delivery-to'),
+      tableBodyIncoming: document.getElementById('cargo-table-body-incoming'),
+      tableBodyDelivered: document.getElementById('cargo-table-body-delivered'),
+      paginationOutgoing: document.getElementById('pagination-outgoing'),
+      paginationOnDelivery: document.getElementById('pagination-on-delivery'),
+      paginationOnDeliveryTo: document.getElementById('pagination-on-delivery-to'),
+      paginationIncoming: document.getElementById('pagination-incoming'),
+      paginationDelivered: document.getElementById('pagination-delivered'),
+      summaryTotalOutgoing: document.getElementById('summary-total-outgoing'),
+      summarySelectedOutgoing: document.getElementById('summary-selected-outgoing'),
+      summarySelectedAmountOutgoing: document.getElementById('summary-selected-amount-outgoing'),
+      summaryPaidOutgoing: document.getElementById('summary-paid-outgoing'),
+      summaryRemainingOutgoing: document.getElementById('summary-remaining-outgoing'),
+      summaryTotalOnDelivery: document.getElementById('summary-total-on-delivery'),
+      summarySelectedOnDelivery: document.getElementById('summary-selected-on-delivery'),
+      summarySelectedAmountOnDelivery: document.getElementById('summary-selected-amount-on-delivery'),
+      summaryPaidOnDelivery: document.getElementById('summary-paid-on-delivery'),
+      summaryRemainingOnDelivery: document.getElementById('summary-remaining-on-delivery'),
+      summaryTotalOnDeliveryTo: document.getElementById('summary-total-on-delivery-to'),
+      summarySelectedOnDeliveryTo: document.getElementById('summary-selected-on-delivery-to'),
+      summarySelectedAmountOnDeliveryTo: document.getElementById('summary-selected-amount-on-delivery-to'),
+      summaryPaidOnDeliveryTo: document.getElementById('summary-paid-on-delivery-to'),
+      summaryRemainingOnDeliveryTo: document.getElementById('summary-remaining-on-delivery-to'),
+      summaryTotalIncoming: document.getElementById('summary-total-incoming'),
+      summarySelectedIncoming: document.getElementById('summary-selected-incoming'),
+      summarySelectedAmountIncoming: document.getElementById('summary-selected-amount-incoming'),
+      summaryPaidIncoming: document.getElementById('summary-paid-incoming'),
+      summaryRemainingIncoming: document.getElementById('summary-remaining-incoming'),
+      summaryTotalDelivered: document.getElementById('summary-total-delivered'),
+      summarySelectedDelivered: document.getElementById('summary-selected-delivered'),
+      summarySelectedAmountDelivered: document.getElementById('summary-selected-amount-delivered'),
+      summaryPaidDelivered: document.getElementById('summary-paid-delivered'),
+      summaryRemainingDelivered: document.getElementById('summary-remaining-delivered'),
+      emptyStateOutgoing: document.getElementById('cargo-empty-outgoing'),
+      emptyStateOnDelivery: document.getElementById('cargo-empty-on-delivery'),
+      emptyStateOnDeliveryTo: document.getElementById('cargo-empty-on-delivery-to'),
+      emptyStateIncoming: document.getElementById('cargo-empty-incoming'),
+      emptyStateDelivered: document.getElementById('cargo-empty-delivered'),
+      selectAllPageOnDeliveryTo: document.getElementById('select-all-page-on-delivery-to'),
+      moveOnboardModal: document.getElementById('move-onboard-modal'),
+      modalRoute: document.getElementById('modal-route-select'),
+      modalDate: document.getElementById('modal-dept-date'),
+      modalDeparturesBody: document.getElementById('modal-departures-body'),
+      modalConfirm: document.getElementById('btn-confirm-move-onboard'),
+      modalCancel: document.getElementById('btn-cancel-move-onboard'),
+      modalClose: document.querySelector('.cargo-modal-close')
+    };
+
+    function redirectToLogin() {
+      localStorage.removeItem('cms_token');
+      localStorage.removeItem('api_token');
+      window.location.href = 'cms-login.html';
+    }
+
+    function isAuthError(data, response) {
+      if (response && (response.status === 401 || response.status === 403)) return true;
+      const msg = data && data.message ? String(data.message) : '';
+      return data && data.success === false && /invalid|expired|missing.*authorization|missing.*auth|access denied/i.test(msg);
+    }
+
+    async function requestJson(url, opts = {}) {
+      const headers = opts.headers || {};
+      headers['Authorization'] = 'Bearer ' + token;
+      if (!opts.method || opts.method.toUpperCase() === 'GET') {
+        headers['Accept'] = 'application/json';
+      }
+      if (opts.body && !opts.headers?.['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+      }
+      const response = await fetch(url, Object.assign({ credentials: 'same-origin' }, opts, { headers }));
+      const text = await response.text();
+      let data;
+      try { data = JSON.parse(text); } catch (err) { data = { success: false, message: 'Invalid response', raw: text }; }
+      if (isAuthError(data, response)) {
+        redirectToLogin();
+        return data;
+      }
+      return data;
+    }
+
+    function formatCurrency(num) {
+      const n = Number(num);
+      if (!isFinite(n)) return '0';
+      return n.toLocaleString('vi-VN');
+    }
+
+    function getFilterStorageKey() {
+      return 'cargoListFilters';
+    }
+
+    function getTabStorageKey() {
+      return 'cargoListActiveTab';
+    }
+
+    function saveFiltersToStorage() {
+      const filterData = {
+        // q: elems.search.value.trim(),
+        status_id: elems.status.value,
+        cod_service: elems.codService.value,
+        paid_filter: elems.paidFilter.value,
+        remaining_filter: elems.remainingFilter.value,
+        dept_id: elems.dept.value,
+        register_submit: elems.registerDate.value,
+        receiver_money_confirmer_at: elems.receiverConfirmedDate.value,
+        onboard_at: elems.onboardBranch.value,
+        offboard_at: elems.offboardBranch.value,
+        limit: elems.limit.value,
+        page: state[state.activeTab]?.page || 1
+      };
+      localStorage.setItem(getFilterStorageKey(), JSON.stringify(filterData));
+    }
+
+    function saveActiveTabToStorage(tab) {
+      if (!tab) return;
+      localStorage.setItem(getTabStorageKey(), tab);
+    }
+
+    function loadActiveTabFromStorage() {
+      const saved = localStorage.getItem(getTabStorageKey());
+      const validTabs = ['outgoing', 'on_delivery', 'on_delivery_to', 'incoming', 'delivered'];
+      if (saved && validTabs.includes(saved)) {
+        state.activeTab = saved;
+      }
+    }
+
+    function loadFiltersFromStorage() {
+      const raw = localStorage.getItem(getFilterStorageKey());
+      if (!raw) return;
+      try {
+        const saved = JSON.parse(raw);
+        if (saved.q !== undefined) elems.search.value = saved.q;
+        if (saved.status_id !== undefined) elems.status.value = saved.status_id;
+        if (saved.cod_service !== undefined) elems.codService.value = saved.cod_service;
+        if (saved.paid_filter !== undefined) elems.paidFilter.value = saved.paid_filter;
+        if (saved.remaining_filter !== undefined) elems.remainingFilter.value = saved.remaining_filter;
+        if (saved.dept_id !== undefined) elems.dept.value = saved.dept_id;
+        if (saved.register_submit !== undefined) elems.registerDate.value = saved.register_submit;
+        if (saved.receiver_money_confirmer_at !== undefined) elems.receiverConfirmedDate.value = saved.receiver_money_confirmer_at;
+        if (saved.onboard_at !== undefined) elems.onboardBranch.value = saved.onboard_at;
+        if (saved.offboard_at !== undefined) elems.offboardBranch.value = saved.offboard_at;
+        if (saved.limit !== undefined) elems.limit.value = saved.limit;
+        if (saved.page !== undefined) {
+          const pageValue = Number(saved.page) || 1;
+          state.outgoing.page = pageValue;
+          state.on_delivery.page = pageValue;
+          state.on_delivery_to.page = pageValue;
+          state.incoming.page = pageValue;
+          state.delivered.page = pageValue;
+        }
+      } catch (err) {
+        console.warn('Không thể đọc filter session', err);
+      }
+    }
+
+    function resetFilters() {
+      elems.search.value = '';
+      elems.status.value = '';
+      elems.codService.value = '';
+      elems.paidFilter.value = '';
+      elems.remainingFilter.value = '';
+      elems.dept.value = '';
+      elems.registerDate.value = '';
+      elems.receiverConfirmedDate.value = '';
+      elems.onboardBranch.value = '';
+      elems.offboardBranch.value = '';
+      elems.limit.value = '100';
+      state.outgoing.page = 1;
+      state.on_delivery.page = 1;
+      state.on_delivery_to.page = 1;
+      state.incoming.page = 1;
+      state.delivered.page = 1;
+      applyPageSelection(state.activeTab, false);
+      saveFiltersToStorage();
+      loadList(1);
+    }
+
+    function renderSummary(tab) {
+      const tabState = state[tab];
+      const map = {
+        outgoing: {
+          total: elems.summaryTotalOutgoing,
+          selected: elems.summarySelectedOutgoing,
+          amount: elems.summarySelectedAmountOutgoing,
+          paid: elems.summaryPaidOutgoing,
+          remaining: elems.summaryRemainingOutgoing
+        },
+        on_delivery: {
+          total: elems.summaryTotalOnDelivery,
+          selected: elems.summarySelectedOnDelivery,
+          amount: elems.summarySelectedAmountOnDelivery,
+          paid: elems.summaryPaidOnDelivery,
+          remaining: elems.summaryRemainingOnDelivery
+        },
+        on_delivery_to: {
+          total: elems.summaryTotalOnDeliveryTo,
+          selected: elems.summarySelectedOnDeliveryTo,
+          amount: elems.summarySelectedAmountOnDeliveryTo,
+          paid: elems.summaryPaidOnDeliveryTo,
+          remaining: elems.summaryRemainingOnDeliveryTo
+        },
+        incoming: {
+          total: elems.summaryTotalIncoming,
+          selected: elems.summarySelectedIncoming,
+          amount: elems.summarySelectedAmountIncoming,
+          paid: elems.summaryPaidIncoming,
+          remaining: elems.summaryRemainingIncoming
+        },
+        delivered: {
+          total: elems.summaryTotalDelivered,
+          selected: elems.summarySelectedDelivered,
+          amount: elems.summarySelectedAmountDelivered,
+          paid: elems.summaryPaidDelivered,
+          remaining: elems.summaryRemainingDelivered
+        }
+      };
+      const target = map[tab] || map.outgoing;
+      const selectedItems = Object.values(tabState.selected);
+      const count = selectedItems.length;
+      const sumTotal = selectedItems.reduce((s, row) => s + (Number(row.total_company_receive) || 0), 0);
+      const sumPaid = selectedItems.reduce((s, row) => s + (Number(row.sender_paid_vnd) || 0), 0);
+      const sumRemaining = selectedItems.reduce((s, row) => s + (Number(row.receiver_paid_vnd) || 0), 0);
+
+      if (target.total) target.total.textContent = `Tổng: ${formatNumberDisplay(tabState.total)} đơn`;
+      if (target.selected) target.selected.textContent = `Đã chọn: ${formatNumberDisplay(count)} đơn`;
+      if (target.amount) target.amount.textContent = `Tổng tiền: ${formatNumberDisplay(sumTotal)} đ`;
+      if (target.paid) target.paid.textContent = `Đã trả: ${formatNumberDisplay(sumPaid)} đ`;
+      if (target.remaining) target.remaining.textContent = `Còn lại: ${formatNumberDisplay(sumRemaining)} đ`;
+    }
+
+    async function loadModalDepartures() {
+      const routeId = elems.modalRoute.value;
+      const deptDate = elems.modalDate.value;
+      if (!routeId || !deptDate) {
+        elems.modalDeparturesBody.innerHTML = '<tr><td colspan="3" class="text-center">Chọn tuyến và ngày.</td></tr>';
+        return;
+      }
+      elems.modalDeparturesBody.innerHTML = '<tr><td colspan="3" class="text-center">Đang tải...</td></tr>';
+      const data = await requestJson(`${API_URL}?action=departures&route_id=${encodeURIComponent(routeId)}&dept_date=${encodeURIComponent(deptDate)}`);
+      if (!data || !data.success) {
+        elems.modalDeparturesBody.innerHTML = `<tr><td colspan="3" class="text-center text-danger">${data?.message || 'Lỗi tải phơi.'}</td></tr>`;
+        return;
+      }
+      if (!Array.isArray(data.data) || data.data.length === 0) {
+        elems.modalDeparturesBody.innerHTML = '<tr><td colspan="3" class="text-center">Không có phơi phù hợp.</td></tr>';
+        return;
+      }
+      state.moveOnboard.departures = data.data;
+      elems.modalDeparturesBody.innerHTML = data.data.map(dept => `
+        <tr>
+          <td class="checkbox-center"><input type="radio" name="modal-departure" value="${dept.dept_id}" ${state.moveOnboard.selectedDeptId === dept.dept_id ? 'checked' : ''} /></td>
+          <td>${dept.dept_time || ''}</td>
+          <td>${dept.bus_plate || ''}</td>
+        </tr>
+      `).join('');
+      document.querySelectorAll('input[name="modal-departure"]').forEach(input => {
+        input.addEventListener('change', () => {
+          state.moveOnboard.selectedDeptId = Number(input.value);
+        });
+      });
+    }
+
+    function showMoveOnboardModal() {
+      if (!state.meta) {
+        alert('Không có metadata tuyến. Vui lòng tải lại trang.');
+        return;
+      }
+      elems.modalRoute.innerHTML = '<option value="">-- Chọn tuyến --</option>' + (state.meta.options.routes || []).map(route => `<option value="${route.id}">${route.label}</option>`).join('');
+      if (state.meta.options.routes && state.meta.options.routes.length > 0) {
+        elems.modalRoute.value = state.meta.options.routes[0].id;
+      }
+      elems.modalDate.value = new Date().toISOString().slice(0, 10);
+      state.moveOnboard.selectedDeptId = null;
+      elems.moveOnboardModal.classList.add('show');
+      loadModalDepartures();
+    }
+
+    function hideMoveOnboardModal() {
+      elems.moveOnboardModal.classList.remove('show');
+      state.moveOnboard.selectedDeptId = null;
+      elems.modalDeparturesBody.innerHTML = '';
+    }
+
+    async function confirmMoveOnboard() {
+      const ids = getSelectedIds();
+      if (!ids.length) {
+        alert('Vui lòng chọn ít nhất một đơn hàng.');
+        return;
+      }
+      if (!state.moveOnboard.selectedDeptId) {
+        alert('Vui lòng chọn một phơi.');
+        return;
+      }
+      if (!confirm(`Xác nhận chuyển ${ids.length} đơn hàng lên phơi này?`)) {
+        return;
+      }
+      const data = await requestJson(`${API_URL}?action=move_onboard`, {
+        method: 'POST',
+        body: JSON.stringify({ cargo_ids: ids, dept_id: state.moveOnboard.selectedDeptId })
+      });
+      if (!data || !data.success) {
+        alert(data?.message || 'Lỗi khi chuyển lên xe.');
+        return;
+      }
+      hideMoveOnboardModal();
+      alert(`Đã chuyển ${data.updated_rows || ids.length} đơn lên xe.`);
+      location.reload();
+    }
+
+    function showDeliverModal(row) {
+      state.deliver.cargo = row;
+      elems.deliverCode.value = row.random_code || row.ticket_code || row.cargo_id;
+      elems.deliverStatus.value = row.status_label || '';
+      elems.deliverPassName.value = row.pass_name || '';
+      elems.deliverPassMobile.value = row.pass_mobile || '';
+      elems.deliverOnboardBranch.value = row.onboard_branch || '';
+      elems.deliverOffboardBranch.value = row.offboard_branch || '';
+      elems.deliverReceiverName.value = row.reveiver_name || '';
+      elems.deliverReceiverMobile.value = row.receiver_mobile || '';
+      elems.deliverTotal.value = formatCurrency(row.total_company_receive) + ' đ';
+      elems.deliverSenderPaid.value = formatCurrency(row.sender_paid_vnd) + ' đ';
+      elems.deliverReceiverPaid.value = formatCurrency(row.receiver_paid_vnd) + ' đ';
+      elems.deliverPaymentMethod.value = row.payment_method_label || '';
+      elems.deliverNotes.value = row.notes || '';
+      elems.deliverModal.classList.add('show');
+    }
+
+    function hideDeliverModal() {
+      elems.deliverModal.classList.remove('show');
+      state.deliver.cargo = null;
+      elems.deliverNotes.value = '';
+    }
+
+    async function confirmDeliver() {
+      const cargo = state.deliver.cargo;
+      if (!cargo) {
+        alert('Không có đơn hàng để giao khách.');
+        return;
+      }
+      if (!confirm('Xác nhận giao khách cho đơn này?')) {
+        return;
+      }
+      const data = await requestJson(`${API_URL}?action=deliver_customer`, {
+        method: 'POST',
+        body: JSON.stringify({ cargo_id: cargo.cargo_id, notes: elems.deliverNotes.value.trim() })
+      });
+      if (!data || !data.success) {
+        alert(data?.message || 'Lỗi khi giao khách.');
+        return;
+      }
+      hideDeliverModal();
+      alert('Đã giao khách thành công.');
+      location.reload();
+    }
+
+    function updatePageSelectCheckbox(tab) {
+      const selector = `.row-checkbox-${tab}`;
+      const allCheckboxes = Array.from(document.querySelectorAll(selector));
+      const checkboxMap = {
+        outgoing: elems.selectAllPageOutgoing,
+        on_delivery: elems.selectAllPageOnDelivery,
+        on_delivery_to: elems.selectAllPageOnDeliveryTo,
+        incoming: elems.selectAllPageIncoming,
+        delivered: elems.selectAllPageDelivered
+      };
+      const checkboxEl = checkboxMap[tab];
+      if (!checkboxEl) return;
+      if (allCheckboxes.length === 0) {
+        checkboxEl.checked = false;
+        checkboxEl.indeterminate = false;
+        return;
+      }
+      const checkedCount = allCheckboxes.filter(cb => cb.checked).length;
+      checkboxEl.checked = checkedCount === allCheckboxes.length;
+      checkboxEl.indeterminate = checkedCount > 0 && checkedCount < allCheckboxes.length;
+    }
+
+    function disable_cargo_buttons(tab){
+      elems.moveOnboard.disabled = true;
+      elems.moveBackToOutgoing.disabled = true;
+      elems.moveOffboard.disabled = true;
+      if(tab==='outgoing') elems.moveOnboard.disabled = false;
+      else if(tab==='on_delivery') elems.moveBackToOutgoing.disabled = false;
+      else if(tab==='on_delivery_to') elems.moveOffboard.disabled = false;
+    }
+    function setActiveTab(tab) {
+      disable_cargo_buttons(tab);
+      state.activeTab = tab;
+      saveActiveTabToStorage(tab);
+      const tabs = ['outgoing', 'on_delivery', 'on_delivery_to', 'incoming', 'delivered'];
+      tabs.forEach(name => {
+        let key;
+        if (name === 'on_delivery') {
+        key = 'OnDelivery';
+        // elems.moveBackToOutgoing.disabled = false;
+        }
+        else if (name === 'on_delivery_to') key = 'OnDeliveryTo';
+        else if (name === 'delivered') key = 'Delivered';
+        else {
+        // elems.moveOnboard.disabled = false;
+        key = name.charAt(0).toUpperCase() + name.slice(1);
+        }
+        const btn = elems[`tab${key}Btn`];
+        const paneId = name === 'on_delivery' ? 'tab-pane-on-delivery' : name === 'on_delivery_to' ? 'tab-pane-on-delivery-to' : `tab-pane-${name}`;
+        const pane = document.getElementById(paneId);
+        if (btn) btn.classList.toggle('active', name === tab);
+        if (pane) pane.classList.toggle('active', name === tab);
+      });
+      renderSummary(tab);
+      updatePageSelectCheckbox(tab);
+    }
+
+    function toggleSelection(tab, cargoId, selected, rowData) {
+      const tabState = state[tab];
+      if (selected) {
+        tabState.selected[cargoId] = rowData || tabState.selected[cargoId] || { cargo_id: cargoId };
+      } else {
+        delete tabState.selected[cargoId];
+      }
+      renderSummary(tab);
+      updatePageSelectCheckbox(tab);
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str).replace(/[&<>"']/g, function (s) {
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[s];
+      });
+    }
+
+    elems.history_info.addEventListener('click', async (event) => {
+  history_info.innerHTML='';
+});
+
+        function drawHistory(rows, seat_number){
+      const container = document.getElementById('history_info');
+      if (!container) return;
+
+      const items = Array.isArray(rows?.data) ? rows.data : Array.isArray(rows) ? rows : [];
+      if (0&&!items.length) {
+        container.innerHTML = '<div class="main-table"><div class="placeholder-panel">Không có lịch sử.</div></div>';
+        return;
+      }
+      const html1=`<div class="history_info"><div class="history-entry this-seat-number">Đơn hàng [${seat_number}]</div>`;
+      const html = items.map((item) => {
+        const logData = item && item.log_data ? item.log_data : item;
+        const dateTime = item && item.date_time ? item.date_time : '';
+        return `
+          <div class="history-entry">
+            <div class="history-date-time" style="font-weight:700; margin-bottom:6px;">${escapeHtml(dateTime)}</div>
+            <div class="history-log-data">
+              ${((logData))}
+            </div>
+          </div>
+        `;
+      }).join('');
+      container.innerHTML = html1+html+`</div>`;
+    }
+
+    async function getHistory(cargo_id) {
+      const params = new URLSearchParams();
+      params.set('action', 'get_cargo_history');
+      params.set('table_name', 'vexe_cargos');
+      params.set('main_id', cargo_id);
+      const data = await requestJson(`${API_URL}?${params.toString()}`);
+      if(1||data.counts>1) drawHistory(data, data.seat_number);
+      else document.getElementById('history_info').innerHTML='';
+    }
+
+    function buildRow(row, tab) {
+      const checked = state[tab].selected[String(row.cargo_id)] ? 'checked' : '';
+      const senderPaidClass = row.phieu_cr_da_thu ? 'text-danger' : '';
+      const receiverPaidClass = row.phieu_cc_da_thu ? 'text-success' : '';
+      const senderPaidTitle = row.phieu_cr_da_thu ? `Phiếu CR: ${row.phieu_cr_da_thu}` : '';
+      const receiverPaidTitle = row.phieu_cc_da_thu ? `Phiếu CC: ${row.phieu_cc_da_thu}` : '';
+      return `
+        <tr class="${checked ? 'selected' : ''}">
+          <td class="checkbox-center"><input type="checkbox" class="row-checkbox row-checkbox-${tab}" data-tab="${tab}" data-id="${row.cargo_id}" ${checked} /></td>
+          <td><strong>${row.random_code || row.ticket_code || row.cargo_id}</strong><br><small>${row.cargo_id ? 'ID: ' + row.cargo_id : ''}</small></td>
+          <td>${row.pass_name || ''}<br><small>${row.pass_mobile || ''}</small></td>
+          <td>${row.unit_name || ''}</td>
+          <td>${row.onboard_branch || ''}<br><small>${row.temp_onboard || ''}</small></td>
+          <td>${row.offboard_branch || ''}<br><small>${row.temp_offboard || ''}</small></td>
+          <td>${row.reveiver_name || ''}<br><small>${row.receiver_mobile || ''}</small></td>
+          <td class="text-right">${formatNumberDisplay(row.total_company_receive)} đ</td>
+          <td class="text-right ${senderPaidClass}" title="${senderPaidTitle}">${formatNumberDisplay(row.sender_paid_vnd)} đ</td>
+          <td class="text-right ${receiverPaidClass}" title="${receiverPaidTitle}">${formatNumberDisplay(row.receiver_paid_vnd)} đ</td>
+          <td>${row.e_mail || ''}</td>
+          <td>${row.status_label || ''}  ${row.bus_plate ? `(${row.bus_plate})` : ''}</td>
+          <td>${(row.register_submit || row.submit) ? new Date(row.register_submit || row.submit).toLocaleString('vi-VN') : ''}</td>
+            <td class="text-right">
+              <button class="btn btn-sm btn-primary btn-edit" data-id="${row.cargo_id}" title="Sửa">Sửa</button>
+              <button class="btn btn-sm btn-primary log-button" data-cargo_id="${row.cargo_id}">log</button>
+              ${(row.status_id===5) ? `<button class="btn btn-sm btn-secondary btn-deliver" data-id="${row.cargo_id}" title="Giao">Giao</button>` : ''}
+            </td>
+        </tr>
+      `;
+    }
+
+    function renderPane(tab) {
+      const tabState = state[tab];
+      const rowMap = Object.fromEntries(tabState.rows.map(r => [String(r.cargo_id), r]));
+      let suffix;
+      if (tab === 'on_delivery') suffix = 'OnDelivery';
+      else if (tab === 'on_delivery_to') suffix = 'OnDeliveryTo';
+      else if (tab === 'delivered') suffix = 'Delivered';
+      else suffix = tab.charAt(0).toUpperCase() + tab.slice(1);
+      const body = elems[`tableBody${suffix}`];
+      const emptyState = elems[`emptyState${suffix}`];
+      if (!body || !emptyState) return;
+      const tableHtml = tabState.rows.map(row => buildRow(row, tab)).join('');
+      body.innerHTML = tableHtml;
+      emptyState.style.display = tabState.rows.length ? 'none' : 'block';
+
+      const checkboxes = Array.from(body.querySelectorAll(`.row-checkbox-${tab}`));
+      checkboxes.forEach(cb => {
+        cb.addEventListener('change', () => {
+          const id = cb.dataset.id;
+          toggleSelection(tab, id, cb.checked, rowMap[id]);
+          cb.closest('tr')?.classList.toggle('selected', cb.checked);
+        });
+      });
+
+      const editButtons = Array.from(body.querySelectorAll('.btn-edit'));
+      editButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.id;
+          showCargoEditModal(id);
+        });
+      });
+
+      const deliverButtons = Array.from(body.querySelectorAll('.btn-deliver'));
+      deliverButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.id;
+          const row = rowMap[String(id)];
+          if (!row) { alert('Không tìm thấy đơn hàng.'); return; }
+          showDeliverModal(row);
+        });
+      });
+
+      renderPagination(tab);
+      renderSummary(tab);
+      updatePageSelectCheckbox(tab);
+    }
+
+    function renderPagination(tab) {
+      const tabState = state[tab];
+      let paginationSuffix;
+      if (tab === 'on_delivery') paginationSuffix = 'OnDelivery';
+      else if (tab === 'on_delivery_to') paginationSuffix = 'OnDeliveryTo';
+      else if (tab === 'delivered') paginationSuffix = 'Delivered';
+      else paginationSuffix = tab.charAt(0).toUpperCase() + tab.slice(1);
+      const paginationKey = `pagination${paginationSuffix}`;
+      const container = elems[paginationKey];
+      const totalPages = Math.max(1, Math.ceil((tabState.total || 0) / (tabState.limit || 1)));
+      const current = Number(tabState.page) || 1;
+      if (!container) return;
+      if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+      }
+      let start = Math.max(1, current - 3);
+      let end = Math.min(totalPages, start + 6);
+      if (end - start < 6) start = Math.max(1, end - 6);
+
+      const parts = [];
+      parts.push(`<button data-page="${Math.max(1, current - 1)}" ${current === 1 ? 'disabled' : ''}>‹</button>`);
+      if (start > 1) parts.push(`<button data-page="1">1</button>`);
+      if (start > 2) parts.push(`<span class="mx-2">…</span>`);
+      for (let p = start; p <= end; p++) {
+        parts.push(`<button data-page="${p}" class="${p === current ? 'active' : ''}">${p}</button>`);
+      }
+      if (end < totalPages - 1) parts.push(`<span class="mx-2">…</span>`);
+      if (end < totalPages) parts.push(`<button data-page="${totalPages}">${totalPages}</button>`);
+      parts.push(`<button data-page="${Math.min(totalPages, current + 1)}" ${current === totalPages ? 'disabled' : ''}>›</button>`);
+
+      container.innerHTML = parts.join('');
+      const branchId = elems.currentBranch.value || localStorage.getItem('current_branch_id') || '';
+      Array.from(container.querySelectorAll('button[data-page]')).forEach(btn => {
+        btn.addEventListener('click', () => {
+          const p = Number(btn.getAttribute('data-page')) || 1;
+          if (p === current) return;
+          if (tab === 'outgoing') {
+            loadOutgoingList(p, branchId);
+          } else if (tab === 'on_delivery') {
+            loadOnDeliveryList(p, branchId);
+          } else if (tab === 'on_delivery_to') {
+            loadOnDeliveryToList(p, branchId);
+          } else if (tab === 'incoming') {
+            loadIncomingList(p, branchId);
+          } else if (tab === 'delivered') {
+            loadDeliveredList(p, branchId);
+          }
+        });
+      });
+    }
+
+    function getSelectedIds() {
+      return Object.keys(state[state.activeTab].selected);
+    }
+
+    function applyPageSelection(tab, selected) {
+      if (typeof selected !== 'boolean') {
+        selected = Boolean(tab);
+        tab = state.activeTab;
+      }
+      const selector = `.row-checkbox-${tab}`;
+      const checkboxes = Array.from(document.querySelectorAll(selector));
+      const rowMap = Object.fromEntries(state[tab].rows.map(r => [String(r.cargo_id), r]));
+      checkboxes.forEach(cb => {
+        cb.checked = selected;
+        const id = cb.dataset.id;
+        toggleSelection(tab, id, selected, rowMap[id]);
+        cb.closest('tr')?.classList.toggle('selected', selected);
+      });
+    }
+
+    async function loadMeta() {
+      const data = await requestJson(`${API_URL}?action=meta`);
+      if (!data || !data.success) {
+        alert('Không tải được metadata hàng hóa.');
+        return;
+      }
+      state.meta = data;
+      const opts = data.options || {};
+
+      populateSelect(elems.status, opts.cargo_status || opts.statuses || opts.status || []);
+      populateSelect(elems.onboardBranch, opts.branch_work || []);
+      populateSelect(elems.offboardBranch, opts.branches || []);
+      populateSelect(elems.currentBranch, opts.branch_work || []);
+
+      if (elems.dept) {
+        const deptItems = opts.departures || opts.depts || [];
+        elems.dept.innerHTML = '<option value="">-- Tất cả --</option>';
+        deptItems.forEach((item) => {
+          const deptId = item && (item.id ?? item.dept_id ?? item.value ?? '');
+          const deptLabel = item && (item.label || item.name || item.dept_name || item.title || item.text || deptId);
+          if (deptId !== '') {
+            elems.dept.appendChild(createOption(deptId, deptLabel));
+          }
+        });
+      }
+
+      const currentBranchId = localStorage.getItem('current_branch_id') || '';
+      if (currentBranchId && elems.currentBranch) {
+        elems.currentBranch.value = currentBranchId;
+      }
+    }
+
+    async function loadDeparturesWithCargos() {
+      elems.dept.innerHTML = '<option value="">-- Tất cả phơi có hàng --</option>';
+      const data = await requestJson(`${API_URL}?action=departures_with_cargos`);
+      if (!data || !data.success) return;
+      const rows = data.data || [];
+      elems.dept.innerHTML = '<option value="">-- Tất cả phơi có hàng --</option>' + rows.map(r => `<option value="${r.dept_id}">${r.xe_co_hang}</option>`).join('');
+      const raw = localStorage.getItem(getFilterStorageKey());
+      if (raw) {
+        try { const saved = JSON.parse(raw); if (saved.dept_id) elems.dept.value = saved.dept_id; } catch (e) {}
+      }
+    }
+
+    function buildListParams(tab, page, branchId) {
+      const params = new URLSearchParams();
+      params.set('action', 'list');
+      params.set('page', page);
+      params.set('limit', state[tab].limit || 30);
+
+      if (state.filters.q) params.set('q', state.filters.q);
+      if (state.filters.cod_service !== '') params.set('cod_service', state.filters.cod_service);
+      if (state.filters.paid_filter !== '') params.set('paid_filter', state.filters.paid_filter);
+      if (state.filters.remaining_filter !== '') params.set('remaining_filter', state.filters.remaining_filter);
+      if (state.filters.dept_id) params.set('dept_id', state.filters.dept_id);
+      if ( state.filters.register_submit) params.set('register_submit', state.filters.register_submit);
+      if (state.filters.receiver_money_confirmer_at) params.set('receiver_money_confirmer_at', state.filters.receiver_money_confirmer_at);
+      if (state.filters.onboard_at) params.set('onboard_at', state.filters.onboard_at);
+      if (state.filters.offboard_at) params.set('offboard_at', state.filters.offboard_at);
+
+      if (tab === 'outgoing' && branchId) {
+        params.set('onboard_at', branchId);
+        params.set('status_id', '1');
+      }
+      if (tab === 'on_delivery' && branchId) {
+        // Hàng trên xe đi: status_id=4, onboard_at=current_branch
+        params.set('status_id', '4');
+        params.set('onboard_at', branchId);
+      }
+      if (tab === 'on_delivery_to' && branchId) {
+        // Hàng trên xe đến: status_id=4, offboard_at=current_branch
+        params.set('status_id', '4');
+        params.set('offboard_at', branchId);
+      }
+      if (tab === 'incoming' && branchId) {
+        params.set('offboard_at', branchId);
+        params.set('status_id', '5');
+      }
+      if (tab === 'delivered' && branchId) {
+        params.set('offboard_at', branchId);
+        params.set('status_id', '11');
+      }
+      return params;
+    }
+
+    async function loadOutgoingList(page = 1, branchId, get_hash = false) {
+      const tab = 'outgoing';
+      const tabState = state[tab];
+      tabState.page = page;
+      tabState.limit = Number(elems.limit.value) || 30;
+      const params = buildListParams(tab, tabState.page, branchId);
+      server_hash='';
+      if (get_hash) {
+        const data = await requestJson(`${API_URL}?get_hash=1&${params.toString()}`);
+        if (!data || !data.success) {
+          alert(data?.message || 'Không tải được danh sách hàng đi.');
+          return;
+        }
+      server_hash = data.data_hash || '';
+      }
+      if(!get_hash || !server_hash || server_hash != localStorage.getItem('hash_cargo_tram_outgoing')) {
+      const data = await requestJson(`${API_URL}?${params.toString()}`);
+      if (!data || !data.success) {
+        alert(data?.message || 'Không tải được danh sách hàng đi.');
+        return;
+      }
+      server_hash = data.data_hash || '';
+      localStorage.setItem('hash_cargo_tram_outgoing', server_hash);
+      tabState.rows = data.data || [];
+      tabState.total = Number(data.total) || 0;
+      renderPane(tab);
+      }
+      }
+
+    async function loadOnDeliveryList(page = 1, branchId, get_hash = false) {
+      const tab = 'on_delivery';
+      const tabState = state[tab];
+      tabState.page = page;
+      tabState.limit = Number(elems.limit.value) || 30;
+      const params = buildListParams(tab, tabState.page, branchId);
+      server_hash='';
+      if (get_hash) {
+        const data = await requestJson(`${API_URL}?get_hash=1&${params.toString()}`);
+        if (!data || !data.success) {
+          alert(data?.message || 'Không tải được danh sách hàng đi.');
+          return;
+        }
+      server_hash = data.data_hash || '';
+      }
+      if(!get_hash || !server_hash || server_hash != localStorage.getItem('hash_cargo_tram_on_delivery')) {
+      const data = await requestJson(`${API_URL}?${params.toString()}`);
+      if (!data || !data.success) {
+        alert(data?.message || 'Không tải được danh sách hàng đi.');
+        return;
+      }
+      server_hash = data.data_hash || '';
+      localStorage.setItem('hash_cargo_tram_on_delivery', server_hash);
+      tabState.rows = data.data || [];
+      tabState.total = Number(data.total) || 0;
+      renderPane(tab);
+      }
+    }
+
+    async function loadOnDeliveryToList(page = 1, branchId, get_hash = false) {
+      const tab = 'on_delivery_to';
+      const tabState = state[tab];
+      tabState.page = page;
+      tabState.limit = Number(elems.limit.value) || 30;
+      const params = buildListParams(tab, tabState.page, branchId);
+      server_hash='';
+      if (get_hash) {
+        const data = await requestJson(`${API_URL}?get_hash=1&${params.toString()}`);
+        if (!data || !data.success) {
+          alert(data?.message || 'Không tải được danh sách hàng đi.');
+          return;
+        }
+      server_hash = data.data_hash || '';
+      }
+      if(!get_hash || !server_hash || server_hash != localStorage.getItem('hash_cargo_tram_on_delivery_to')) {
+      const data = await requestJson(`${API_URL}?${params.toString()}`);
+      if (!data || !data.success) {
+        alert(data?.message || 'Không tải được danh sách hàng đi.');
+        return;
+      }
+      server_hash = data.data_hash || '';
+      localStorage.setItem('hash_cargo_tram_on_delivery_to', server_hash);
+      tabState.rows = data.data || [];
+      tabState.total = Number(data.total) || 0;
+      renderPane(tab);
+      }
+    }
+
+    async function loadIncomingList(page = 1, branchId, get_hash = false) {
+      const tab = 'incoming';
+      const tabState = state[tab];
+      tabState.page = page;
+      tabState.limit = Number(elems.limit.value) || 30;
+      const params = buildListParams(tab, tabState.page, branchId);
+      server_hash='';
+      if (get_hash) {
+        const data = await requestJson(`${API_URL}?get_hash=1&${params.toString()}`);
+        if (!data || !data.success) {
+          alert(data?.message || 'Không tải được danh sách hàng đi.');
+          return;
+        }
+      server_hash = data.data_hash || '';
+      }
+      if(!get_hash || !server_hash || server_hash != localStorage.getItem('hash_cargo_tram_incoming')) {
+      const data = await requestJson(`${API_URL}?${params.toString()}`);
+      if (!data || !data.success) {
+        alert(data?.message || 'Không tải được danh sách hàng đi.');
+        return;
+      }
+      server_hash = data.data_hash || '';
+      localStorage.setItem('hash_cargo_tram_incoming', server_hash);
+      tabState.rows = data.data || [];
+      tabState.total = Number(data.total) || 0;
+      renderPane(tab);
+      }
+    }
+
+    async function loadDeliveredList(page = 1, branchId, get_hash = false) {
+      const tab = 'delivered';
+      const tabState = state[tab];
+      tabState.page = page;
+      tabState.limit = Number(elems.limit.value) || 30;
+      const params = buildListParams(tab, tabState.page, branchId);
+      server_hash='';
+      if (get_hash) {
+        const data = await requestJson(`${API_URL}?get_hash=1&${params.toString()}`);
+        if (!data || !data.success) {
+          alert(data?.message || 'Không tải được danh sách hàng đi.');
+          return;
+        }
+      server_hash = data.data_hash || '';
+      }
+      if(!get_hash || !server_hash || server_hash != localStorage.getItem('hash_cargo_tram_delivered')) {
+      const data = await requestJson(`${API_URL}?${params.toString()}`);
+      if (!data || !data.success) {
+        alert(data?.message || 'Không tải được danh sách hàng đi.');
+        return;
+      }
+      server_hash = data.data_hash || '';
+      localStorage.setItem('hash_cargo_tram_delivered', server_hash);
+      tabState.rows = data.data || [];
+      tabState.total = Number(data.total) || 0;
+      renderPane(tab);
+      }
+    }
+
+    async function loadList(page = 1, get_hash = false) {
+      state.outgoing.page = page;
+      state.on_delivery.page = page;
+      state.incoming.page = page;
+      state.delivered.page = page;
+      state.outgoing.limit = Number(elems.limit.value) || 30;
+      state.on_delivery.limit = state.outgoing.limit;
+      state.on_delivery_to.limit = state.outgoing.limit;
+      state.incoming.limit = state.outgoing.limit;
+      state.delivered.limit = state.outgoing.limit;
+      state.filters.q = elems.search.value.trim();
+      state.filters.status_id = elems.status.value;
+      state.filters.cod_service = elems.codService.value;
+      state.filters.paid_filter = elems.paidFilter.value;
+      state.filters.remaining_filter = elems.remainingFilter.value;
+      state.filters.dept_id = elems.dept.value;
+      state.filters.register_submit = elems.registerDate.value;
+      state.filters.receiver_money_confirmer_at = elems.receiverConfirmedDate.value;
+      state.filters.onboard_at = elems.onboardBranch.value;
+      state.filters.offboard_at = elems.offboardBranch.value;
+
+      const branchId = elems.currentBranch.value || localStorage.getItem('current_branch_id') || '';
+      if (!branchId) {
+        alert('Vui lòng chọn VP làm việc (current_branch_id) trước khi tải danh sách.');
+        ['Outgoing','OnDelivery','OnDeliveryTo','Incoming','Delivered'].forEach(name => {
+          const empty = elems[`emptyState${name}`];
+          const body = elems[`tableBody${name}`];
+          const pagination = elems[`pagination${name}`];
+          if (empty) {
+            empty.textContent = 'Vui lòng chọn VP làm việc trên thanh công cụ.';
+            empty.style.display = 'block';
+          }
+          if (body) body.innerHTML = '';
+          if (pagination) pagination.innerHTML = '';
+        });
+        return;
+      }
+      localStorage.setItem('current_branch_id', branchId);
+      saveFiltersToStorage();
+
+      await Promise.all([
+        loadOutgoingList(state.outgoing.page, branchId, get_hash),
+        loadOnDeliveryList(state.on_delivery.page, branchId, get_hash),
+        loadOnDeliveryToList(state.on_delivery_to.page, branchId, get_hash),
+        loadIncomingList(state.incoming.page, branchId, get_hash),
+        loadDeliveredList(state.delivered.page, branchId, get_hash)
+      ]);
+      // renderPane(state.activeTab);
+    }
+
+    elems.filterBtn.addEventListener('click', () => loadList(1));
+    elems.search.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        loadList(1);
+      }
+    });
+    elems.resetFilterBtn.addEventListener('click', resetFilters);
+    function applyQuickFilter(type) {
+      const today = new Date().toISOString().slice(0, 10);
+      const branchId = elems.currentBranch.value || localStorage.getItem('current_branch_id') || '';
+
+      elems.search.value = '';
+      elems.status.value = '';
+      elems.codService.value = '';
+      elems.paidFilter.value = '';
+      elems.remainingFilter.value = '';
+      elems.dept.value = '';
+      elems.registerDate.value = '';
+      elems.receiverConfirmedDate.value = '';
+      elems.onboardBranch.value = '';
+      elems.offboardBranch.value = '';
+      elems.limit.value = '100';
+      state.outgoing.page = 1;
+      state.incoming.page = 1;
+
+      if (type === 'cr') {
+        elems.paidFilter.value = '0';
+        elems.registerDate.value = today;
+        if (branchId) elems.onboardBranch.value = branchId;
+      } else if (type === 'cc') {
+        elems.remainingFilter.value = '0';
+        elems.receiverConfirmedDate.value = today;
+        if (branchId) elems.offboardBranch.value = branchId;
+      } else if (type === 'wait-board') {
+        elems.status.value = '1';
+        if (branchId) elems.onboardBranch.value = branchId;
+      } else if (type === 'wait-deliver') {
+        elems.status.value = '5';
+        if (branchId) elems.offboardBranch.value = branchId;
+      }
+
+      saveFiltersToStorage();
+      loadList(1);
+    }
+    elems.quickFilterCrBtn.addEventListener('click', () => applyQuickFilter('cr'));
+    elems.quickFilterCcBtn.addEventListener('click', () => applyQuickFilter('cc'));
+    elems.quickFilterWaitBoardBtn.addEventListener('click', () => applyQuickFilter('wait-board'));
+    elems.quickFilterWaitDeliverBtn.addEventListener('click', () => applyQuickFilter('wait-deliver'));
+    elems.refreshBtn.addEventListener('click', () => location.reload());
+    document.getElementById('btn-create-new').addEventListener('click', () => {
+      showCargoEditModal('new');
+    });
+    document.getElementById('btn-scan').addEventListener('click', () => {
+      window.location.href = 'cargo-barcode.html';
+    });
+    elems.limit.addEventListener('change', () => loadList(1));
+    elems.currentBranch.addEventListener('change', () => {
+      localStorage.setItem('current_branch_id', elems.currentBranch.value || '');
+      loadList(1);
+    });
+    elems.selectAllButton.addEventListener('click', () => applyPageSelection(state.activeTab, true));
+    elems.clearSelectionButton.addEventListener('click', () => applyPageSelection(state.activeTab, false));
+    if (elems.selectAllPageOutgoing) elems.selectAllPageOutgoing.addEventListener('change', () => applyPageSelection('outgoing', elems.selectAllPageOutgoing.checked));
+    if (elems.selectAllPageOnDelivery) elems.selectAllPageOnDelivery.addEventListener('change', () => applyPageSelection('on_delivery', elems.selectAllPageOnDelivery.checked));
+    if (elems.selectAllPageOnDeliveryTo) elems.selectAllPageOnDeliveryTo.addEventListener('change', () => applyPageSelection('on_delivery_to', elems.selectAllPageOnDeliveryTo.checked));
+    if (elems.selectAllPageIncoming) elems.selectAllPageIncoming.addEventListener('change', () => applyPageSelection('incoming', elems.selectAllPageIncoming.checked));
+    if (elems.selectAllPageDelivered) elems.selectAllPageDelivered.addEventListener('change', () => applyPageSelection('delivered', elems.selectAllPageDelivered.checked));
+    if (elems.tabOutgoingBtn) elems.tabOutgoingBtn.addEventListener('click', () => setActiveTab('outgoing'));
+    if (elems.tabOnDeliveryBtn) elems.tabOnDeliveryBtn.addEventListener('click', () => setActiveTab('on_delivery'));
+    if (elems.tabOnDeliveryToBtn) elems.tabOnDeliveryToBtn.addEventListener('click', () => setActiveTab('on_delivery_to'));
+    if (elems.tabIncomingBtn) elems.tabIncomingBtn.addEventListener('click', () => setActiveTab('incoming'));
+    if (elems.tabDeliveredBtn) elems.tabDeliveredBtn.addEventListener('click', () => setActiveTab('delivered'));
+
+    elems.moveOnboard.addEventListener('click', () => {
+      const ids = getSelectedIds();
+      if (!ids.length) { alert('Vui lòng chọn ít nhất một đơn hàng.'); return; }
+      showMoveOnboardModal();
+    });
+
+    elems.filterOnOff.addEventListener('click', async () => {
+      const filterPanel = document.getElementById('filter-panel-div');
+      filterPanel.style.display = filterPanel.style.display === 'none' ? 'block' : 'none';
+    });
+
+    elems.moveOffboard.addEventListener('click', async () => {
+      const ids = getSelectedIds();
+      if (!ids.length) { alert('Vui lòng chọn ít nhất một đơn hàng.'); return; }
+
+      const raw = localStorage.getItem(getFilterStorageKey());
+      let saved = {};
+      try { saved = raw ? JSON.parse(raw) : {}; } catch (e) { saved = {}; }
+      if (0&&!saved.dept_id) {
+        alert('Vui lòng lọc theo một "phơi" (dept) trước khi cho hàng xuống trạm.');
+        return;
+      }
+
+      const offboardBranchId = elems.offboardBranch.value;
+      
+      // if (!offboardBranchId) {
+      //   offboardBranchId=currentBranchId || localStorage.getItem('current_branch_id') || '';
+      // // }
+      // //   alert('Vui lòng chọn một VP nhận trong filter trước khi thực hiện xuống hàng.');
+      // //   return;
+      // }
+
+      const missingOffboard = [];
+      const selectedRows = Object.values(state[state.activeTab].selected || {});
+      selectedRows.forEach(r => { if (!r || !r.offboard_at) missingOffboard.push(r.cargo_id || r.id || '?'); });
+      if (missingOffboard.length) {
+        alert('Một số đơn không có VP nhận (offboard_at): ' + missingOffboard.join(', ') + '. Vui lòng kiểm tra.');
+        return;
+      }
+
+      if (!confirm(`Xác nhận cho hàng xuống trạm cho ${ids.length} đơn?`)) return;
+
+      const data = await requestJson(`${API_URL}?action=move_offboard`, {
+        method: 'POST',
+        body: JSON.stringify({ cargo_ids: ids, to_branch_id: localStorage.getItem('current_branch_id') })
+      });
+      if (!data || !data.success) {
+        alert(data?.message || 'Lỗi khi cho hàng xuống trạm.');
+        return;
+      }
+      alert(`Đã cho xuống ${data.updated_rows || ids.length} đơn về kho nhận.`);
+      location.reload();
+    });
+
+    elems.moveBackToOutgoing.addEventListener('click', async () => {
+      const ids = getSelectedIds();
+      if (!ids.length) { alert('Vui lòng chọn ít nhất một đơn hàng.'); return; }
+
+      const onboardBranchId = elems.onboardBranch.value;
+      
+      const missingOnboard = [];
+      const selectedRows = Object.values(state[state.activeTab].selected || {});
+      selectedRows.forEach(r => { if (!r || !r.onboard_at) missingOnboard.push(r.cargo_id || r.id || '?'); });
+      if (missingOnboard.length) {
+        alert('Một số đơn không có VP trả về (onboard_at): ' + missingOnboard.join(', ') + '. Vui lòng kiểm tra.');
+        return;
+      }
+
+      if (!confirm(`Xác nhận cho hàng trả về lại kho gửi ${ids.length} đơn?`)) return;
+
+      const data = await requestJson(`${API_URL}?action=move_back_to_outgoing`, {
+        method: 'POST',
+        body: JSON.stringify({ cargo_ids: ids, to_branch_id: localStorage.getItem('current_branch_id') })
+      });
+      if (!data || !data.success) {
+        alert(data?.message || 'Lỗi khi cho hàng trả về lại kho gửi.');
+        return;
+      }
+      alert(`Đã cho trả về ${data.updated_rows || ids.length} đơn về kho gửi.`);
+      location.reload();
+    });
+
+    elems.modalRoute.addEventListener('change', loadModalDepartures);
+    // Collection (phiếu thu) modal logic
+    const collectModal = document.getElementById('collect-modal');
+    const collectAmount = document.getElementById('collect-amount');
+    const collectCount = document.getElementById('collect-count');
+    const collectNotes = document.getElementById('collect-notes');
+    const collectCancel = document.getElementById('collect-cancel');
+    const collectConfirm = document.getElementById('collect-confirm');
+    const collectClose = collectModal.querySelector('.cargo-modal-close');
+    let collectType = null; // 'cr' or 'cc'
+
+    function openCollectModal(type) {
+      const ids = getSelectedIds();
+      if (!ids.length) { alert('Vui lòng chọn ít nhất một đơn hàng.'); return; }
+      collectType = type === 'paid' ? 'cr' : 'cc';
+      const selectedItems = Object.values(state[state.activeTab].selected || {});
+      const sumPaid = selectedItems.reduce((s, r) => s + (Number(r.sender_paid_vnd) || 0), 0);
+      const sumRemaining = selectedItems.reduce((s, r) => s + (Number(r.receiver_paid_vnd) || 0), 0);
+      const defaultAmount = collectType === 'cr' ? sumPaid : sumRemaining;
+      collectAmount.value = sanitizeNumberInputValue(defaultAmount || 0);
+      collectCount.value = sanitizeNumberInputValue(ids.length);
+      // Build default notes from current filters and type
+      const today = new Date();
+      const dateStr = elems.registerDate.value ? elems.registerDate.value : today.toISOString().slice(0,10);
+      let branchLabel = '';
+      if (collectType === 'cr') {
+        const idx = elems.onboardBranch.selectedIndex;
+        branchLabel = idx >= 0 ? elems.onboardBranch.options[idx].text : '';
+        collectNotes.value = `Phiếu thu tiền đã trả ngày ${dateStr}` + (branchLabel ? ` VP gửi ${branchLabel}` : '');
+      } else {
+        const idx = elems.offboardBranch.selectedIndex;
+        branchLabel = idx >= 0 ? elems.offboardBranch.options[idx].text : '';
+        collectNotes.value = `Phiếu thu tiền còn lại ngày ${dateStr}` + (branchLabel ? ` VP nhận ${branchLabel}` : '');
+      }
+      collectModal.classList.add('show');
+    }
+
+    function closeCollectModal() {
+      collectModal.classList.remove('show');
+      collectType = null;
+    }
+
+    async function confirmCollect() {
+      const ids = getSelectedIds();
+      if (!ids.length) { alert('Vui lòng chọn ít nhất một đơn hàng.'); return; }
+      if (!collectType) return;
+      const amount = (collectAmount.value) || 0;
+      const notes = collectNotes.value.trim();
+      if (!confirm(`Xác nhận tạo phiếu thu cho ${ids.length} đơn, số tiền ${(amount)} đ ?`)) return;
+
+      const payload = { type: collectType, cargo_ids: ids, amount_vnd: amount, notes };
+      const res = await requestJson(`${API_URL}?action=create_collection`, { method: 'POST', body: JSON.stringify(payload) });
+      if (!res || !res.success) {
+        alert(res?.message || 'Lỗi tạo phiếu thu.');
+        return;
+      }
+      alert('Đã tạo phiếu thu #' + (res.insert_id || '') + '. Cập nhật ' + (res.updated_rows || 0) + ' đơn.');
+      closeCollectModal();
+      // location.reload();
+    }
+
+    collectCancel.addEventListener('click', closeCollectModal);
+    collectClose.addEventListener('click', closeCollectModal);
+    collectConfirm.addEventListener('click', confirmCollect);
+
+    document.getElementById('btn-collect-paid').addEventListener('click', () => openCollectModal('paid'));
+    document.getElementById('btn-collect-remaining').addEventListener('click', () => openCollectModal('remaining'));
+        const btnPrintOrders = document.getElementById('btn-print-orders');
+    if (btnPrintOrders) {
+      btnPrintOrders.addEventListener('click', () => {
+        const ids = getSelectedIds();
+        if (!ids || ids.length === 0) {
+          alert('Vui lòng chọn ít nhất một đơn hàng để in.');
+          return;
+        }
+        const url = `cargo-report-don-hang.html?ids=${encodeURIComponent(ids.join(','))}`;
+        window.open(url, '_blank');
+      });
+    }
+
+    elems.modalDate.addEventListener('change', loadModalDepartures);
+    elems.modalConfirm.addEventListener('click', confirmMoveOnboard);
+    elems.modalCancel.addEventListener('click', hideMoveOnboardModal);
+    elems.modalClose.addEventListener('click', hideMoveOnboardModal);
+    elems.moveOnboardModal.addEventListener('click', event => {
+      if (event.target === elems.moveOnboardModal) {
+        hideMoveOnboardModal();
+      }
+    });
+    elems.deliverConfirm.addEventListener('click', confirmDeliver);
+    elems.deliverCancel.addEventListener('click', hideDeliverModal);
+    elems.deliverClose.addEventListener('click', hideDeliverModal);
+    elems.deliverModal.addEventListener('click', event => {
+      if (event.target === elems.deliverModal) {
+        hideDeliverModal();
+      }
+    });
+
+    // Cargo edit modal logic (inline form)
+    const cargoEditModule = (function(){
+      const modal = document.getElementById('cargo-edit-modal');
+      const root = modal ? modal.querySelector('.page-shell') : null;
+      if (!modal || !root) return {
+        open: (id) => { window.location.href = `cargo-edit.html?id=${encodeURIComponent(id)}`; }
+      };
+
+      const q = (sel) => root.querySelector(sel);
+      const fields = {
+        pass_mobile: q('#pass_mobile'), pass_name: q('#pass_name'), onboard_at: q('#onboard_at'), temp_onboard: q('#temp_onboard'),
+        receiver_mobile: q('#receiver_mobile'), reveiver_name: q('#reveiver_name'), offboard_at: q('#offboard_at'), temp_offboard: q('#temp_offboard'),
+        lay_tan_noi: q('#lay_tan_noi'), giao_tan_noi: q('#giao_tan_noi'), ticket_vnd: q('#ticket_vnd'), sum_vnd: q('#sum_vnd'),
+        payment_method: q('#payment_method'), sender_paid_vnd: q('#sender_paid_vnd'), receiver_paid_vnd: q('#receiver_paid_vnd'),
+        cod_service: q('#cod_service'), cod_vnd: q('#cod_vnd'), notes: q('#notes'), detailsBody: q('#details-body'),
+        cargoStatus: q('#cargo-status-pill'), cargoCode: q('#cargo-code-pill'), printSection: q('#print-section')
+      };
+
+      let state = { meta: null, row: {}, details: [], cargoId: 'new' };
+
+      function createOption(value, text) { const o = document.createElement('option'); o.value = value; o.textContent = text; return o; }
+      function populateSelect(select, items){ if(!select) return; select.innerHTML = '<option value="">-- Chọn --</option>'; (items||[]).forEach(it=> select.appendChild(createOption(it.id, it.label||it.name||it.branch_name||it.payment||it.status_title))); }
+      function setValue(el, v){ if(!el) return; if(el.type==='checkbox') el.checked = Boolean(Number(v)||v===true); else el.value = v!=null? v : ''; }
+      function getValue(el){ if(!el) return null; if(el.type==='checkbox') return el.checked?1:0; return el.value; }
+      function parseNumber(v){ if(v===null||v===undefined||v==='') return 0; const n=Number(String(v).replace(/[\,\s]/g,'')); return Number.isFinite(n)?n:0; }
+      function setMoneyInputValue(el, value) {
+        if (!el) return;
+        if (value === null || value === undefined || value === '') { el.value = ''; return; }
+        el.value = sanitizeNumberInputValue(value);
+      }
+      function bindMoneyInput(el) {
+        if (!el) return;
+        el.addEventListener('input', () => {
+          const next = sanitizeNumberInputValue(el.value);
+          if (el.value !== next) el.value = next;
+        });
+      }
+
+      function setStatusText(status, code){ if(fields.cargoStatus) fields.cargoStatus.textContent = status||'Mới'; if(fields.cargoCode) fields.cargoCode.textContent = `Mã: ${code||'-'}`; }
+
+      function resetFormFields(){
+        state.row = {};
+        setStatusText('Mới', '---');
+
+        const textFields = ['pass_mobile','pass_name','temp_onboard','receiver_mobile','reveiver_name','temp_offboard','ticket_vnd','sum_vnd','sender_paid_vnd','receiver_paid_vnd','cod_vnd','notes'];
+        textFields.forEach((key) => {
+          const el = fields[key];
+          if (el) el.value = '';
+        });
+
+        ['lay_tan_noi','giao_tan_noi','cod_service'].forEach((key) => {
+          const el = fields[key];
+          if (el) el.checked = false;
+        });
+
+        if (fields.onboard_at) fields.onboard_at.value = '';
+        if (fields.offboard_at) fields.offboard_at.value = '';
+        if (fields.payment_method) fields.payment_method.value = '1'; // thu tại VP
+
+        buildDetails([]);
+        updateSummaryFromTotals();
+      }
+
+      function applyCurrentBranchToNewForm(){
+        const branchId = localStorage.getItem('current_branch_id') || '';
+        if (branchId && fields.onboard_at) {
+          fields.onboard_at.value = branchId;
+        }
+      }
+
+      const passengerSearchPanel = document.getElementById('cargo-passenger-search-panel');
+      const passengerSearchTitle = passengerSearchPanel ? passengerSearchPanel.querySelector('#cargo-passenger-search-title') : null;
+      const passengerSearchStatus = passengerSearchPanel ? passengerSearchPanel.querySelector('#cargo-passenger-search-status') : null;
+      const passengerSearchBody = passengerSearchPanel ? passengerSearchPanel.querySelector('#cargo-passenger-search-body') : null;
+      const passengerSearchClose = passengerSearchPanel ? passengerSearchPanel.querySelector('#cargo-passenger-search-close') : null;
+      let passengerSearchResults = [];
+      let passengerSearchTypingTimer = null;
+
+      function updatePassengerSearchStatus(text, isError = false) {
+        if (!passengerSearchStatus) return;
+        passengerSearchStatus.textContent = text || '';
+        passengerSearchStatus.style.color = isError ? '#b91c1c' : '#333';
+      }
+
+      function showPassengerSearchPanel(mode, anchorEl) {
+        if (!passengerSearchPanel || !anchorEl) return;
+        if (passengerSearchTitle) {
+          passengerSearchTitle.textContent = mode === 'receiver' ? 'Tìm người nhận cũ' : 'Tìm người gửi cũ';
+        }
+        passengerSearchPanel.style.display = 'block';
+        const rect = anchorEl.getBoundingClientRect();
+        const left = Math.min(window.innerWidth - 420, Math.max(12, rect.left + window.scrollX));
+        const top = Math.min(window.innerHeight - 260, Math.max(80, rect.bottom + window.scrollY + 8));
+        passengerSearchPanel.style.left = left + 'px';
+        passengerSearchPanel.style.top = top + 'px';
+        passengerSearchPanel.style.minWidth = Math.max(320, rect.width || 260) + 'px';
+      }
+
+      function hidePassengerSearchPanel() {
+        if (!passengerSearchPanel) return;
+        passengerSearchPanel.style.display = 'none';
+        if (passengerSearchBody) passengerSearchBody.innerHTML = '';
+        updatePassengerSearchStatus('');
+      }
+
+      function renderPassengerSearchResults(mode, rows) {
+        if (!passengerSearchBody) return;
+        passengerSearchBody.innerHTML = rows.map((row, index) => {
+          const isSender = mode !== 'receiver';
+          const phone = isSender ? (row.pass_mobile || '') : (row.receiver_mobile || '');
+          const name = isSender ? (row.pass_name || '') : (row.reveiver_name || '');
+          const branch = isSender ? (row.onboard_branch_name || row.onboard_at || '') : (row.offboard_branch_name || row.offboard_at || '');
+          const place = isSender ? (row.temp_onboard || '') : (row.temp_offboard || '');
+          const cargoName = row.cargo_name || '';
+          const cargoNotes = row.notes || '';
+          return `<tr data-passenger-index="${index}" style="cursor:pointer;">
+            <td>${phone}</td>
+            <td>${name}</td>
+            <td>${branch}</td>
+            <td>${place}</td>
+            <td>${cargoName}</td>
+            <td>${cargoNotes}</td>
+          </tr>`;
+        }).join('');
+        Array.from(passengerSearchBody.querySelectorAll('tr[data-passenger-index]')).forEach(tr => {
+          tr.addEventListener('click', () => {
+            const index = Number(tr.dataset.passengerIndex);
+            selectPassengerRow(mode, index);
+          });
+        });
+      }
+
+      function selectPassengerRow(mode, index) {
+        const row = passengerSearchResults[index];
+        if (!row) return;
+        if (mode === 'receiver') {
+          setValue(fields.receiver_mobile, row.receiver_mobile);
+          setValue(fields.reveiver_name, row.reveiver_name);
+          if (row.offboard_at && fields.offboard_at) {
+            if (!fields.offboard_at.querySelector(`option[value="${row.offboard_at}"]`)) {
+              fields.offboard_at.appendChild(createOption(row.offboard_at, row.offboard_branch_name || `#${row.offboard_at}`));
+            }
+            fields.offboard_at.value = row.offboard_at;
+          }
+          setValue(fields.temp_offboard, row.temp_offboard || '');
+        } else {
+          setValue(fields.pass_mobile, row.pass_mobile);
+          setValue(fields.pass_name, row.pass_name);
+          if (row.onboard_at && fields.onboard_at) {
+            if (!fields.onboard_at.querySelector(`option[value="${row.onboard_at}"]`)) {
+              fields.onboard_at.appendChild(createOption(row.onboard_at, row.onboard_branch_name || `#${row.onboard_at}`));
+            }
+            fields.onboard_at.value = row.onboard_at;
+          }
+          setValue(fields.temp_onboard, row.temp_onboard || '');
+        }
+        hidePassengerSearchPanel();
+      }
+
+      async function searchPassengerByPhone(phone, mode, anchorEl) {
+        if (!phone || phone.length <= 5) {
+          hidePassengerSearchPanel();
+                   return;
+        }
+        updatePassengerSearchStatus('Đang tìm kiếm...', false);
+        const action = mode === 'receiver' ? 'get_cargo_receiver' : 'get_cargo_sender';
+        const data = await requestJson(`${API_URL}?action=${action}&mobile=${encodeURIComponent(phone)}`);
+        if (!data || !data.success) {
+          updatePassengerSearchStatus(data?.message || 'Lỗi tìm kiếm khách hàng.', true);
+          passengerSearchResults = [];
+          renderPassengerSearchResults(mode, []);
+          showPassengerSearchPanel(mode, anchorEl);
+          return;
+        }
+        passengerSearchResults = Array.isArray(data.data) ? data.data : (data.rows || []);
+        if (!passengerSearchResults.length) {
+          updatePassengerSearchStatus('Không tìm thấy khách hàng phù hợp.', false);
+        } else {
+          updatePassengerSearchStatus(`Tìm thấy ${passengerSearchResults.length} khách hàng. Nhấn vào dòng để chọn.`, false);
+        }
+        renderPassengerSearchResults(mode, passengerSearchResults);
+        showPassengerSearchPanel(mode, anchorEl);
+      }
+
+      function debounce(fn, delay) {
+        let timer = null;
+        return (...args) => {
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(() => fn(...args), delay);
+        };
+      }
+
+      function setupPassengerSearch() {
+        if (fields.pass_mobile) {
+          fields.pass_mobile.addEventListener('input', debounce(() => {
+            const value = String(fields.pass_mobile.value || '').trim();
+            if (value.length > 5) {
+              clearTimeout(passengerSearchTypingTimer);
+              passengerSearchTypingTimer = setTimeout(() => searchPassengerByPhone(value, 'sender', fields.pass_mobile), 180);
+            } else {
+              hidePassengerSearchPanel();
+            }
+          }, 180));
+        }
+        if (fields.receiver_mobile) {
+          fields.receiver_mobile.addEventListener('input', debounce(() => {
+            const value = String(fields.receiver_mobile.value || '').trim();
+            if (value.length > 5) {
+              clearTimeout(passengerSearchTypingTimer);
+              passengerSearchTypingTimer = setTimeout(() => searchPassengerByPhone(value, 'receiver', fields.receiver_mobile), 180);
+            } else {
+              hidePassengerSearchPanel();
+            }
+          }, 180));
+        }
+        if (passengerSearchClose) passengerSearchClose.addEventListener('click', hidePassengerSearchPanel);
+        document.addEventListener('click', (e) => {
+          if (!passengerSearchPanel) return;
+          if (passengerSearchPanel.style.display === 'none') return;
+          const t = e.target;
+          if (passengerSearchPanel.contains(t)) return;
+          if (t === fields.pass_mobile || t === fields.receiver_mobile) return;
+          hidePassengerSearchPanel();
+        });
+      }
+
+      function addDetailRow(detail={}){
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><input type="text" class="detail-quantity" min="1" inputmode="numeric" value="${detail.quantity||1}" /></td>
+          <td><input type="text" class="detail-unit" value="${detail.unit_name||'kiện'}" /></td>
+          <td><input type="text" class="detail-name" value="${detail.cargo_name||''}" /></td>
+          <td><input type="text" class="detail-value" min="0" inputmode="numeric" value="${detail.value_vnd != null && detail.value_vnd !== '' ? sanitizeNumberInputValue(detail.value_vnd) : ''}" /></td>
+          <td><input type="text" class="detail-note" value="${detail.notes||''}" /></td>
+          <td><input type="text" class="detail-ship" min="0" inputmode="numeric" value="${detail.ship_fee_vnd != null && detail.ship_fee_vnd !== '' ? sanitizeNumberInputValue(detail.ship_fee_vnd) : ''}" /></td>
+          <td><button type="button" class="action-btn remove"><i class="fa fa-trash"></i></button></td>
+        `;
+        row.querySelector('.remove').addEventListener('click', ()=>{ row.remove(); updateSummaryFromTotals(); });
+        ['detail-value','detail-ship','detail-quantity'].forEach(cls=> {
+          const input = row.querySelector('.'+cls);
+          if (!input) return;
+          if (cls !== 'detail-quantity') bindMoneyInput(input);
+          input.addEventListener('input', updateSummaryFromTotals);
+        });
+        fields.detailsBody.appendChild(row);
+      }
+
+      function buildDetails(ds){ fields.detailsBody.innerHTML=''; if(!ds||ds.length===0){ addDetailRow({quantity:1, unit_name:'kiện'}); return; } ds.forEach(d=>addDetailRow(d)); }
+      function gatherDetails(){ const rows=Array.from(fields.detailsBody.querySelectorAll('tr')); return rows.map(tr=>({ quantity: Number((tr.querySelector('.detail-quantity').value || '').replace(/[\,\s]/g,''))||1, unit_name: tr.querySelector('.detail-unit').value.trim(), cargo_name: tr.querySelector('.detail-name').value.trim(), value_vnd: Number((tr.querySelector('.detail-value').value || '').replace(/[\,\s]/g,'')) || null, notes: tr.querySelector('.detail-note').value.trim()||null, ship_fee_vnd: Number((tr.querySelector('.detail-ship').value || '').replace(/[\,\s]/g,'')) || null })).filter(i=> i.cargo_name || i.value_vnd || i.ship_fee_vnd || i.unit_name); }
+
+      function updateSummaryFromTotals(){ const rows = Array.from(fields.detailsBody.querySelectorAll('tr')); let totalValue=0, totalShip=0; rows.forEach(tr=>{ const q=Number((tr.querySelector('.detail-quantity').value || '').replace(/[\,\s]/g,''))||1; const v=Number((tr.querySelector('.detail-value').value || '').replace(/[\,\s]/g,''))||0; const s=Number((tr.querySelector('.detail-ship').value || '').replace(/[\,\s]/g,''))||0; totalValue += q*v; totalShip += s; }); setMoneyInputValue(fields.ticket_vnd, totalValue||0); setMoneyInputValue(fields.sum_vnd, totalShip||0); const codFee = Number((fields.cod_vnd.value || '').replace(/[\,\s]/g,''))||0; const senderPaid = Number((fields.sender_paid_vnd.value || '').replace(/[\,\s]/g,''))||0; const codEnabled = Boolean(Number(getValue(fields.cod_service))); if(!codEnabled) { fields.cod_vnd.value = '0'; } const amountToCollect = codEnabled? totalValue:0; const receiverPay = (amountToCollect + (codEnabled?codFee:0) + totalShip) - senderPaid; setMoneyInputValue(fields.receiver_paid_vnd, Math.max(0, Math.round(receiverPay))); }
+
+      function getFormData(){ return { pass_mobile: getValue(fields.pass_mobile), pass_name: getValue(fields.pass_name), onboard_at: getValue(fields.onboard_at)||null, temp_onboard: getValue(fields.temp_onboard), receiver_mobile: getValue(fields.receiver_mobile), reveiver_name: getValue(fields.reveiver_name), offboard_at: getValue(fields.offboard_at)||null, temp_offboard: getValue(fields.temp_offboard), lay_tan_noi: getValue(fields.lay_tan_noi)?1:0, giao_tan_noi: getValue(fields.giao_tan_noi)?1:0, ticket_vnd: parseNumber(getValue(fields.ticket_vnd)), sum_vnd: parseNumber(getValue(fields.sum_vnd)), payment_method: getValue(fields.payment_method)||null, sender_paid_vnd: parseNumber(getValue(fields.sender_paid_vnd)), receiver_paid_vnd: parseNumber(getValue(fields.receiver_paid_vnd)), cod_service: getValue(fields.cod_service)?1:0, cod_vnd: parseNumber(getValue(fields.cod_vnd)), notes: getValue(fields.notes), details: gatherDetails() }; }
+
+      async function loadMeta(){ const data = await requestJson(`${API_URL}?action=meta`); if(!data||!data.success){ alert('Không tải được metadata hàng hóa.'); return; } state.meta = data; const opts = data.options || {}; populateSelect(fields.onboard_at, opts.branch_work||[]); populateSelect(fields.offboard_at, opts.branches||[]); populateSelect(fields.payment_method, opts.payments||[]); if (fields.payment_method && (state.cargoId === 'new' || !fields.payment_method.value)) { fields.payment_method.value = '1'; } if(state.cargoId && state.cargoId !== 'new') loadCargo(state.cargoId); else { setStatusText('Mới','---'); buildDetails([]); } }
+
+      async function loadCargo(id){ const data = await requestJson(`${API_URL}?action=get&id=${encodeURIComponent(id)}`); if(!data||!data.success){ alert('Không tìm thấy đơn hàng này'); return; } state.row = data.row||{}; setStatusText(state.row.status_label||'Đã lưu', state.row.random_code||state.row.cargo_id||'---'); setValue(fields.pass_mobile, state.row.pass_mobile); setValue(fields.pass_name, state.row.pass_name); setValue(fields.onboard_at, state.row.onboard_at); if(state.row.onboard_at) { try{ if(!fields.onboard_at.querySelector(`option[value="${state.row.onboard_at}"]`)) fields.onboard_at.appendChild(createOption(state.row.onboard_at, state.row.onboard_branch_name||('#'+state.row.onboard_at))); }catch(e){} } setValue(fields.temp_onboard, state.row.temp_onboard); setValue(fields.receiver_mobile, state.row.receiver_mobile); setValue(fields.reveiver_name, state.row.reveiver_name); setValue(fields.offboard_at, state.row.offboard_at); if(state.row.offboard_at){ try{ if(!fields.offboard_at.querySelector(`option[value="${state.row.offboard_at}"]`)) fields.offboard_at.appendChild(createOption(state.row.offboard_at, state.row.offboard_branch_name||('#'+state.row.offboard_at))); }catch(e){} } setValue(fields.temp_offboard, state.row.temp_offboard); setValue(fields.lay_tan_noi, state.row.lay_tan_noi); setValue(fields.giao_tan_noi, state.row.giao_tan_noi); setMoneyInputValue(fields.ticket_vnd, state.row.ticket_vnd); setMoneyInputValue(fields.sum_vnd, state.row.sum_vnd); setValue(fields.payment_method, state.row.payment_method); if(state.row.payment_method) { try{ if(!fields.payment_method.querySelector(`option[value="${state.row.payment_method}"]`)) fields.payment_method.appendChild(createOption(state.row.payment_method, state.row.payment_method_label||('#'+state.row.payment_method))); }catch(e){} } setMoneyInputValue(fields.sender_paid_vnd, state.row.sender_paid_vnd); setMoneyInputValue(fields.receiver_paid_vnd, state.row.receiver_paid_vnd); setValue(fields.cod_service, state.row.cod_service); setMoneyInputValue(fields.cod_vnd, state.row.cod_vnd); setValue(fields.notes, state.row.notes); buildDetails(state.row.details||[]); updateSummaryFromTotals(); }
+
+      function validateForm(payload){ const errors=[]; if(!payload.onboard_at) errors.push('VP gửi là bắt buộc.'); if(!payload.offboard_at) errors.push('VP nhận là bắt buộc.'); if(!payload.payment_method) errors.push('Phương thức thanh toán là bắt buộc.'); return errors; }
+
+      async function save(){
+        const payload = getFormData();
+        const errors = validateForm(payload);
+        if(errors.length){ alert(errors.join('\n')); return null; }
+        const action = (state.cargoId==='new')? 'insert' : 'edit';
+        const endpoint = `${API_URL}?action=${action}${state.cargoId==='new'?'':'&id='+encodeURIComponent(state.cargoId)}`;
+        const res = await requestJson(endpoint, { method:'POST', body: JSON.stringify(payload) });
+        if(!res||!res.success){ alert(res?.message||'Lưu thất bại'); return res || null; }
+        state.cargoId = res.insert_id || state.cargoId;
+        if (res.row) state.row = res.row;
+        alert('Lưu thành công!');
+        hide(true);
+        return res;
+      }
+
+      async function cancel(){ if(state.cargoId==='new') return; const confirmed = confirm('Bạn có chắc chắn muốn hủy đơn hàng này?'); if(!confirmed) return; const res = await requestJson(`${API_URL}?action=delete&id=${encodeURIComponent(state.cargoId)}`, { method:'POST' }); if(!res||!res.success){ alert(res?.message||'Hủy đơn thất bại'); return; } alert('Đã hủy đơn hàng thành công.'); hide(true); }
+
+      function show(){ modal.style.display = 'block'; setTimeout(()=> modal.classList.add('show'),20); }
+      function hide(reload=true){ modal.classList.remove('show'); setTimeout(()=>{ modal.style.display='none'; if(reload) loadList(1); },160); }
+
+      async function printCargo(){
+        if(state.cargoId === 'new'){
+          const proceed = confirm('Đơn hàng chưa được lưu. Bạn có muốn lưu trước khi in?');
+          if(!proceed) return;
+          const res = await save();
+          if(!res || !res.success) return;
+          const idToPrint = res.insert_id || state.cargoId;
+          const url = `cargo-report-don-hang.html?ids=${encodeURIComponent(idToPrint)}`;
+          window.open(url, '_blank');
+          return;
+        }
+        const id = state.cargoId || (state.row && state.row.cargo_id) || '';
+        if(!id){ alert('Không có mã đơn để in.'); return; }
+        const url = `cargo-report-don-hang.html?ids=${encodeURIComponent(id)}`;
+        window.open(url, '_blank');
+      }
+
+      const btnSave = q('#btn-save'); if(btnSave) btnSave.addEventListener('click', save);
+      const btnPrint = q('#btn-print'); if(btnPrint) btnPrint.addEventListener('click', printCargo);
+      const btnNew = q('#btn-new'); if(btnNew) btnNew.addEventListener('click', async ()=>{
+        state.cargoId = 'new';
+        resetFormFields();
+        await loadMeta();
+        applyCurrentBranchToNewForm();
+      });
+      const btnBack = q('#btn-back'); if(btnBack) btnBack.addEventListener('click', ()=> hide(true));
+      const btnBack2 = q('#btn-back-2'); if(btnBack2) btnBack2.addEventListener('click', ()=> hide(true));
+      const btnAddRow = q('#btn-add-row'); if(btnAddRow) btnAddRow.addEventListener('click', ()=> addDetailRow());
+      const btnCancelOrder = q('#btn-cancel-order'); if(btnCancelOrder) btnCancelOrder.addEventListener('click', cancel);
+      [q('#ticket_vnd'), q('#sum_vnd'), q('#cod_vnd'), q('#sender_paid_vnd'), q('#receiver_paid_vnd')].forEach(el=>{ if(el) { bindMoneyInput(el); el.addEventListener('input', updateSummaryFromTotals); } });
+      if(q('#cod_service')) q('#cod_service').addEventListener('change', updateSummaryFromTotals);
+      modal.addEventListener('click', (e)=>{ if(e.target === modal) hide(true); });
+      setupPassengerSearch();
+
+      return {
+        open: async (id='new')=>{ 
+          state.cargoId = id || 'new';
+          resetFormFields();
+          show();
+          await loadMeta();
+          if(state.cargoId === 'new') {
+            applyCurrentBranchToNewForm();
+          }
+        },
+        close: ()=> hide(true)
+      };
+    })();
+
+    function showCargoEditModal(id){
+      if (typeof cargoEditModule !== 'undefined' && cargoEditModule && cargoEditModule.open) {
+        cargoEditModule.open(id);
+        return;
+      }
+      // fallback to navigation
+      window.location.href = `cargo-edit.html?id=${encodeURIComponent(id)}`;
+    }
+
+    (async function init() {
+      loadActiveTabFromStorage();
+      setActiveTab(state.activeTab);
+      await loadMeta();
+      loadFiltersFromStorage();
+      await loadDeparturesWithCargos();
+      await loadList(state[state.activeTab].page || 1);
+
+      try {
+      if (window.td_check_interval) clearInterval(window.td_check_interval);
+      window.td_check_interval = setInterval(() => {
+      try { loadList(state[state.activeTab].page || 1, true); } catch (e) { console.error('td check error', e); }
+      }, 10000);
+      } catch (e) { console.error('start check interval error', e); }
+      resetFilters();
+    })();
+
+    // log-button click handler: call getHistory(ticket_id)
+    document.addEventListener('click', (event) => {
+      const btn = event.target.closest('.log-button');
+      if (!btn) return;
+      const cargo_id = btn.dataset.cargo_id || btn.getAttribute('data-cargo_id') || '';
+      if (!cargo_id) return;
+      getHistory(cargo_id);
+    });
+</script>
+  <script src="scroll-top.js"></script>
+  <!-- <script src="cms-chat.js"></script> -->
+</body>
+</html>

@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Bus Driver Management - Quản lý Tài xế</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="cms.css">
+    <style>
+        /* Basic two-column layout to match control panel look */
+        body { font-family: Arial, Helvetica, sans-serif; background:#f4f6f8; margin:0 }
+        .control-wrap { display:flex; min-height:100vh; }
+        .control-side { width:220px; background:#fff; border-right:1px solid #e6e6e6; padding:18px }
+        .control-side h3 { margin:0 0 12px 0; font-size:16px }
+        .control-side ul { list-style:none;padding:0;margin:0 }
+        .control-side li { padding:10px 6px; border-left:4px solid transparent; margin-bottom:6px; cursor: pointer; }
+        .control-side li.active { background:#f1f7fb; border-left-color:#1e90ff }
+        .control-main { flex:1; padding:20px }
+        .bus-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:16px }
+        .bus-title { font-size:28px;color:#444;margin:0 }
+        .bus-actions { display:none;gap:10px;align-items:center }
+        .search-input { padding:10px;border-radius:6px;border:1px solid #ddd;width:420px }
+        .select-status { padding:10px;border-radius:6px;border:1px solid #ddd }
+        .btn-find { background:#6c757d;color:#fff;padding:10px 18px;border-radius:6px;border:none }
+        .btn-add { background:#1e90ff;color:#fff;padding:10px 14px;border-radius:6px;border:none }
+
+        /* reuse cms styles where possible */
+        .cms-list-container { background:transparent;padding:0;max-width: 90vw; }
+        /* Responsive sidebar toggle for mobile */
+        .sidebar-toggle { display:none;border:none;font-size:22px;cursor:pointer;padding:6px 8px }
+        #control-overlay { display:none; }
+        @media (max-width: 900px) {
+            .sidebar-toggle { display:inline-block }
+            .control-side { position:fixed; left:0; top:0; bottom:0; width:260px; transform:translateX(-100%); transition:transform .22s ease; z-index:1002; box-shadow:0 6px 24px rgba(0,0,0,0.12); }
+            .control-side.open { transform:translateX(0); }
+            .control-wrap { min-height:100vh; }
+            #control-overlay { display:block; position:fixed; inset:0; background:rgba(0,0,0,0.36); z-index:1000; opacity:0; transition:opacity .22s; pointer-events:none }
+            #control-overlay.show { opacity:1; pointer-events:auto }
+            .control-main { padding:14px }
+        }
+    </style>
+</head>
+<body>
+    <div class="control-wrap">
+        <div id="control-overlay" aria-hidden="true"></div>
+        <aside class="control-side">
+            <h3>Bus Driver Management</h3>
+            <ul id="control-sidebar-list">
+                <li data-table="dashboard">Dashboard</li>
+                <li data-table="users">Tài xế</li>
+                <li data-table="bus_vehicles">Xe</li>
+                <li data-table="bus_trips">Chuyến đi</li>
+                <li data-table="bus_driver_schedules">Lịch làm việc</li>
+                <li data-table="bus_driver_documents">Giấy tờ</li>
+                <li data-table="bus_vehicle_maintenance">Bảo dưỡng xe</li>
+                <li data-table="bus_trip_passengers">Hành khách</li>
+                <li data-table="bus_driver_assignments">Gán tài xế</li>
+                <li data-table="bus_driver_status_history">Lịch sử trạng thái</li>
+                <li data-table="reports">Báo cáo</li>
+                <li id="cms-login-toggle" style="margin-top:12px;border-top:1px solid #eee;padding-top:12px;cursor:pointer">Đăng nhập</li>
+            </ul>
+        </aside>
+        <main class="control-main">
+            <div class="bus-header">
+                <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+                <h1 class="bus-title">Quản lý Tài xế</h1>
+                <div class="bus-actions">
+                    <input id="quick-search" class="search-input" placeholder="Tìm kiếm tên hoặc điện thoại">
+                    <select id="status-filter" class="select-status">
+                        <option value="">-- Tất cả trạng thái --</option>
+                        <option value="1">Hoạt động</option>
+                        <option value="0">Ngừng</option>
+                    </select>
+                    <button class="btn-find" id="btn-find">Tìm</button>
+                    <button class="btn-add" id="btn-add">Thêm tài xế</button>
+                </div>
+            </div>
+
+            <div id="dashboard-root" style="margin-bottom:18px"></div>
+            <div id="reports-root" style="margin-bottom:18px;display:none"></div>
+            <div class="cms-list-container">
+                <div class="cms-topbar">
+                    <h2 id="cms-table-title">Quản lý Tài xế</h2>
+                    <div class="cms-topbar-actions">
+                        <button class="cms-btn-add cms-hidden" id="cms-btn-add" onclick="cmsAddRecord()">+ Thêm record</button>
+                        <input type="text" id="cms-table-search" class="cms-table-search cms-hidden" placeholder="Tìm nhanh bảng..." aria-label="Tìm nhanh bảng">
+                        <select id="cms-table-select" class="cms-table-select cms-hidden" title="Chọn bảng dữ liệu"></select>
+                        <button class="cms-btn cms-btn-logout cms-hidden" onclick="cmsLogout()">Đăng xuất</button>
+                    </div>
+                </div>
+                <div id="cms-error" class="cms-error cms-hidden"></div>
+                <div id="cms-debug-panel" style="background:#fffbe6;border:2px dashed #f0a500;border-radius:6px;padding:10px 14px;margin:8px 0;font-size:13px;">
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <strong style="color:#c00">🔎 DEBUG - Đối chiếu quyền</strong>
+                        <button onclick="loadDebugPerm()" style="padding:3px 10px;font-size:12px;cursor:pointer">↻ Tải</button>
+                        <button onclick="var b=document.getElementById('cms-debug-body');b.style.display=b.style.display==='none'?'':'none'" style="padding:3px 10px;font-size:12px;cursor:pointer">Thu/Mở</button>
+                        <span style="color:#888;font-size:11px">[Xóa panel này khi xong debug]</span>
+                    </div>
+                    <div id="cms-debug-body" style="margin-top:8px">
+                        <div id="cms-debug-token" style="margin-bottom:8px"></div>
+                        <div id="cms-debug-content" style="color:#666">-- Chọn bảng để tải --</div>
+                    </div>
+                </div>
+                <div class="cms-table-wrapper"><table class="cms-table cms-hidden" id="cms-table"></table></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Reuse scripts from cms-list.html with minimal adjustments
+        function cmsLogout() { localStorage.removeItem('cms_token'); window.location.href = 'cms-login.html'; }
+        const token = localStorage.getItem('cms_token');
+        if (!token) { /* allow viewing when developing, but CMS normally needs login */ }
+        // Absolute API base (override via window.__API_BASE__ if needed)
+        // Use same-origin by default; can be overridden by setting window.__API_BASE__
+        const API_BASE = window.__API_BASE__ || '';
+        // Redirect relative /api/ URLs to absolute API base to avoid origin mismatches
+        (function(){
+            const _fetch = window.fetch.bind(window);
+            window.fetch = function(input, init){
+                try {
+                    if (typeof input === 'string' && input.startsWith('/api/')) input = API_BASE + input;
+                    else if (input instanceof Request && input.url && input.url.startsWith('/api/')) input = new Request(API_BASE + input.url, input);
+                } catch(e){}
+                return _fetch(input, init);
+            };
+        })();
+
+        function getTableName() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('table') || '';
+        }
+
+        // Default to bus_drivers if no table specified
+        const tableName = getTableName() || 'bus_drivers';
+
+        // Wire sidebar items to navigate and mark active
+        function initSidebar() {
+            const items = document.querySelectorAll('#control-sidebar-list li[data-table]');
+            items.forEach(li => {
+                const tbl = li.getAttribute('data-table') || '';
+                li.addEventListener('click', () => {
+                    if (!tbl) return;
+                    // dashboard is handled with special table key
+                    window.location.href = `bus-man.html?table=${encodeURIComponent(tbl)}`;
+                });
+                if (tbl === tableName) li.classList.add('active');
+            });
+        }
+        // call after DOM ready
+        document.addEventListener('DOMContentLoaded', initSidebar);
+
+        // Toggle the login/logout sidebar item based on stored token
+        function updateAuthToggle() {
+            const authLi = document.getElementById('cms-login-toggle');
+            if (!authLi) return;
+            if (token) {
+                authLi.innerText = 'Đăng xuất';
+                authLi.onclick = function() {
+                    if (confirm('Bạn có chắc muốn đăng xuất?')) cmsLogout();
+                };
+            } else {
+                authLi.innerText = 'Đăng nhập';
+                authLi.onclick = function() { window.location.href = 'cms-login.html'; };
+            }
+        }
+
+        // call auth toggle after DOM ready as well
+        document.addEventListener('DOMContentLoaded', updateAuthToggle);
+
+        // Render cms_token info in debug panel (copy / inline edit / clear)
+        function renderTokenInfo() {
+            const el = document.getElementById('cms-debug-token');
+            if (!el) return;
+            const t = localStorage.getItem('cms_token');
+
+            if (!t) {
+                el.innerHTML = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><strong style="min-width:86px">cms_token:</strong><input id="cms-token-input" placeholder="Chưa có token..." style="padding:6px;font-family:monospace;width:320px"><button id="cms-token-set" style="padding:4px 8px">Đặt token</button></div>`;
+                const setBtn = document.getElementById('cms-token-set');
+                const input = document.getElementById('cms-token-input');
+                if (setBtn) setBtn.addEventListener('click', () => {
+                    const v = String(input.value || '').trim();
+                    if (!v) { alert('Token rỗng.'); return; }
+                    localStorage.setItem('cms_token', v);
+                    renderTokenInfo();
+                    updateAuthToggle();
+                    alert('Token đã được đặt');
+                });
+                return;
+            }
+
+            const masked = t.length > 24 ? t.slice(0,10) + '…' + t.slice(-8) : t;
+            el.innerHTML = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><strong style="min-width:86px">cms_token:</strong><span id="cms-token-masked" style="font-family:monospace;color:#333">${masked}</span><button id="cms-token-copy" style="padding:4px 8px">Sao chép</button><button id="cms-token-update" style="padding:4px 8px">Cập nhật</button><button id="cms-token-clear" style="padding:4px 8px">Xóa token</button></div><div id="cms-token-input-wrap" style="margin-top:8px;display:none"></div>`;
+
+            const copyBtn = document.getElementById('cms-token-copy');
+            const updateBtn = document.getElementById('cms-token-update');
+            const clearBtn = document.getElementById('cms-token-clear');
+
+            if (copyBtn) copyBtn.addEventListener('click', async () => {
+                try { await navigator.clipboard.writeText(t); alert('Đã sao chép token vào clipboard'); } catch (e) { prompt('Copy token:', t); }
+            });
+
+            if (clearBtn) clearBtn.addEventListener('click', () => {
+                if (!confirm('Xóa token khỏi localStorage?')) return;
+                localStorage.removeItem('cms_token'); renderTokenInfo(); updateAuthToggle(); alert('Token đã bị xóa');
+            });
+
+            if (updateBtn) updateBtn.addEventListener('click', () => {
+                const wrap = document.getElementById('cms-token-input-wrap');
+                if (!wrap) return;
+                wrap.style.display = 'block';
+                wrap.innerHTML = '';
+                const input = document.createElement('input');
+                input.id = 'cms-token-input';
+                input.style.padding = '6px';
+                input.style.fontFamily = 'monospace';
+//                input.style.width = '420px';
+                input.value = t;
+                const save = document.createElement('button');
+                save.id = 'cms-token-save';
+                save.style.padding = '4px 8px';
+                save.innerText = 'Lưu';
+                const cancel = document.createElement('button');
+                cancel.id = 'cms-token-cancel';
+                cancel.style.padding = '4px 8px';
+                cancel.style.marginLeft = '6px';
+                cancel.innerText = 'Hủy';
+                wrap.appendChild(input);
+                wrap.appendChild(save);
+                wrap.appendChild(cancel);
+
+                save.addEventListener('click', () => {
+                    const newVal = String(input.value || '').trim();
+                    if (newVal === '') {
+                        if (confirm('Bạn đã nhập rỗng. Xóa token thay vì lưu?')) {
+                            localStorage.removeItem('cms_token');
+                            renderTokenInfo();
+                            updateAuthToggle();
+                            alert('Token đã bị xóa');
+                            return;
+                        } else {
+                            return;
+                        }
+                    }
+                    localStorage.setItem('cms_token', newVal);
+                    renderTokenInfo();
+                    updateAuthToggle();
+                    alert('Token đã được cập nhật');
+                });
+
+                cancel.addEventListener('click', () => {
+                    renderTokenInfo();
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', renderTokenInfo);
+
+        // Mobile sidebar toggle behavior
+        function toggleSidebar(open) {
+            const side = document.querySelector('.control-side');
+            const overlay = document.getElementById('control-overlay');
+            if (!side) return;
+            const shouldOpen = (typeof open === 'boolean') ? open : !side.classList.contains('open');
+            if (shouldOpen) {
+                side.classList.add('open');
+                if (overlay) overlay.classList.add('show');
+            } else {
+                side.classList.remove('open');
+                if (overlay) overlay.classList.remove('show');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function(){
+            const btn = document.getElementById('sidebar-toggle');
+            const overlay = document.getElementById('control-overlay');
+            if (btn) btn.addEventListener('click', ()=> toggleSidebar());
+            if (overlay) overlay.addEventListener('click', ()=> toggleSidebar(false));
+
+            // close sidebar when a sidebar link is clicked (mobile friendly)
+            document.querySelectorAll('#control-sidebar-list li[data-table]').forEach(li => {
+                li.addEventListener('click', ()=> {
+                    if (window.matchMedia && window.matchMedia('(max-width:900px)').matches) toggleSidebar(false);
+                });
+            });
+
+            // close open sidebar when resizing to large screens
+            window.addEventListener('resize', ()=> {
+                if (window.matchMedia && !window.matchMedia('(max-width:900px)').matches) toggleSidebar(false);
+            });
+        });
+
+        // Dashboard loader & renderer
+        async function loadDashboard() {
+            const root = document.getElementById('dashboard-root');
+            if (!root) return;
+            root.innerHTML = '<div style="padding:18px;color:#666">Đang tải số liệu...</div>';
+            try {
+                const [driversRes, vehiclesRes, tripsRes] = await Promise.all([
+                    fetch('/api/generic.php?action=list&table=bus_drivers&limit=1000', { headers: { 'Authorization': 'Bearer ' + token } }),
+                    fetch('/api/generic.php?action=list&table=bus_vehicles&limit=1000', { headers: { 'Authorization': 'Bearer ' + token } }),
+                    fetch('/api/generic.php?action=list&table=bus_trips&limit=1000', { headers: { 'Authorization': 'Bearer ' + token } }),
+                ]);
+                const drivers = await driversRes.json();
+                const vehicles = await vehiclesRes.json();
+                const trips = await tripsRes.json();
+
+                const driverRows = drivers.success && Array.isArray(drivers.rows) ? drivers.rows : [];
+                const vehicleRows = vehicles.success && Array.isArray(vehicles.rows) ? vehicles.rows : [];
+                const tripRows = trips.success && Array.isArray(trips.rows) ? trips.rows : [];
+
+                const today = new Date();
+                const toDateKey = d => (new Date(d)).toISOString().slice(0,10);
+                const todayKey = toDateKey(today);
+
+                const activeDrivers = driverRows.filter(d => d.available == 1 || d.status === 'available').length;
+                const vehiclesRunning = new Set(tripRows.filter(t => t.status === 'in_progress' && t.vehicle_id).map(t => String(t.vehicle_id))).size;
+                const tripsToday = tripRows.filter(t => t.departure_time_expected && toDateKey(t.departure_time_expected) === todayKey).length;
+                const revenueToday = tripRows.reduce((s,t) => { if (t.departure_time_expected && toDateKey(t.departure_time_expected) === todayKey) return s + (Number(t.revenue) || 0); return s; }, 0);
+
+                const tripsByStatus = tripRows.reduce((acc,t) => { const st = t.status || 'unknown'; acc[st] = (acc[st]||0)+1; return acc; }, {});
+
+                const recentTrips = tripRows.slice(0,8);
+
+                // render
+                root.innerHTML = `
+                    <div style="display:flex;gap:18px;flex-wrap:wrap">
+                        <div style="flex:1 1 220px;background:#fff;padding:22px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+                            <div style="font-weight:600;color:#666">Tài xế hoạt động</div>
+                            <div style="font-size:28px;color:#27ae60;margin-top:6px">${activeDrivers}</div>
+                        </div>
+                        <div style="flex:1 1 220px;background:#fff;padding:22px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+                            <div style="font-weight:600;color:#666">Xe đang chạy</div>
+                            <div style="font-size:28px;color:#f39c12;margin-top:6px">${vehiclesRunning}</div>
+                        </div>
+                        <div style="flex:1 1 220px;background:#fff;padding:22px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+                            <div style="font-weight:600;color:#666">Chuyến đi hôm nay</div>
+                            <div style="font-size:28px;color:#00a3cc;margin-top:6px">${tripsToday}</div>
+                        </div>
+                        <div style="flex:1 1 220px;background:#fff;padding:22px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+                            <div style="font-weight:600;color:#666">Doanh thu hôm nay</div>
+                            <div style="font-size:28px;color:#27ae60;margin-top:6px">${new Intl.NumberFormat('vi-VN').format(revenueToday)} đ</div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:18px;margin-top:18px;flex-wrap:wrap">
+                        <div style="flex:1 1 48%;background:#fff;padding:14px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+                            <h3 style="margin:6px 0 12px 0">Chuyến đi theo trạng thái</h3>
+                            <div>${Object.entries(tripsByStatus).map(([k,v])=>`<div style="padding:6px 0">${k}: <strong>${v}</strong></div>`).join('')}</div>
+                        </div>
+                        <div style="flex:1 1 48%;background:#fff;padding:14px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+                            <h3 style="margin:6px 0 12px 0">Doanh thu (gần đây)</h3>
+                            <div>Hiện hiển thị doanh thu tổng theo ngày từ dữ liệu client-side.</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:18px;background:#fff;padding:12px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+                        <h3 style="margin:6px 0">Chuyến đi gần đây</h3>
+                        <table style="width:100%;border-collapse:collapse">
+                            <thead><tr style="text-align:left;color:#666"><th style="padding:8px 6px;border-bottom:1px solid #eee">Mã chuyến</th><th style="padding:8px 6px;border-bottom:1px solid #eee">Tài xế</th><th style="padding:8px 6px;border-bottom:1px solid #eee">Xe</th><th style="padding:8px 6px;border-bottom:1px solid #eee">Khởi hành</th><th style="padding:8px 6px;border-bottom:1px solid #eee">Trạng thái</th></tr></thead>
+                            <tbody>
+                                ${recentTrips.map(t => `<tr><td style="padding:10px 6px;border-bottom:1px solid #f5f5f5">${escapeHtml(t.trip_number||t.trip_id||'')}</td><td style="padding:10px 6px;border-bottom:1px solid #f5f5f5">${escapeHtml(String(t.driver_id||''))}</td><td style="padding:10px 6px;border-bottom:1px solid #f5f5f5">${escapeHtml(String(t.vehicle_id||''))}</td><td style="padding:10px 6px;border-bottom:1px solid #f5f5f5">${escapeHtml(t.departure_time_expected||'')}</td><td style="padding:10px 6px;border-bottom:1px solid #f5f5f5">${escapeHtml(t.status||'')}</td></tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } catch (e) {
+                root.innerHTML = '<div style="padding:18px;color:#c00">Lỗi tải dashboard: '+ (e.message||e) +'</div>';
+            }
+        }
+
+        // Reports loader & renderer
+        async function loadReports() {
+            const root = document.getElementById('reports-root');
+            if (!root) return;
+            root.innerHTML = '<div style="padding:18px;color:#666">Đang tải báo cáo...</div>';
+            try {
+                // Try to load lightweight stats for reports (can be replaced by server-side report endpoints)
+                const res = await fetch('/api/generic.php?action=options&q_code=reports_summary', { headers: { 'Authorization': 'Bearer ' + token } }).catch(()=>null);
+                // render default report cards (buttons will open cms-list for relevant tables or call placeholders)
+                root.innerHTML = `
+                    <div style="display:flex;gap:18px;flex-wrap:wrap">
+                        <div style="flex:1 1 300px;background:#fff;padding:22px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06);text-align:center">
+                            <div style="font-weight:600;color:#666">Báo cáo Doanh thu</div>
+                            <button style="margin-top:14px;background:#218838;color:#fff;padding:10px 14px;border-radius:6px;border:none;cursor:pointer" onclick="openReport('revenue')">Xem</button>
+                        </div>
+                        <div style="flex:1 1 300px;background:#fff;padding:22px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06);text-align:center">
+                            <div style="font-weight:600;color:#666">Hiệu suất Tài xế</div>
+                            <button style="margin-top:14px;background:#00b5d8;color:#000;padding:10px 14px;border-radius:6px;border:none;cursor:pointer" onclick="openReport('driver_performance')">Xem</button>
+                        </div>
+                        <div style="flex:1 1 300px;background:#fff;padding:22px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06);text-align:center">
+                            <div style="font-weight:600;color:#666">Hiệu suất Xe</div>
+                            <button style="margin-top:14px;background:#ffc107;color:#000;padding:10px 14px;border-radius:6px;border:none;cursor:pointer" onclick="openReport('vehicle_performance')">Xem</button>
+                        </div>
+                        <div style="flex:1 1 300px;background:#fff;padding:22px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06);text-align:center">
+                            <div style="font-weight:600;color:#666">Báo cáo Chuyến đi</div>
+                            <button style="margin-top:14px;background:#dc3545;color:#fff;padding:10px 14px;border-radius:6px;border:none;cursor:pointer" onclick="openReport('trips_report')">Xem</button>
+                        </div>
+                    </div>
+                    <div style="margin-top:18px;background:#fff;padding:18px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.06);min-height:120px;text-align:center;color:#888">Chọn loại báo cáo để xem chi tiết</div>
+                `;
+            } catch (e) {
+                root.innerHTML = '<div style="padding:18px;color:#c00">Lỗi tải báo cáo: '+ (e.message||e) +'</div>';
+            }
+        }
+
+        function openReport(key) {
+            // Placeholder behavior: navigate to appropriate table view or open modal — adjust to backend report endpoints later
+            if (key === 'revenue') {
+                window.location.href = 'bus-man.html?table=bus_trips';
+            } else if (key === 'driver_performance') {
+                window.location.href = 'bus-man.html?table=bus_drivers';
+            } else if (key === 'vehicle_performance') {
+                window.location.href = 'bus-man.html?table=bus_vehicles';
+            } else if (key === 'trips_report') {
+                window.location.href = 'bus-man.html?table=bus_trips';
+            }
+        }
+        let meta = null; let primaryKey = ''; let currentPage = 1; let optionLabelMaps = {}; let tableList = []; let currentFilters = {}; const limit = 50; let currentUserId = ''; let currentSelfRecordFields = [];
+
+        // Copy helper functions from cms-list (only essential ones included)
+            function normalizeText(value) { return String(value || '')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '');
+            }
+        async function loadMetaAndData(table, page) {
+            document.getElementById('cms-error').classList.add('cms-hidden');
+            try {
+                const metaRes = await fetch(`/api/generic.php?action=meta&table=${encodeURIComponent(table)}`, { headers: { 'Authorization': 'Bearer ' + token } });
+                meta = await metaRes.json();
+                if (!meta.success) throw new Error(meta.message || 'Không lấy được metadata');
+                document.getElementById('cms-table-title').innerText = meta.table_label || 'Quản lý Tài xế';
+                currentUserId = String(meta.current_user_id || '');
+                currentSelfRecordFields = Array.isArray(meta.self_record_fields) ? meta.self_record_fields : [];
+                await preloadOptionLabels(meta.fields || []);
+                if (meta.can_insert !== false) document.getElementById('cms-btn-add').style.display = 'inline-block';
+                await loadData(table, page);
+                loadDebugPerm();
+            } catch (err) {
+                document.getElementById('cms-error').innerText = err.message || 'Lỗi không xác định';
+                document.getElementById('cms-error').classList.remove('cms-hidden');
+            }
+        }
+
+        async function loadData(table, page) {
+            currentPage = page; currentFilters = {};
+            const dataRes = await fetch(`/api/generic.php?action=list&table=${encodeURIComponent(table)}&page=${page}&limit=${limit}`, { headers: { 'Authorization': 'Bearer ' + token } });
+            const data = await dataRes.json();
+            if (!data.success) { document.getElementById('cms-error').innerText = data.message || 'Không lấy được dữ liệu'; document.getElementById('cms-error').classList.remove('cms-hidden'); return; }
+            primaryKey = data.primary_key || '';
+            renderTable(meta, data.rows || [], primaryKey);
+            renderPagination(data.total, data.page, data.limit);
+        }
+
+        async function preloadOptionLabels(fields) {
+            optionLabelMaps = {};
+            optionLabelLists = {};
+            const tasks = (fields || []).filter(f => f && f.q_code && String(f.q_code).trim() !== '').map(async (f) => {
+                try {
+                    const res = await fetch('/api/generic.php?action=options', { method: 'POST', headers: { 'Content-Type': 'application/json','Authorization': 'Bearer ' + token,'Accept': 'application/json' }, body: JSON.stringify({ q_code: f.q_code }) });
+                    const data = await res.json();
+                    if (data.success && Array.isArray(data.options)) {
+                        const map = {};
+                        data.options.forEach(opt => { map[String(opt.value ?? '')] = opt.label ?? opt.value; });
+                        optionLabelMaps[f.name] = map;
+                        optionLabelLists[f.name] = data.options;
+                    }
+                } catch(e) {}
+            });
+            await Promise.all(tasks);
+        }
+
+        function getDisplayValue(field, rawValue) { if (rawValue === null || rawValue === undefined) return ''; const map = optionLabelMaps[field.name]; if (!map) return rawValue; const key = String(rawValue); return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : rawValue; }
+        function escapeHtml(value) { return String(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;'); }
+        function getMultiOptionDisplayHtml(field, rawValue) { if (rawValue === null || rawValue === undefined) return ''; const map = optionLabelMaps[field.name] || {}; const text = String(rawValue).trim(); if (!text) return ''; let values = []; if (text.startsWith('[') && text.endsWith(']')) { try { const arr = JSON.parse(text); if (Array.isArray(arr)) values = arr.map(v => String(v)); } catch (_) { values = []; } } if (values.length === 0) values = text.split(',').map(s=>s.trim()).filter(Boolean); return values.map(v => map[v] ?? v).map(label => `<span class="one-role">${escapeHtml(label)}</span>`).join(' '); }
+        function isCheckedValue(value) { if (value === true || value === 1) return true; if (typeof value === 'string') { const v = value.trim().toLowerCase(); return v === '1' || v === 'true' || v === 'yes' || v === 'on'; } return false; }
+
+        function canAccessRowBySelfRecord(row) { if (!Array.isArray(currentSelfRecordFields) || currentSelfRecordFields.length === 0) return true; if (!currentUserId) return false; return currentSelfRecordFields.some(fieldName => String(row?.[fieldName] ?? '') === currentUserId); }
+
+        async function renderFilterRow(table, meta, rows) {
+            const tbl = document.getElementById('cms-table');
+            const tfilter = document.createElement('thead'); tfilter.className = 'cms-filter-row'; const trFilter = document.createElement('tr');
+            for (const f of (meta.fields || [])) {
+                if (!f.show_list) continue; const td = document.createElement('td'); td.className = 'cms-filter-cell';
+                if (f.q_code && String(f.q_code).trim() !== '') {
+                    const select = document.createElement('select'); select.className = 'cms-filter-select'; select.setAttribute('data-field', f.name);
+                    const optAll = document.createElement('option'); optAll.value = ''; optAll.text = 'Tất cả'; select.appendChild(optAll);
+                    const map = optionLabelMaps[f.name] || {};
+                    const list = optionLabelLists[f.name];
+                    if (Array.isArray(list) && list.length) {
+                        list.forEach(optItem => { const opt = document.createElement('option'); opt.value = String(optItem.value ?? ''); opt.text = optItem.label ?? optItem.value; select.appendChild(opt); });
+                    } else {
+                        for (const [value,label] of Object.entries(map)) { const opt=document.createElement('option'); opt.value=value; opt.text=label; select.appendChild(opt); }
+                    }
+                    if (currentFilters[f.name]) select.value = currentFilters[f.name];
+                    select.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); applyFilters(meta); } }); td.appendChild(select);
+                } else {
+                    const input = document.createElement('input');
+                    const inputType = String(f.input_type || f.type || '').toLowerCase().trim();
+                    if (inputType === 'date') {
+                        input.type = 'date';
+                    } else if (inputType === 'time') {
+                        input.type = 'time';
+                    } else if (inputType === 'datetime' || inputType === 'timestamp') {
+                        input.type = 'datetime-local';
+                    } else {
+                        input.type = 'text';
+                    }
+                    input.className = 'cms-filter-input';
+                    if (input.type === 'text') {
+                        input.placeholder = `Lọc ${f.label || f.name}...`;
+                    }
+                    input.setAttribute('data-field', f.name);
+                    if (currentFilters[f.name]) input.value = currentFilters[f.name];
+                    input.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            applyFilters(meta);
+                        }
+                    });
+                    td.appendChild(input);
+                }
+                trFilter.appendChild(td);
+            }
+            if (meta.can_edit || meta.can_delete) {
+                const td = document.createElement('td'); td.className = 'cms-filter-cell cms-filter-actions'; const btnFilter = document.createElement('button'); btnFilter.className='cms-btn cms-btn-filter'; btnFilter.innerText='Lọc'; btnFilter.onclick = ()=> applyFilters(meta); const btnClear = document.createElement('button'); btnClear.className='cms-btn cms-btn-clear'; btnClear.innerText='Xóa lọc'; btnClear.onclick = ()=> clearFilters(); td.appendChild(btnFilter); td.appendChild(btnClear); trFilter.appendChild(td);
+            }
+            tfilter.appendChild(trFilter);
+            const oldThead = tbl.querySelector('thead.cms-filter-row'); if (oldThead) oldThead.remove(); tbl.insertBefore(tfilter, tbl.getElementsByTagName('tbody')[0]);
+        }
+
+        function clearFilters() { document.querySelectorAll('.cms-filter-input').forEach(i=>i.value=''); document.querySelectorAll('.cms-filter-select').forEach(s=>s.value=''); currentFilters={}; loadData(tableName,1); }
+
+        function applyFilters(meta) { const filters = {}; document.querySelectorAll('.cms-filter-input').forEach(input=>{ if (input.value.trim()) filters[input.getAttribute('data-field')] = input.value.trim(); }); document.querySelectorAll('.cms-filter-select').forEach(select=>{ if (select.value) filters[select.getAttribute('data-field')] = select.value; }); currentFilters = filters; const params = new URLSearchParams(); for (const [k,v] of Object.entries(filters)) params.append(k,v); loadDataWithFilters(tableName,1,params); }
+
+        async function loadDataWithFilters(table, page, filterParams) {
+            currentPage = page; let url = `/api/generic.php?action=list&table=${encodeURIComponent(table)}&page=${page}&limit=${limit}`; if (filterParams) url += '&' + filterParams.toString(); const dataRes = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } }); const data = await dataRes.json(); if (!data.success) { document.getElementById('cms-error').innerText = data.message || 'Không lấy được dữ liệu'; document.getElementById('cms-error').classList.remove('cms-hidden'); return; } primaryKey = data.primary_key || ''; renderTable(meta, data.rows || [], primaryKey); renderPaginationWithFilters(data.total, data.page, data.limit, filterParams);
+        }
+
+        function renderPaginationWithFilters(total, page, limit, filterParams) { let pag = document.getElementById('cms-pagination'); if (!pag) { pag = document.createElement('div'); pag.id='cms-pagination'; pag.className='cms-pagination'; document.querySelector('.cms-list-container').appendChild(pag); } pag.innerHTML=''; if (!total || total<=limit) return; const totalPages = Math.ceil(total/limit); for (let i=1;i<=totalPages;i++){ const btn=document.createElement('button'); btn.innerText=i; if (i===page) btn.disabled=true; btn.onclick = ()=> { if (filterParams && filterParams.toString().length>0) loadDataWithFilters(tableName,i,filterParams); else loadData(tableName,i); }; pag.appendChild(btn); } }
+
+        function renderTableBody(meta, rows, primaryKey) { const table = document.getElementById('cms-table'); const oldTbody = table.querySelector('tbody'); if (oldTbody) oldTbody.remove(); const tbody = document.createElement('tbody'); rows.forEach(row=>{ const tr=document.createElement('tr'); (meta.fields||[]).forEach(f=>{ if (f.show_list) { const td=document.createElement('td'); const fieldType = String(f.input_type || f.type || '').toLowerCase(); if (fieldType==='checkbox') { if (f.q_code) { td.innerHTML = getMultiOptionDisplayHtml(f, row[f.name]); } else { const checked = isCheckedValue(row[f.name]); td.innerHTML = checked ? '<i class="fa-solid fa-check cms-check-icon" aria-label="checked"></i>' : '<i class="fa-solid fa-xmark cms-uncheck-icon" aria-label="unchecked"></i>'; } } else { td.innerText = getDisplayValue(f, row[f.name]); } tr.appendChild(td); } }); const canRowEdit = meta.can_edit && canAccessRowBySelfRecord(row); const canRowDelete = meta.can_delete && canAccessRowBySelfRecord(row); if (canRowEdit || canRowDelete) { const td = document.createElement('td'); td.className='cms-actions'; if (canRowEdit && primaryKey && row[primaryKey] !== undefined) { const btnEdit=document.createElement('button'); btnEdit.className='cms-btn cms-btn-edit'; btnEdit.innerText='Sửa'; btnEdit.onclick = ()=> { window.location.href = `cms-edit.html?table=${encodeURIComponent(meta.table)}&id=${row[primaryKey]}&from=bus-man`; }; td.appendChild(btnEdit); } if (canRowDelete && primaryKey && row[primaryKey] !== undefined) { const btnDel=document.createElement('button'); btnDel.className='cms-btn cms-btn-delete'; btnDel.innerText='Xóa'; btnDel.onclick = ()=> { if (confirm('Bạn chắc chắn muốn xóa bản ghi này?')) deleteRecord(meta.table, row[primaryKey]); }; td.appendChild(btnDel); } tr.appendChild(td); } tbody.appendChild(tr); }); table.appendChild(tbody); }
+
+        function renderTable(meta, rows, primaryKey) { const table = document.getElementById('cms-table'); table.innerHTML = ''; const thead = document.createElement('thead'); const tr = document.createElement('tr'); (meta.fields||[]).forEach(f=>{ if (f.show_list) { const th=document.createElement('th'); th.innerText = f.label && f.label.trim() ? f.label : f.name; tr.appendChild(th); } }); if (meta.can_edit || meta.can_delete) { const th = document.createElement('th'); th.innerText = 'Thao tác'; tr.appendChild(th); } thead.appendChild(tr); table.appendChild(thead); renderFilterRow(table, meta, rows); window.cmsCurrentRows = rows; window.cmsCurrentMeta = meta; window.cmsCurrentPrimaryKey = primaryKey; renderTableBody(meta, rows, primaryKey); table.classList.remove('cms-hidden'); }
+
+        function renderPagination(total, page, limit) { let pag = document.getElementById('cms-pagination'); if (!pag) { pag = document.createElement('div'); pag.id='cms-pagination'; pag.className='cms-pagination'; document.querySelector('.cms-list-container').appendChild(pag); } pag.innerHTML=''; if (!total || total<=limit) return; const totalPages = Math.ceil(total/limit); for (let i=1;i<=totalPages;i++){ const btn=document.createElement('button'); btn.innerText=i; if (i===page) btn.disabled=true; btn.onclick = ()=> loadData(tableName,i); pag.appendChild(btn); } }
+
+        function cmsAddRecord() { if (!tableName) { alert('Chưa chọn bảng!'); return; } window.location.href = `cms-edit.html?table=${encodeURIComponent(tableName)}&id=new&from=bus-man`; }
+        async function deleteRecord(table,id) { try { const res = await fetch(`/api/generic.php?action=delete&table=${encodeURIComponent(table)}&id=${encodeURIComponent(id)}`, { method:'POST', headers: { 'Authorization': 'Bearer ' + token } }); const data = await res.json(); if (data.success) { alert('Đã xóa thành công!'); window.location.reload(); } else { alert(data.message || 'Xóa thất bại'); } } catch (err) { alert('Lỗi kết nối máy chủ'); } }
+
+        // Minimal debug loader
+        async function loadDebugPerm() { const tbl = tableName; if (!tbl) return; document.getElementById('cms-debug-content').textContent = 'Đang tải...'; try { const res = await fetch(`/api/generic.php?action=debug_perm&table=${encodeURIComponent(tbl)}`, { headers: { 'Authorization': 'Bearer ' + token } }); const data = await res.json(); renderDebugPerm(data); } catch(e) { document.getElementById('cms-debug-content').textContent = 'Lỗi: '+e.message; } }
+        function renderDebugPerm(data) { const el = document.getElementById('cms-debug-content'); if (!data || !data.success) { el.textContent = 'Lỗi: ' + (data && data.message ? data.message : 'không rõ'); return; } let html = `<b>User ID: ${data.user_id}</b> — Quyền hiện tại:<br>`; if (!data.user_roles.length) { html += '<span style="color:#c00">Không có role nào</span><br>'; } else { data.user_roles.forEach(r => { html += `<span style="background:#e8f0fe;padding:2px 7px;margin:2px;display:inline-block;border-radius:3px">ID ${r.role_id}: ${r.name}</span>`; }); } html += '<br><br>'; html += `<b>Rules quyen_voi_table cho bảng "${data.table}":</b><br>`; if (!data.table_rules.length) { html += '<span style="color:#c00">Không có rule nào</span>'; } else { data.table_rules.forEach(rule => { const mc = rule.matched ? '#276827' : '#aaa'; const mt = rule.matched ? '&#10003; KHỚP' : '&#10007; không khớp'; const perms = []; if (rule.can_read) perms.push('<span style="color:green">read</span>'); if (rule.can_create) perms.push('<span style="color:blue">create</span>'); if (rule.can_update) perms.push('<span style="color:darkorange">update</span>'); if (rule.can_delete) perms.push('<span style="color:red">delete</span>'); const rolesTags = rule.roles.map(r => `<span style="font-size:12px;background:#f5f5f5;padding:1px 5px;border-radius:3px;margin:1px">ID ${r.role_id}: ${r.name}</span>`).join(' '); html += `<div style="border:1px solid ${mc};border-radius:4px;padding:5px 10px;margin:4px 0">`; html += `<div><b>Rule #${rule.id}</b> <span style="color:${mc};font-size:12px">${mt}</span></div>`; html += `<div>Roles: ${rolesTags || '<span style="color:#aaa">trống</span>'}</div>`; html += `<div>Quyền: ${perms.length ? perms.join(' | ') : '<span style="color:#aaa">không có</span>'}</div>`; if (rule.self_record) html += `<div style="color:#888;font-size:12px">self_record: ${rule.self_record}</div>`; html += '</div>'; }); } el.innerHTML = html; }
+
+        // Wire up simple controls
+        document.getElementById('btn-find').addEventListener('click', function(){ const q = document.getElementById('quick-search').value.trim(); const st = document.getElementById('status-filter').value; const params = new URLSearchParams(); if (q) params.append('q', q); if (st) params.append('status', st); loadDataWithFilters(tableName,1,params); });
+        document.getElementById('btn-add').addEventListener('click', ()=> { window.location.href = `cms-edit.html?table=${encodeURIComponent(tableName)}&id=new&from=bus-man`; });
+
+        // Start
+        if (tableName === 'dashboard') {
+            // show dashboard and hide cms table area
+            document.getElementById('cms-table').classList.add('cms-hidden');
+            document.querySelector('.cms-list-container').style.display = 'none';
+            document.getElementById('reports-root').style.display = 'none';
+            loadDashboard();
+        } else if (tableName === 'reports') {
+            // show reports panel
+            document.getElementById('cms-table').classList.add('cms-hidden');
+            document.querySelector('.cms-list-container').style.display = 'none';
+            document.getElementById('reports-root').style.display = '';            
+            loadReports();
+        } else {
+            document.getElementById('reports-root').style.display = 'none';
+            loadMetaAndData(tableName, 1);
+        }
+    </script>
+</body>
+</html>

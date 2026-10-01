@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>In đơn hàng</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<link href="/html_logo.ico" rel="shortcut icon">
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; background:#f5f7fa; padding:12px; }
+    .page {     width: 15cm;
+    height: 15cm;
+    margin: 10px auto;
+    padding: 10mm;
+    box-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+  }
+    .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+    .meta { font-size:14px; }
+    .title {     font-weight: 700;
+    font-size: 110% !important; }
+    .addresses { display:flex; gap:12px; margin-bottom:8px; }
+    .addr-box { border:1px solid #ddd; padding:8px; flex:1; }
+    table.items { width:100%; border-collapse:collapse; margin-top:8px; }
+    table.items th, table.items td { border:1px solid #ddd; padding:6px; font-size:13px; }
+    .text-right { text-align:right; }
+    .summary { margin-top:10px; font-size:14px; }
+    .no-print { margin-bottom:8px; }
+    .addresses-2 { display:flex; gap:12px; }
+    .qr-code {     width: 2cm;
+    height: 2cm;
+    margin-top: 1mm; }
+    @media print { body{background:#fff;} .page{box-shadow:none;margin:0; width:auto; page-break-after:always;} .no-print{display:none;} }
+.page * { box-sizing:border-box;
+font-size: 11pt;
+line-height: 16pt;}
+  </style>
+</head>
+<body>
+  <div class="no-print text-end"><button onclick="window.print()" class="btn btn-primary btn-sm">In</button></div>
+  <div id="content"></div>
+
+  <script>
+  function fmt(value) {
+    let raw = String(value ?? '');
+    raw = raw.replace(/[^0-9.,]/g, '');
+    raw = raw.replace(/,/g, '');
+    if (raw === '' || raw === '-' || raw === '.' || raw === '-.') return raw;
+    const parts = raw.split('.');
+    const intPart = parts[0].replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+    const decimals = parts.slice(1).join('').replace(/[^0-9]/g, '');
+    const formattedInt = intPart ? intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '0';
+    return formattedInt + (decimals ? '.' + decimals : '');
+  }
+
+  (function(){
+    const API_URL = '/api/cargo.php';
+    const token = localStorage.getItem('cms_token') || localStorage.getItem('api_token') || '';
+    const params = new URLSearchParams(location.search);
+    const ids = params.get('ids') || '';
+    const content = document.getElementById('content');
+    if (!ids) {
+      content.innerHTML = '<div class="alert alert-warning">Thiếu tham số ids.</div>';
+      return;
+    }
+
+    async function requestJson(url) {
+      const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } , credentials: 'same-origin'});
+      const text = await res.text();
+      try { return JSON.parse(text); } catch(e){ return { success:false, raw: text }; }
+    }
+
+    // function fmt(n){ const num = Number(n)||0; return num.toLocaleString('vi-VN'); }
+    function renderOrder(o){
+      const printedAt = new Date().toLocaleString('vi-VN');
+      const register_submit = new Date(o.register_submit || '').toLocaleString('vi-VN');
+      const cod_service = o.value_vnd ? fmt(o.value_vnd) : 'Không có';
+      const code = o.random_code || o.ticket_code || o.cargo_id;
+      const fromName = o.onboard_branch_name || (o.onboard_branch || '');
+      const fromAddr = o.onboard_branch_address || '';
+      const fromPhone = o.onboard_branch_mobile || '';
+      const toName = o.offboard_branch_name || (o.offboard_branch || '');
+      const toAddr = o.offboard_branch_address || '';
+      const toPhone = o.offboard_branch_mobile || '';
+      const rows = (o.details || []);
+      const itemsHtml = rows.map((d,i)=>`<tr><td></td><td>${d.cargo_name||''}</td><td class="text-right">${d.quantity||1}</td><td class="text-right">${fmt(d.ship_fee_vnd)}</td></tr>`).join('');
+      const totalItems = rows.reduce((s,r)=> s + (Number(r.quantity)||0),0);
+      // Use DB fields for printed totals
+      const totalCompany = Number(o.total_company_receive ?? o.sum_vnd ?? 0);
+      const senderPaid = Number(o.sender_paid_vnd ?? 0);
+      const receiverPaid = Number(o.receiver_paid_vnd ?? 0);
+      const notes = o.notes || '';
+      const temp_offboard = o.temp_offboard || '';
+      const temp_onboard = o.temp_onboard || '';
+      const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${o.random_code}`;
+
+/*
+<div class="meta">MÃ GD: <strong>${code}</strong></div>
+<div class="meta">Nhận lúc: ${register_submit}</div>
+<div class="meta">In ngày: ${printedAt}</div>
+STT
+${i+1}
+<td class="text-right">${fmt(d.value_vnd)}</td>
+
+
+              <th class="text-right">Giá trị</th>
+                <svg id="barcode-${o.cargo_id}" aria-hidden="true"></svg>
+
+*/
+      return `
+        <div class="page">
+          <div class="header">
+            <div>
+              <div class="title">HÓA ĐƠN VẬN CHUYỂN HÀNG HÓA</div>
+              <div style="margin-top:6px;">
+                <img class="qr-code" src="${qrSrc}" alt="QR code link đơn thuê xe"/>
+              </div>
+            </div>
+            <div style="text-align:right; font-size:12px;">
+              Trạng thái: ${o.status_label||''}<br/>Mã đơn: ${o.cargo_id}
+            </div>
+          </div>
+
+          <div class="addresses-2">
+<div class="addr-box">
+<div>${fromAddr}</div>
+<div>${fromPhone}</div>
+</div>
+<div class="addr-box">
+<div>${toAddr}</div>
+<div>${toPhone}</div>
+</div>
+</div>
+
+          <div class="addresses">
+            <div class="addr-box">
+              <strong>Gửi (VP/GN):</strong><br>
+              <div>${o.pass_name || ''} - ${o.pass_mobile || ''}</div>
+              <div>${fromName}</div>
+            </div>
+            <div class="addr-box">
+              <strong>Nhận (VP/GN):</strong><br>
+              <div>${o.reveiver_name || ''} - ${o.receiver_mobile || ''}</div>
+              <div>${toName}</div>
+            </div>
+          </div>
+
+          <table class="items">
+            <thead><tr><th></th><th>Tên hàng</th><th class="text-right">SL</th>
+              <th class="text-right">Cước phí</th>
+              </tr></thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+
+          <div class="summary">
+            <div>Tổng SL: <strong>${totalItems}</strong></div>
+            <div>Tổng tiền: <strong>${fmt(totalCompany)} VND</strong> - Thu hộ : <strong>${cod_service}</strong></div>
+            <div>Đã cước (đã trả): <strong>${fmt(senderPaid)} VND</strong></div>
+            <div>Cước còn (còn lại): <strong>${fmt(receiverPaid)} VND</strong></div>
+            <div>Ghi chú: <strong>${notes}</strong></div>
+            ${temp_onboard ? `<div>Lấy hàng dọc đường: <strong>${temp_onboard}</strong></div>` : ''}
+            ${temp_offboard ? `<div>Giao hàng dọc đường: <strong>${temp_offboard}</strong></div>` : ''}
+            <div>Người gửi xác nhận: _________________________</div>
+          </div>
+        </div>
+      `;
+    }
+
+    (async function(){
+      content.innerHTML = '<div class="text-muted">Đang tải dữ liệu in...</div>';
+      const data = await requestJson(`${API_URL}?action=get_multi&ids=${encodeURIComponent(ids)}`);
+      if (!data || !data.success) {
+        content.innerHTML = '<div class="alert alert-danger">Lỗi tải dữ liệu: ' + (data?.message || 'Không xác định') + '</div>';
+        return;
+      }
+      const rows = data.data || [];
+      if (!rows.length) { content.innerHTML = '<div class="alert alert-warning">Không tìm thấy đơn hàng.</div>'; return; }
+      content.innerHTML = rows.map(r => renderOrder(r)).join('');
+      // render barcodes for each order (requires JsBarcode loaded)
+      try {
+        rows.forEach(r => {
+          const id = r.cargo_id;
+          const el = document.getElementById(`barcode-${id}`);
+          const code = r.random_code || r.ticket_code || String(r.cargo_id || '');
+          if (el && typeof JsBarcode === 'function') {
+            try { JsBarcode(el, code, { format: 'CODE128', width: 2, height: 44, displayValue: false, margin: 4 }); } catch (e) { /* ignore */ }
+          }
+        });
+      } catch (e) {}
+      // auto print after render
+      setTimeout(()=>{ try{ window.print(); }catch(e){} }, 600);
+    })();
+
+  })();
+  </script>
+</body>
+</html>

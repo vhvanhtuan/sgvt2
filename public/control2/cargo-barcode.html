@@ -1,0 +1,730 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quét mã - Xử lý đơn hàng</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="cms.css" />
+  <link rel="stylesheet" href="cargo.css" />
+  <link rel="stylesheet" href="scroll-top.css" />
+<link href="/html_logo.ico" rel="shortcut icon">
+  <style>
+    .filter-panel { background: #fff; border: 1px solid #d9dee6; border-radius: 10px; padding: 16px; margin-bottom: 18px; box-shadow: 0 1px 10px rgba(0,0,0,0.03); }
+    .filter-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; align-items: end; }
+    .table-card { background: #fff; border: 1px solid #d9dee6; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 10px rgba(0,0,0,0.03); margin-bottom: 18px; }
+    .table-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid #e5e9ef; }
+    .table-actions .summary-box { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+    .summary-badge { background: #e7f1ff; color: #0d47a1; border-radius: 8px; padding: 10px 12px; font-size: 13px; min-width: 110px; font-weight: 500; }
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
+    .table-scroll::-webkit-scrollbar { height: 8px; }
+    .table-scroll::-webkit-scrollbar-thumb { background: rgba(13, 110, 253, 0.35); border-radius: 999px; }
+    .table-scroll::-webkit-scrollbar-track { background: transparent; }
+    table.list-table { width: 100%; border-collapse: collapse; min-width: 1020px; }
+    table.list-table th, table.list-table td { border-bottom: 1px solid #e7edf3; padding: 12px 10px; text-align: left; vertical-align: middle; }
+    table.list-table th { background: #f8f9fa; color: #1f3f6c; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+    table.list-table tbody tr { transition: background-color 0.15s ease; }
+    table.list-table tbody tr:hover { background: #f8fbff; }
+    .checkbox-center { text-align: center; }
+    .text-right { text-align: right; }
+    a.action-link { color: #0d6efd; text-decoration: none; font-weight: 600; }
+    a.action-link:hover { text-decoration: underline; color: #0b5ed7; }
+    .tabs { display:flex; gap:8px; margin-bottom:12px; }
+    .tabs button { flex:1; }
+    .scan-input { font-size:18px; padding:10px; }
+    .status-pill { display:inline-flex; align-items:center; background:#eef4ff; color:#0d47a1; border-radius:12px; padding:8px 14px; font-size:14px; margin-top:6px; }
+    @media (max-width: 768px) { .filter-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+    /* scanner modal styles */
+    .html5-scanner-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:9999; }
+    .html5-scanner-box { width:100%; max-width:420px; background:#fff; border-radius:8px; padding:0; box-shadow:0 6px 24px rgba(0,0,0,0.3); box-sizing:border-box; max-height:50vh; height:50vh; display:flex; flex-direction:column; overflow:hidden; }
+    .html5-scanner-body { padding:12px; flex:1 1 auto; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+    .html5-scanner-footer { height:56px; border-top:1px solid #eee; display:flex; align-items:center; justify-content:center; gap:12px; padding:8px; background:#fff; }
+    .scan-btn { vertical-align: middle; margin-left:8px; }
+  </style>
+</head>
+<body>
+  <div id="cms-header"></div>
+  <script src="header-loader.js"></script>
+  <div class="page-shell">
+    <div class="page-title">
+      <div>
+        <h1>Quét barcode - xử lý đơn hàng</h1>
+        <div class="status-pill">Chọn thao tác, quét mã và xử lý nhanh</div>
+      </div>
+      <div class="toolbar">
+        <button class="hidden" id="btn-open-list" class="btn btn-outline-secondary"><i class="fa fa-list"></i> Danh sách đơn</button>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-actions">
+        <div class="summary-box tabs">
+          <button id="tab-onboard" class="btn btn-outline-primary active">1. Chuyển hàng lên xe</button>
+          <button id="tab-offboard" class="btn btn-outline-secondary">2. Cho hàng xuống trạm</button>
+          <button id="tab-deliver" class="btn btn-outline-success">3. Giao hàng</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="panel-onboard" class="filter-panel">
+      <div class="filter-grid">
+        <div class="field-group" style="grid-column: span 4;">
+          <label for="onboard-route">Tuyến</label>
+          <select id="onboard-route" class="form-select"></select>
+        </div>
+        <div class="field-group" style="grid-column: span 3;">
+          <label for="onboard-date">Ngày</label>
+          <input type="date" id="onboard-date" class="form-control" />
+        </div>
+        <div class="field-group" style="grid-column: span 5;">
+          <label for="onboard-dept">Chọn phơi (chuyến)</label>
+          <select id="onboard-dept" class="form-select"></select>
+        </div>
+        <div class="field-group" style="grid-column: span 12;">
+          <label for="scan-onboard">Quét hoặc nhập mã</label>
+          <input id="scan-onboard" class="form-control scan-input" placeholder="Quét barcode rồi nhấn Enter" autofocus />
+          <button type="button" class="btn btn-outline-primary scan-btn" onclick="startCameraScan('scan-onboard')" title="Quét bằng camera"><i class="fa fa-camera"></i></button>
+        </div>
+      </div>
+      <div class="mt-3 text-end">
+        <button id="confirm-onboard" class="btn btn-primary">Xác nhận chuyển lên xe</button>
+      </div>
+    </div>
+
+    <div id="panel-offboard" class="filter-panel" style="display:none;">
+      <div class="filter-grid">
+        <div class="field-group" style="grid-column: span 6;">
+          <label for="offboard-branch">Chọn VP nhận</label>
+          <select id="offboard-branch" class="form-select"></select>
+        </div>
+        <div class="field-group" style="grid-column: span 6;">
+          <label for="scan-offboard">Quét hoặc nhập mã</label>
+          <input id="scan-offboard" class="form-control scan-input" placeholder="Quét barcode rồi nhấn Enter" />
+          <button type="button" class="btn btn-outline-primary scan-btn" onclick="startCameraScan('scan-offboard')" title="Quét bằng camera"><i class="fa fa-camera"></i></button>
+        </div>
+      </div>
+      <div class="mt-3 text-end">
+        <button id="confirm-offboard" class="btn btn-danger">Xác nhận cho xuống trạm</button>
+      </div>
+    </div>
+
+    <div id="panel-deliver" class="filter-panel" style="display:none;">
+      <div class="filter-grid">
+        <div class="field-group" style="grid-column: span 12;">
+          <label for="scan-deliver">Quét hoặc nhập mã để mở modal giao hàng</label>
+          <input id="scan-deliver" class="form-control scan-input" placeholder="Quét barcode rồi nhấn Enter" />
+          <button type="button" class="btn btn-outline-primary scan-btn" onclick="startCameraScan('scan-deliver')" title="Quét bằng camera"><i class="fa fa-camera"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <div id="onboard-table-card" class="table-card">
+      <div class="table-actions">
+        <div class="summary-box"><div id="scanned-onboard-badge" class="summary-badge">Danh sách đơn đã quét lên xe: 0 đơn</div></div>
+      </div>
+      <div class="table-scroll">
+        <table class="list-table">
+          <thead>
+            <tr>
+              <th>Mã đơn</th>
+              <th>Người gửi</th>
+              <th>VP gửi</th>
+              <th>VP nhận</th>
+              <th>Người nhận</th>
+              <th>Tổng tiền</th>
+              <th>Đã trả</th>
+              <th>Còn lại</th>
+              <th>PTTT</th>
+              <th>Trạng thái</th>
+              <th>Ngày tạo</th>
+            </tr>
+          </thead>
+          <tbody id="onboard-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="offboard-table-card" class="table-card" style="display:none;">
+      <div class="table-actions">
+        <div class="summary-box"><div id="scanned-offboard-badge" class="summary-badge">Danh sách đơn đã quét xuống trạm: 0 đơn</div></div>
+      </div>
+      <div class="table-scroll">
+        <table class="list-table">
+          <thead>
+            <tr>
+              <th>Mã đơn</th>
+              <th>Người gửi</th>
+              <th>VP gửi</th>
+              <th>VP nhận</th>
+              <th>Người nhận</th>
+              <th>Tổng tiền</th>
+              <th>Đã trả</th>
+              <th>Còn lại</th>
+              <th>PTTT</th>
+              <th>Trạng thái</th>
+              <th>Ngày tạo</th>
+            </tr>
+          </thead>
+          <tbody id="offboard-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="deliver-modal-container"></div>
+  </div>
+
+  <!-- html5-qrcode for web fallback scanning -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8"></script>
+
+  <script>
+  const API_URL = '/api/cargo.php';
+  const token = localStorage.getItem('cms_token') || localStorage.getItem('api_token') || '';
+  if (!token) { location.href = 'cms-login.html'; }
+
+  function redirectToLogin() {
+    localStorage.removeItem('cms_token');
+    localStorage.removeItem('api_token');
+    window.location.href = 'cms-login.html';
+  }
+
+  function isAuthError(data, response) {
+    if (response && (response.status === 401 || response.status === 403)) return true;
+    const msg = data && data.message ? String(data.message) : '';
+    return data && data.success === false && /invalid|expired|missing.*authorization|missing.*auth|access denied/i.test(msg);
+  }
+
+  async function requestJson(url, opts = {}) {
+    const headers = opts.headers || {};
+    headers['Authorization'] = 'Bearer ' + token;
+    if (!opts.method || opts.method.toUpperCase() === 'GET') headers['Accept'] = 'application/json';
+    if (opts.body && !opts.headers?.['Content-Type']) headers['Content-Type'] = 'application/json';
+    const response = await fetch(url, Object.assign({ credentials: 'same-origin' }, opts, { headers }));
+    const text = await response.text();
+    let data;
+    try { data = JSON.parse(text); } catch (e) { data = { success: false, message: 'Invalid JSON response', raw: text }; }
+    if (isAuthError(data, response)) {
+      redirectToLogin();
+      return data;
+    }
+    return data;
+  }
+
+  function formatCurrency(num) {
+    const n = Number(num);
+    if (!isFinite(n)) return '0';
+    return n.toLocaleString('vi-VN');
+  }
+
+  function playBeep(freq = 600, duration = 80) {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.08, ctx.currentTime);
+      o.start();
+      setTimeout(() => { o.stop(); ctx.close(); }, duration);
+    } catch (e) {}
+  }
+
+  // Camera scanning support (Capacitor plugin if present, otherwise html5-qrcode web fallback)
+  let html5Scanner = null;
+  let html5ScannerActive = false;
+  let scanSessionActive = null; // target input id when scanner modal is open
+  let scanSessionCount = 0;
+
+  async function startCameraScan(targetInputId) {
+    // Try Capacitor community barcode scanner plugin first
+    try {
+      const cap = window.Capacitor || window.capacitor;
+      const plugin = cap && cap.Plugins && cap.Plugins.BarcodeScanner ? cap.Plugins.BarcodeScanner : (window.BarcodeScanner || null);
+      if (plugin && plugin.startScan) {
+        // many capacitor barcode plugins expose startScan or scan
+        const res = await plugin.startScan();
+        // plugin result shape may vary
+        const content = res && (res.content || res.value || res.text || (res.hasContent && res.content)) ? (res.content||res.value||res.text) : null;
+        if (content) {
+          fillScannedCode(targetInputId, content);
+        }
+        return;
+      }
+      if (plugin && plugin.scan) {
+        const r = await plugin.scan();
+        const content = r && (r.content || r.text || r.value) ? (r.content||r.text||r.value) : null;
+        if (content) fillScannedCode(targetInputId, content);
+        return;
+      }
+    } catch (e) {
+      console.warn('Capacitor scanner plugin failed or not available', e);
+    }
+
+    // Web fallback using html5-qrcode
+    if (html5ScannerActive) stopHtml5Scanner();
+    const container = document.createElement('div');
+    container.id = 'html5-scanner-modal';
+    container.innerHTML = `
+      <div id="html5-scanner-overlay" class="html5-scanner-overlay">
+        <div class="html5-scanner-box">
+          <div class="html5-scanner-body">
+            <div id="html5-qrcode" style="width:100%; height:100%;"></div>
+          </div>
+          <div class="html5-scanner-footer">
+            <button id="html5-stop-scan" class="btn btn-secondary">Dừng</button>
+            <div id="html5-scan-count" style="font-weight:600; color:#333">Đã quét được 0 mã</div>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(container);
+    // attach stop handlers immediately so the button works even if camera start is slow
+    const stopBtnEarly = document.getElementById('html5-stop-scan');
+    if (stopBtnEarly) stopBtnEarly.addEventListener('click', stopHtml5Scanner, { passive: true });
+    const overlay = document.getElementById('html5-scanner-overlay');
+    if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) stopHtml5Scanner(); }, { passive: true });
+
+    try {
+      const html5Qrcode = new Html5Qrcode('html5-qrcode');
+      html5Scanner = html5Qrcode;
+      html5ScannerActive = true;
+      // compute qrbox so it never exceeds 50% of viewport height and container width
+      const maxContainerWidth = Math.min(window.innerWidth, 420);
+      const maxContainerHeight = Math.floor(window.innerHeight * 0.5);
+      const boxSize = Math.max(160, Math.min(maxContainerWidth, maxContainerHeight));
+      const config = { fps: 10, qrbox: { width: boxSize, height: boxSize } };
+        // mark session active and reset count
+        scanSessionActive = targetInputId; scanSessionCount = 0; updateScanCountDisplay();
+        // For deliver tab we auto-stop after first result; for others keep scanning until user stops
+        const onScan = qrCodeMessage => {
+          fillScannedCode(targetInputId, qrCodeMessage);
+          if (targetInputId === 'scan-deliver') stopHtml5Scanner();
+        };
+      await html5Qrcode.start({ facingMode: { exact: 'environment' } }, config, onScan, errorMessage => {});
+    } catch (err) {
+      try {
+        // try without exact facingMode
+        const html5Qrcode = new Html5Qrcode('html5-qrcode');
+        html5Scanner = html5Qrcode;
+        html5ScannerActive = true;
+        const maxContainerWidth = Math.min(window.innerWidth, 420);
+        const maxContainerHeight = Math.floor(window.innerHeight * 0.5);
+        const boxSize = Math.max(160, Math.min(maxContainerWidth, maxContainerHeight));
+        const config = { fps: 10, qrbox: { width: boxSize, height: boxSize } };
+        // mark session active and reset count
+        scanSessionActive = targetInputId; scanSessionCount = 0; updateScanCountDisplay();
+        const onScan = qrCodeMessage => {
+          fillScannedCode(targetInputId, qrCodeMessage);
+          if (targetInputId === 'scan-deliver') stopHtml5Scanner();
+        };
+        html5Qrcode.start({ facingMode: 'environment' }, config, onScan, errorMessage => {}).catch(e => { alert('Không thể mở camera: ' + (e && e.message ? e.message : e)); stopHtml5Scanner(); });
+      } catch (e2) {
+        alert('Trình duyệt không hỗ trợ camera hoặc không cho phép truy cập.');
+        stopHtml5Scanner();
+      }
+    }
+  }
+
+  function stopHtml5Scanner() {
+    // stop html5-qrcode scanner if running
+    try {
+      if (html5Scanner) { html5Scanner.stop().catch(()=>{}); html5Scanner.clear().catch(()=>{}); html5Scanner = null; }
+    } catch (e) {}
+    // try to stop Capacitor/native plugin if available
+    try {
+      const cap = window.Capacitor || window.capacitor;
+      const plugin = cap && cap.Plugins && cap.Plugins.BarcodeScanner ? cap.Plugins.BarcodeScanner : (window.BarcodeScanner || null);
+      if (plugin && plugin.stopScan) {
+        try { plugin.stopScan(); } catch(e) { /* ignore */ }
+      }
+    } catch (e) {}
+
+    const modal = document.getElementById('html5-scanner-modal'); if (modal) modal.remove();
+    html5ScannerActive = false;
+
+    // restore focus to the visible input
+    try {
+      if (elems.panelOnboard.style.display !== 'none') elems.scanOnboard.focus();
+      else if (elems.panelOffboard.style.display !== 'none') elems.scanOffboard.focus();
+      else if (elems.panelDeliver.style.display !== 'none') elems.scanDeliver.focus();
+    } catch (e) {}
+    // clear session
+    scanSessionActive = null; scanSessionCount = 0; updateScanCountDisplay();
+  }
+
+  function fillScannedCode(targetInputId, code) {
+    const input = document.getElementById(targetInputId);
+    if (!input) return;
+    input.value = code;
+    // simulate Enter to trigger existing handlers
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    playBeep(900,80);
+  }
+
+  function updateScanCountDisplay() {
+    const el = document.getElementById('html5-scan-count');
+    if (!el) return;
+    if (!scanSessionActive || !scanSessionCount) el.textContent = 'Đã quét được 0 mã';
+    else el.textContent = `Đã quét được ${scanSessionCount} mã`;
+  }
+
+  const state = {
+    meta: null,
+    scannedOnboard: [],
+    scannedOffboard: [],
+    currentDeliverRow: null
+  };
+
+  const elems = {
+    tabOnboard: document.getElementById('tab-onboard'),
+    tabOffboard: document.getElementById('tab-offboard'),
+    tabDeliver: document.getElementById('tab-deliver'),
+    panelOnboard: document.getElementById('panel-onboard'),
+    panelOffboard: document.getElementById('panel-offboard'),
+    panelDeliver: document.getElementById('panel-deliver'),
+    onboardRoute: document.getElementById('onboard-route'),
+    onboardDate: document.getElementById('onboard-date'),
+    onboardDept: document.getElementById('onboard-dept'),
+    scanOnboard: document.getElementById('scan-onboard'),
+    onboardTableBody: document.getElementById('onboard-table-body'),
+    confirmOnboard: document.getElementById('confirm-onboard'),
+    offboardBranch: document.getElementById('offboard-branch'),
+    scanOffboard: document.getElementById('scan-offboard'),
+    offboardTableBody: document.getElementById('offboard-table-body'),
+    confirmOffboard: document.getElementById('confirm-offboard'),
+    btnOpenList: document.getElementById('btn-open-list'),
+    onboardTableCard: document.getElementById('onboard-table-card'),
+    offboardTableCard: document.getElementById('offboard-table-card'),
+    scannedOnboardBadge: document.getElementById('scanned-onboard-badge'),
+    scannedOffboardBadge: document.getElementById('scanned-offboard-badge'),
+    scanDeliver: document.getElementById('scan-deliver')
+  };
+
+  const modalElems = {
+    deliverModal: null,
+    deliverCode: null,
+    deliverStatus: null,
+    deliverPassName: null,
+    deliverPassMobile: null,
+    deliverOnboardBranch: null,
+    deliverOffboardBranch: null,
+    deliverReceiverName: null,
+    deliverReceiverMobile: null,
+    deliverTotal: null,
+    deliverSenderPaid: null,
+    deliverReceiverPaid: null,
+    deliverPaymentMethod: null,
+    deliverNotes: null,
+    deliverConfirm: null,
+    deliverCancel: null,
+    deliverClose: null
+  };
+
+  function initDeliverBindings() {
+    modalElems.deliverModal = document.getElementById('deliver-customer-modal');
+    if (!modalElems.deliverModal) return;
+    modalElems.deliverCode = document.getElementById('deliver-code');
+    modalElems.deliverStatus = document.getElementById('deliver-status');
+    modalElems.deliverPassName = document.getElementById('deliver-pass-name');
+    modalElems.deliverPassMobile = document.getElementById('deliver-pass-mobile');
+    modalElems.deliverOnboardBranch = document.getElementById('deliver-onboard-branch');
+    modalElems.deliverOffboardBranch = document.getElementById('deliver-offboard-branch');
+    modalElems.deliverReceiverName = document.getElementById('deliver-receiver-name');
+    modalElems.deliverReceiverMobile = document.getElementById('deliver-receiver-mobile');
+    modalElems.deliverTotal = document.getElementById('deliver-total');
+    modalElems.deliverSenderPaid = document.getElementById('deliver-sender-paid');
+    modalElems.deliverReceiverPaid = document.getElementById('deliver-receiver-paid');
+    modalElems.deliverPaymentMethod = document.getElementById('deliver-payment-method');
+    modalElems.deliverNotes = document.getElementById('deliver-notes');
+    modalElems.deliverConfirm = document.getElementById('btn-confirm-deliver');
+    modalElems.deliverCancel = document.getElementById('btn-cancel-deliver');
+    modalElems.deliverClose = document.querySelector('#deliver-customer-modal .cargo-modal-close');
+
+    if (modalElems.deliverConfirm) modalElems.deliverConfirm.addEventListener('click', async () => {
+      const row = state.currentDeliverRow;
+      if (!row) return;
+      if (!confirm('Xác nhận giao khách cho mã ' + (row.random_code || row.cargo_id) + '?')) return;
+      const notes = modalElems.deliverNotes ? modalElems.deliverNotes.value.trim() : '';
+      const res = await requestJson(`${API_URL}?action=deliver_customer`, { method: 'POST', body: JSON.stringify({ cargo_id: Number(row.cargo_id), notes }) });
+      if (!res || !res.success) { alert(res?.message || 'Lỗi khi giao khách'); return; }
+      playBeep(800,120);
+      state.scannedOnboard = state.scannedOnboard.filter(r => String(r.cargo_id) !== String(row.cargo_id));
+      state.scannedOffboard = state.scannedOffboard.filter(r => String(r.cargo_id) !== String(row.cargo_id));
+      renderAll();
+      hideDeliverModal();
+    });
+    if (modalElems.deliverCancel) modalElems.deliverCancel.addEventListener('click', hideDeliverModal);
+    if (modalElems.deliverClose) modalElems.deliverClose.addEventListener('click', hideDeliverModal);
+    modalElems.deliverModal.addEventListener('click', event => {
+      if (event.target === modalElems.deliverModal) hideDeliverModal();
+    });
+  }
+
+  function showPanel(name) {
+    elems.panelOnboard.style.display = name === 'onboard' ? '' : 'none';
+    elems.panelOffboard.style.display = name === 'offboard' ? '' : 'none';
+    elems.panelDeliver.style.display = name === 'deliver' ? '' : 'none';
+    [elems.tabOnboard, elems.tabOffboard, elems.tabDeliver].forEach(b => b.classList.remove('active'));
+    if (name === 'onboard') elems.tabOnboard.classList.add('active');
+    if (name === 'offboard') elems.tabOffboard.classList.add('active');
+    if (name === 'deliver') elems.tabDeliver.classList.add('active');
+    elems.onboardTableCard.style.display = name === 'onboard' ? '' : 'none';
+    elems.offboardTableCard.style.display = name === 'offboard' ? '' : 'none';
+    if (name === 'onboard') elems.scanOnboard.focus();
+    if (name === 'offboard') elems.scanOffboard.focus();
+    if (name === 'deliver') elems.scanDeliver.focus();
+  }
+
+  function buildTableRow(r) {
+    return `
+      <tr>
+        <td><strong>${r.random_code||r.ticket_code||r.cargo_id}</strong><br><small>${r.cargo_id ? 'ID: '+r.cargo_id : ''}</small></td>
+        <td>${r.pass_name||''}<br><small>${r.pass_mobile||''}</small></td>
+        <td>${r.onboard_branch||''}</td>
+        <td>${r.offboard_branch||''}</td>
+        <td>${r.reveiver_name||''}<br><small>${r.receiver_mobile||''}</small></td>
+        <td class="text-right">${formatNumberDisplay(r.total_company_receive)} đ</td>
+        <td class="text-right">${formatNumberDisplay(r.sender_paid_vnd)} đ</td>
+        <td class="text-right">${formatNumberDisplay(r.receiver_paid_vnd)} đ</td>
+        <td>${r.payment_method_label||''}</td>
+        <td>${r.status_label||''}</td>
+        <td>${r.register_submit ? new Date(r.register_submit).toLocaleString('vi-VN') : ''}</td>
+      </tr>
+    `;
+  }
+
+  function renderTable(body, items) {
+    body.innerHTML = items.map(buildTableRow).join('') || '<tr><td colspan="11" class="text-center">Chưa có mã nào.</td></tr>';
+    // deliver action now handled from row click on cargo-list modal or separate deliver input
+  }
+
+  function renderAll() {
+    renderTable(elems.onboardTableBody, state.scannedOnboard);
+    renderTable(elems.offboardTableBody, state.scannedOffboard);
+    if (elems.scannedOnboardBadge) elems.scannedOnboardBadge.textContent = `Danh sách đơn đã quét lên xe: ${formatNumberDisplay(state.scannedOnboard.length)} đơn`;
+    if (elems.scannedOffboardBadge) elems.scannedOffboardBadge.textContent = `Danh sách đơn đã quét xuống trạm: ${formatNumberDisplay(state.scannedOffboard.length)} đơn`;
+  }
+
+  async function loadMeta() {
+    const data = await requestJson(`${API_URL}?action=meta`);
+    if (!data || !data.success) return;
+    state.meta = data;
+    elems.onboardRoute.innerHTML = '<option value="">-- Chọn tuyến --</option>' + (data.options.routes || []).map(r => `<option value="${r.id}">${r.label}</option>`).join('');
+    elems.offboardBranch.innerHTML = '<option value="">-- Chọn VP nhận --</option>' + (data.options.branches || []).map(b => `<option value="${b.id}">${b.label}</option>`).join('');
+    elems.onboardDate.value = new Date().toISOString().slice(0,10);
+    elems.onboardRoute.addEventListener('change', loadDeparturesForOnboard);
+    elems.onboardDate.addEventListener('change', loadDeparturesForOnboard);
+    await loadDeparturesForOnboard();
+  }
+
+  async function loadDeparturesForOnboard() {
+    const routeId = elems.onboardRoute.value;
+    const date = elems.onboardDate.value;
+    if (!routeId || !date) {
+      elems.onboardDept.innerHTML = '<option value="">-- Chọn phơi (chuyến) --</option>';
+      return;
+    }
+    elems.onboardDept.innerHTML = '<option value="">Đang tải...</option>';
+    const res = await requestJson(`${API_URL}?action=departures&route_id=${encodeURIComponent(routeId)}&dept_date=${encodeURIComponent(date)}`);
+    if (!res || !res.success || !Array.isArray(res.data) || res.data.length === 0) {
+      elems.onboardDept.innerHTML = '<option value="">Không có chuyến</option>';
+      return;
+    }
+    elems.onboardDept.innerHTML = '<option value="">-- Chọn phơi (chuyến) --</option>' + res.data.map(d => `<option value="${d.dept_id}">${d.dept_time || ''} — ${d.bus_plate || ''}</option>`).join('');
+  }
+
+  // Persist form selections (except barcode inputs) to localStorage
+  function getBarcodeFormKey() {
+    return 'cargoBarcodeForm';
+  }
+
+  function saveBarcodeFormState() {
+    try {
+      const panel = elems.tabOnboard.classList.contains('active') ? 'onboard' : (elems.tabOffboard.classList.contains('active') ? 'offboard' : 'deliver');
+      const mode = panel === 'onboard' ? 1 : (panel === 'offboard' ? 2 : 3);
+      const payload = {
+        panel: panel,
+        mode: mode,
+        onboardRoute: elems.onboardRoute.value || '',
+        onboardDate: elems.onboardDate.value || '',
+        onboardDept: elems.onboardDept.value || '',
+        offboardBranch: elems.offboardBranch.value || ''
+      };
+      localStorage.setItem(getBarcodeFormKey(), JSON.stringify(payload));
+    } catch (e) {}
+  }
+
+  async function loadBarcodeFormState() {
+    try {
+      const raw = localStorage.getItem(getBarcodeFormKey());
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (!saved) return;
+      if (saved.onboardRoute) elems.onboardRoute.value = saved.onboardRoute;
+      if (saved.onboardDate) elems.onboardDate.value = saved.onboardDate;
+      // ensure departures loaded for the selected route/date before setting dept
+      await loadDeparturesForOnboard();
+      if (saved.onboardDept) elems.onboardDept.value = saved.onboardDept;
+      if (saved.offboardBranch) elems.offboardBranch.value = saved.offboardBranch;
+      // prefer numeric mode if available (1:onboard,2:offboard,3:deliver)
+      if (saved.mode) {
+        const map = {1: 'onboard', 2: 'offboard', 3: 'deliver'};
+        const p = map[Number(saved.mode)] || 'onboard';
+        showPanel(p);
+      } else if (saved.panel) {
+        showPanel(saved.panel);
+      }
+    } catch (e) {}
+  }
+
+  // bind save on changes (exclude barcode inputs)
+  elems.onboardRoute.addEventListener('change', () => { saveBarcodeFormState(); });
+  elems.onboardDate.addEventListener('change', () => { saveBarcodeFormState(); });
+  elems.onboardDept.addEventListener('change', () => { saveBarcodeFormState(); });
+  elems.offboardBranch.addEventListener('change', () => { saveBarcodeFormState(); });
+  elems.tabOnboard.addEventListener('click', () => { saveBarcodeFormState(); });
+  elems.tabOffboard.addEventListener('click', () => { saveBarcodeFormState(); });
+  elems.tabDeliver.addEventListener('click', () => { saveBarcodeFormState(); });
+
+  async function findByCode(code) {
+    if (!code) return null;
+    const q = encodeURIComponent(code.trim());
+    const res = await requestJson(`${API_URL}?action=get_by_random_code&random_code=${q}`);
+    if (!res || !res.success || !res.row) return null;
+    return res.row;
+  }
+
+  elems.tabOnboard.addEventListener('click', () => showPanel('onboard'));
+  elems.tabOffboard.addEventListener('click', () => showPanel('offboard'));
+  elems.tabDeliver.addEventListener('click', () => showPanel('deliver'));
+  if (elems.btnOpenList) elems.btnOpenList.addEventListener('click', () => window.location.href = 'cargo-list.html');
+
+  // Save mode when tab changes
+  elems.tabOnboard.addEventListener('click', saveBarcodeFormState);
+  elems.tabOffboard.addEventListener('click', saveBarcodeFormState);
+  elems.tabDeliver.addEventListener('click', saveBarcodeFormState);
+
+  elems.scanOnboard.addEventListener('keydown', async e => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const code = elems.scanOnboard.value.trim();
+    if (!code) return;
+    const row = await findByCode(code);
+    elems.scanOnboard.value = '';
+    if (!row) { playBeep(300,120); alert('Không tìm thấy mã: ' + code); elems.scanOnboard.focus(); return; }
+    if (state.scannedOnboard.some(r=>String(r.cargo_id)===String(row.cargo_id)) || state.scannedOffboard.some(r=>String(r.cargo_id)===String(row.cargo_id))) { playBeep(300,80); elems.scanOnboard.focus(); return; }
+    state.scannedOnboard.push(row);
+    // increment session counter only when a code produced a valid result
+    try { if (scanSessionActive === 'scan-onboard') { scanSessionCount = (scanSessionCount||0) + 1; updateScanCountDisplay(); } } catch(e) {}
+    playBeep(900,80);
+    renderAll();
+    elems.scanOnboard.focus();
+  });
+
+  elems.confirmOnboard.addEventListener('click', async () => {
+    const ids = state.scannedOnboard.map(r => r.cargo_id);
+    if (!ids.length) { alert('Chưa có mã nào.'); return; }
+    const deptId = elems.onboardDept.value;
+    if (!deptId) { alert('Vui lòng chọn phơi (chuyến).'); return; }
+    if (!confirm(`Xác nhận chuyển ${ids.length} đơn lên xe?`)) return;
+    const res = await requestJson(`${API_URL}?action=move_onboard`, { method: 'POST', body: JSON.stringify({ cargo_ids: ids, dept_id: Number(deptId) }) });
+    if (!res || !res.success) { alert(res?.message || 'Lỗi khi chuyển lên xe'); return; }
+    state.scannedOnboard = [];
+    renderAll();
+    alert(`Đã chuyển ${res.updated_rows || ids.length} đơn lên xe.`);
+  });
+
+  elems.scanOffboard.addEventListener('keydown', async e => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const code = elems.scanOffboard.value.trim();
+    if (!code) return;
+    const row = await findByCode(code);
+    elems.scanOffboard.value = '';
+    if (!row) { playBeep(300,120); alert('Không tìm thấy mã: ' + code); elems.scanOffboard.focus(); return; }
+    if (state.scannedOffboard.some(r=>String(r.cargo_id)===String(row.cargo_id)) || state.scannedOnboard.some(r=>String(r.cargo_id)===String(row.cargo_id))) { playBeep(300,80); elems.scanOffboard.focus(); return; }
+    state.scannedOffboard.push(row);
+    // increment session counter only when a code produced a valid result
+    try { if (scanSessionActive === 'scan-offboard') { scanSessionCount = (scanSessionCount||0) + 1; updateScanCountDisplay(); } } catch(e) {}
+    playBeep(900,80);
+    renderAll();
+    elems.scanOffboard.focus();
+  });
+
+  elems.confirmOffboard.addEventListener('click', async () => {
+    const ids = state.scannedOffboard.map(r => r.cargo_id);
+    const toBranch = elems.offboardBranch.value;
+    if (!ids.length) { alert('Chưa có mã nào.'); return; }
+    if (!toBranch) { alert('Vui lòng chọn VP nhận.'); return; }
+    if (!confirm(`Xác nhận cho xuống trạm ${ids.length} đơn về VP ${toBranch}?`)) return;
+    const res = await requestJson(`${API_URL}?action=move_offboard`, { method: 'POST', body: JSON.stringify({ cargo_ids: ids, to_branch_id: Number(toBranch) }) });
+    if (!res || !res.success) { alert(res?.message || 'Lỗi khi cho xuống trạm'); return; }
+    state.scannedOffboard = [];
+    renderAll();
+    alert(`Đã cho xuống ${res.updated_rows || ids.length} đơn về kho nhận.`);
+  });
+
+  elems.scanDeliver.addEventListener('keydown', async e => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const code = elems.scanDeliver.value.trim();
+    if (!code) return;
+    const row = await findByCode(code);
+    elems.scanDeliver.value = '';
+    if (!row) { playBeep(300,120); alert('Không tìm thấy mã: ' + code); elems.scanDeliver.focus(); return; }
+    state.currentDeliverRow = row;
+    // increment session counter when deliver found
+    try { if (scanSessionActive === 'scan-deliver') { scanSessionCount = (scanSessionCount||0) + 1; updateScanCountDisplay(); } } catch(e) {}
+    playBeep(900,80);
+    showDeliverModal(row);
+    elems.scanDeliver.focus();
+  });
+
+  function showDeliverModal(row) {
+    if (!modalElems.deliverModal) return alert('Modal giao khách chưa sẵn sàng');
+    state.currentDeliverRow = row;
+    modalElems.deliverCode.value = row.random_code || row.ticket_code || row.cargo_id;
+    modalElems.deliverStatus.value = row.status_label || '';
+    modalElems.deliverPassName.value = row.pass_name || '';
+    modalElems.deliverPassMobile.value = row.pass_mobile || '';
+    modalElems.deliverOnboardBranch.value = row.onboard_branch || '';
+    modalElems.deliverOffboardBranch.value = row.offboard_branch || '';
+    modalElems.deliverReceiverName.value = row.reveiver_name || '';
+    modalElems.deliverReceiverMobile.value = row.receiver_mobile || '';
+    modalElems.deliverTotal.value = formatCurrency(row.total_company_receive) + ' đ';
+    modalElems.deliverSenderPaid.value = formatCurrency(row.sender_paid_vnd) + ' đ';
+    modalElems.deliverReceiverPaid.value = formatCurrency(row.receiver_paid_vnd) + ' đ';
+    modalElems.deliverPaymentMethod.value = row.payment_method_label || '';
+    modalElems.deliverNotes.value = row.notes || '';
+    modalElems.deliverModal.classList.add('show');
+  }
+
+  function hideDeliverModal() {
+    if (!modalElems.deliverModal) return;
+    modalElems.deliverModal.classList.remove('show');
+    state.currentDeliverRow = null;
+  }
+
+  async function loadDeliverModal() {
+    try {
+      const resp = await fetch('deliver-modal.html');
+      if (resp.ok) {
+        document.getElementById('deliver-modal-container').innerHTML = await resp.text();
+        initDeliverBindings();
+      }
+    } catch (e) {}
+  }
+
+  async function init() {
+    await loadMeta();
+    await loadBarcodeFormState();
+    renderAll();
+    elems.scanOnboard.focus();
+  }
+
+  init();
+  loadDeliverModal();
+  </script>
+</body>
+</html>

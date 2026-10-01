@@ -1,0 +1,100 @@
+:root{
+	--bg:#f4f6fb;
+	--surface:#ffffff;
+	--muted:#6b7280;
+	--accent:#2563eb;
+	--card-radius:10px;
+}
+body{font-family:Inter,system-ui,Segoe UI,Arial,Helvetica,sans-serif;margin:0;background:var(--bg);color:#111}
+.pms-header{background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:14px 24px;box-shadow:0 2px 6px rgba(2,6,23,0.15)}
+.pms-header h1{margin:0;font-size:16px;font-weight:700}
+.pms-header nav a{margin-left:18px;color:#cbd5e1;text-decoration:none;font-weight:600}
+.pms-main{padding:20px 28px}
+
+/* Dashboard grid */
+.dashboard-grid{display:grid;grid-template-columns:1fr 320px;gap:18px}
+.left-col{display:flex;flex-direction:column;gap:18px}
+.top-cards{display:flex;gap:12px}
+.top-card{background:var(--surface);padding:16px;border-radius:var(--card-radius);box-shadow:0 6px 16px rgba(16,24,40,0.06);flex:1}
+.top-card .title{font-size:13px;color:var(--muted);margin-bottom:8px}
+.top-card .value{font-size:20px;font-weight:700}
+
+.progress-gantt{display:grid;grid-template-columns:320px 1fr;gap:12px}
+.donut{background:var(--surface);padding:16px;border-radius:var(--card-radius);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.gantt{background:var(--surface);padding:16px;border-radius:var(--card-radius)}
+
+.kanban{display:flex;gap:12px}
+.kanban-column{background:var(--surface);padding:10px;border-radius:8px;flex:1;min-width:180px}
+.column-title{font-weight:700;margin-bottom:8px}
+.card-item{background:#f8fafc;padding:10px;border-radius:6px;margin-bottom:8px;box-shadow:0 1px 2px rgba(2,6,23,0.03)}
+
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.chart-card{background:var(--surface);padding:14px;border-radius:var(--card-radius)}
+
+/* Force canvas size to avoid Chart.js autosizing issues */
+.chart-card canvas{width:100% !important; height:220px !important; max-height:320px !important; display:block}
+
+/* Right sidebar */
+.right-col{display:flex;flex-direction:column;gap:12px}
+.side-card{background:var(--surface);padding:14px;border-radius:var(--card-radius)}
+.side-card .label{color:var(--muted);font-size:13px}
+.side-card .big{font-size:18px;font-weight:700}
+
+/* Plan inline edit form */
+.plan-form-inline{display:flex;flex-direction:column;gap:8px;background:#fff;padding:10px;border-radius:8px;border:1px solid #eef2ff}
+.plan-form-inline input,.plan-form-inline textarea{padding:8px;border-radius:6px;border:1px solid #e6eefc;font-size:14px}
+.plan-form-inline .form-actions{display:flex;gap:8px;justify-content:flex-end}
+.plan-form-inline .btn-secondary{background:#e6eefc;color:var(--accent);border:none;padding:8px 10px;border-radius:8px;cursor:pointer}
+
+/* icons */
+.pms-header .fa, .plan-actions .fa{margin-right:6px}
+.plan-actions button{background:transparent;border:0;color:var(--muted);cursor:pointer;padding:6px;border-radius:6px}
+.plan-actions button:hover{background:#f1f5f9;color:var(--accent)}
+
+/* small visual tweaks to better match screenshot */
+.pms-header nav a{display:inline-flex;align-items:center;gap:8px}
+.top-card .value{font-size:20px;color:var(--accent)}
+.side-card ul{margin:0;padding-left:18px}
+
+/* Bootstrap overrides */
+.pms-header{background:#0b1220}
+.pms-header nav a{color:#cbd5e1}
+.plan{background:var(--surface);padding:12px;border-radius:8px;border:1px solid #eef2ff}
+.plans-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:12px}
+.plan .meta{font-size:12px;color:var(--muted);margin-top:8px}
+.plan .plan-projects{margin-top:8px;font-size:13px}
+.plan .plan-actions{display:flex;gap:8px;margin-top:10px}
+
+.projects-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.project-card{padding:12px;background:var(--surface);border-radius:8px;border:1px solid #eef2ff}
+.project-card .meta{font-size:12px;color:var(--muted);margin-top:6px}
+
+/* Bootstrap card tweaks */
+.card { box-shadow:0 6px 16px rgba(16,24,40,0.04); border-radius:10px; }
+.card .card-body { padding:14px; }
+
+.plan .card-title, .project-card .card-title { font-weight:700; }
+.plans-list .card, .projects-list .card { background:var(--surface); }
+
+.tasks-list .table { background: var(--surface); border-radius:8px; overflow:hidden; }
+.tasks-list .table thead th { background: #fbfdff; }
+
+/* Responsive spacing tweaks */
+@media (max-width: 768px){
+	.plans-list, .projects-list { grid-template-columns: 1fr; }
+}
+
+.tasks-list table td, .tasks-list table th{vertical-align:middle}
+.task-actions button{background:transparent;border:0;color:var(--muted);cursor:pointer;padding:6px}
+.task-actions button:hover{color:var(--accent)}
+
+/* small utilities */
+.muted{color:var(--muted)}
+.btn{background:var(--accent);color:#fff;padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+
+/* responsive */
+@media(max-width:900px){
+	.dashboard-grid{grid-template-columns:1fr}
+	.progress-gantt{grid-template-columns:1fr}
+	.charts{grid-template-columns:1fr}
+}

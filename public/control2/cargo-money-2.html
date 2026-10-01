@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Danh sách phiếu thu</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="cms.css" />
+  <link rel="stylesheet" href="cargo.css" />
+  <link rel="stylesheet" href="scroll-top.css" />
+<link href="/html_logo.ico" rel="shortcut icon">
+  <style>
+    /* Filter Panel */
+    .filter-panel { background: #fff; border: 1px solid #d9dee6; border-radius: 10px; padding: 16px; margin-bottom: 18px; box-shadow: 0 1px 10px rgba(0,0,0,0.03); }
+    .filter-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; align-items: end; }
+
+    /* Table Card & Actions */
+    .table-card { background: #fff; border: 1px solid #d9dee6; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 10px rgba(0,0,0,0.03); }
+    .table-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid #e5e9ef; }
+    .table-actions .summary-box { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+    .summary-badge { 
+      background: #e7f1ff; 
+      color: #0d47a1; 
+      border-radius: 8px; 
+      padding: 10px 12px; 
+      font-size: 13px; 
+      min-width: 110px;
+      font-weight: 500;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+    }
+    .table-scroll::-webkit-scrollbar { height: 8px; }
+    .table-scroll::-webkit-scrollbar-thumb { background: rgba(13, 110, 253, 0.35); border-radius: 999px; }
+    .table-scroll::-webkit-scrollbar-track { background: transparent; }
+
+    /* Table Styles */
+    table.list-table { width: 100%; border-collapse: collapse; min-width: 800px; }
+    table.list-table th, table.list-table td { border-bottom: 1px solid #e7edf3; padding: 12px 10px; text-align: left; vertical-align: middle; }
+    table.list-table th { background: #f8f9fa; color: #1f3f6c; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+    table.list-table tbody tr { transition: background-color 0.15s ease; cursor: pointer; }
+    table.list-table tbody tr:hover { background: #f8fbff; }
+    table.list-table td small { color: #556f88; display: block; margin-top: 4px; }
+
+    /* Pagination */
+    .pagination { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; padding: 14px 18px; }
+    .pagination button { 
+      border: 1px solid #c4cdd7; 
+      background: #fff; 
+      padding: 8px 12px; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      color: #1f3f6c;
+      transition: all 0.15s ease;
+    }
+    .pagination button:hover { background: #f0f0f0; border-color: #999; }
+    .pagination button.active { background: #0d6efd; color: #fff; border-color: #0d6efd; }
+
+    /* Utilities */
+    .text-right { text-align: right !important; }
+    .empty-state { padding: 24px; text-align: center; color: #556f88; font-size: 16px; }
+    .phieu-type-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .phieu-type-cr { background: #d4edda; color: #155724; }
+    .phieu-type-cc { background: #fff3cd; color: #856404; }
+
+    @media (max-width: 768px) {
+      .filter-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div id="cms-header"></div>
+  <script src="header-loader.js"></script>
+  <div class="page-shell">
+    <div class="page-title">
+      <div>
+        <h1>Tiền hàng</h1>
+        <div class="status-pill">Thống kê thu tiền hàng theo nhân viên</div>
+      </div>
+      <div class="toolbar">
+        <button id="btn-refresh"><i class="fa fa-sync"></i> Làm mới</button>
+      </div>
+    </div>
+
+    <div class="filter-panel">
+      <div class="filter-grid">
+        <div class="field-group">
+          <label for="current-branch">VP làm việc</label>
+          <select id="current-branch">
+            <option value="">-- chọn VP --</option>
+          </select>
+        </div>
+        <!-- <div class="field-group">
+          <label for="filter-type">Loại phiếu</label>
+          <select id="filter-type">
+            <option value="">-- Tất cả --</option>
+            <option value="1">Phiếu thu Đã trả (CR)</option>
+            <option value="2">Phiếu thu Còn lại (CC)</option>
+          </select>
+        </div> -->
+        <div class="field-group">
+          <label for="filter-creater">N.viên thu</label>
+          <select id="filter-creater"></select>
+        </div>
+        <div class="field-group">
+          <label for="filter-date-from">Từ ngày</label>
+          <input type="date" id="filter-date-from" />
+        </div>
+        <div class="field-group">
+          <label for="filter-date-from">Giờ</label>
+          <input type="time" id="filter-time-from" />
+        </div>
+        <div class="field-group">
+          <label for="filter-date-to">Đến ngày</label>
+          <input type="date" id="filter-date-to" />
+        </div>
+        <div class="field-group">
+          <label for="filter-date-to">Giờ</label>
+          <input type="time" id="filter-time-to" />
+        </div>
+        <!-- <div class="field-group">
+          <label for="filter-limit">Phiếu/trang</label>
+          <select id="filter-limit">
+            <option value="15">15</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="100" selected>100</option>
+          </select>
+        </div> -->
+        <div class="field-group">
+          <button id="btn-filter" class="secondary" style="width:100%;">Lọc</button>
+        </div>
+        <div class="field-group">
+          <button id="btn-reset-filter" class="secondary" style="width:100%;">Reset</button>
+        </div>
+        <div class="field-group">
+          <button id="btn-collect-money" class="danger" style="width:100%;">Thu tiền</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-actions">
+        <div class="summary-box">
+          <div class="summary-badge" id="summary-total">Tổng: 0 nhân viên</div>
+          <div class="summary-badge" id="summary-total-amount">Tổng đã thu: 0 đ</div>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table class="list-table" id="money-table">
+          <thead>
+            <tr>
+              <th>Nhân viên</th>
+              <th>Số đơn gửi</th>
+              <th>Tổng CR</th>
+              <th>Số đơn giao</th>
+              <th>Tiền giao hàng</th>
+              <th>Thu hộ</th>
+              <th>Cước khác</th>
+              <th>Tổng đã thu</th>
+            </tr>
+          </thead>
+          <tbody id="money-table-body"></tbody>
+        </table>
+        <div id="money-empty" class="empty-state" style="display:none;">Không có dữ liệu phù hợp.</div>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+
+  <button id="scrollTopBtn" class="scroll-top-btn" type="button" title="Lên đầu trang">↑</button>
+
+  <div id="detail-modal" class="cargo-modal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+    <div class="cargo-modal-backdrop"></div>
+    <div class="cargo-modal-dialog" style="max-width: 900px;">
+      <div class="cargo-modal-header">
+        <h3 id="detailTitle">Chi tiết phiếu thu</h3>
+        <button type="button" class="cargo-modal-close" aria-label="Đóng">&times;</button>
+      </div>
+      <div class="cargo-modal-body">
+        <div class="row g-3 mb-3">
+          <div class="col-md-3">
+            <strong>Mã phiếu:</strong>
+            <div id="detail-id">-</div>
+          </div>
+          <div class="col-md-3">
+            <strong>Loại:</strong>
+            <div id="detail-type">-</div>
+          </div>
+          <div class="col-md-3">
+            <strong>Ngày tạo:</strong>
+            <div id="detail-date">-</div>
+          </div>
+          <div class="col-md-3">
+            <strong>Người tạo:</strong>
+            <div id="detail-creater">-</div>
+          </div>
+          <div class="col-md-3">
+            <strong>Số tiền:</strong>
+            <div id="detail-amount">-</div>
+          </div>
+          <div class="col-md-3">
+            <strong>Số đơn:</strong>
+            <div id="detail-count">-</div>
+          </div>
+          <div class="col-md-6">
+            <strong>Ghi chú:</strong>
+            <div id="detail-notes">-</div>
+          </div>
+        </div>
+        <hr />
+        <h5>Danh sách đơn hàng trong phiếu:</h5>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered" id="detail-cargo-table">
+            <thead>
+              <tr>
+                <th>Mã đơn</th>
+                <th>Hoàn/người gửi</th>
+                <th>Người nhận</th>
+                <th>Hàng</th>
+                <th>VP gửi</th>
+                <th>VP nhận</th>
+                <th>Tổng tiền</th>
+              </tr>
+            </thead>
+            <tbody id="detail-cargo-body"></tbody>
+          </table>
+          <div id="detail-cargo-empty" class="text-center text-muted">Không có đơn hàng.</div>
+        </div>
+      </div>
+      <div class="cargo-modal-footer">
+        <button type="button" class="btn btn-danger" id="detail-delete">Xóa phiếu</button>
+        <button type="button" class="btn btn-secondary" id="detail-close">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = '/api/cargo.php';
+    const token = localStorage.getItem('cms_token') || localStorage.getItem('api_token') || '';
+
+    function applyFiltersFromUrlAndReload() {
+      const params = new URLSearchParams(window.location.search || '');
+      const branchId = (params.get('branch_id') || '').trim();
+      const fromDateTime = (params.get('from_date_time') || '').trim();
+      const toDateTime = (params.get('to_date_time') || '').trim();
+
+      if (!branchId && !fromDateTime && !toDateTime) return;
+
+      const existingRaw = localStorage.getItem('moneyListFilters2');
+      let existing = {};
+      if (existingRaw) {
+        try {
+          existing = JSON.parse(existingRaw) || {};
+        } catch (err) {
+          existing = {};
+        }
+      }
+
+      const next = {
+        ...existing,
+        page: 1
+      };
+
+      if (branchId) {
+        next.branch_id = branchId;
+        localStorage.setItem('current_branch_id', branchId);
+      }
+
+      if (fromDateTime) {
+        const from = fromDateTime.split(' ');
+        next.date_from = from[0] || '';
+        next.time_from = from[1] || '';
+      }
+
+      if (toDateTime) {
+        const to = toDateTime.split(' ');
+        next.date_to = to[0] || '';
+        next.time_to = to[1] || '';
+      }
+
+      localStorage.setItem('moneyListFilters2', JSON.stringify(next));
+
+      const cleanUrl = `${window.location.pathname}${window.location.hash || ''}`;
+      window.location.replace(cleanUrl);
+    }
+
+    applyFiltersFromUrlAndReload();
+
+    if (!token) {
+      window.location.href = 'cms-login.html';
+    }
+
+    const state = {
+      meta: null,
+      rows: [],
+      page: 1,
+      limit: 30,
+      total: 0,
+      filters: {
+        branch_id: '',
+        creater_id: '',
+        date_from: '',
+        date_to: '',
+        time_from: '',
+        time_to: ''
+      }
+    };
+
+    const elems = {
+      currentBranch: document.getElementById('current-branch'),
+      type: document.getElementById('filter-type'),
+      creater: document.getElementById('filter-creater'),
+      dateFrom: document.getElementById('filter-date-from'),
+      dateTo: document.getElementById('filter-date-to'),
+      timeFrom: document.getElementById('filter-time-from'),
+      timeTo: document.getElementById('filter-time-to'),
+      limit: document.getElementById('filter-limit'),
+      filterBtn: document.getElementById('btn-filter'),
+      resetFilterBtn: document.getElementById('btn-reset-filter'),
+      collectMoneyBtn: document.getElementById('btn-collect-money'),
+      refreshBtn: document.getElementById('btn-refresh'),
+      totalBadge: document.getElementById('summary-total'),
+      totalAmountBadge: document.getElementById('summary-total-amount'),
+      tableBody: document.getElementById('money-table-body'),
+      pagination: document.getElementById('pagination'),
+      emptyState: document.getElementById('money-empty')
+    };
+
+    function redirectToLogin() {
+      localStorage.removeItem('cms_token');
+      localStorage.removeItem('api_token');
+      window.location.href = 'cms-login.html';
+    }
+
+    function isAuthError(data, response) {
+      if (response && (response.status === 401 || response.status === 403)) return true;
+      const msg = data && data.message ? String(data.message) : '';
+      return data && data.success === false && /invalid|expired|missing.*authorization|missing.*auth|access denied/i.test(msg);
+    }
+
+    async function requestJson(url, opts = {}) {
+      const headers = opts.headers || {};
+      headers['Authorization'] = 'Bearer ' + token;
+      if (!opts.method || opts.method.toUpperCase() === 'GET') {
+        headers['Accept'] = 'application/json';
+      }
+      if (opts.body && !opts.headers?.['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+      }
+      const response = await fetch(url, Object.assign({ credentials: 'same-origin' }, opts, { headers }));
+      const text = await response.text();
+      let data;
+      try { data = JSON.parse(text); } catch (err) { data = { success: false, message: 'Invalid response', raw: text }; }
+      if (isAuthError(data, response)) {
+        redirectToLogin();
+        return data;
+      }
+      return data;
+    }
+
+    function formatCurrency(num) {
+      const n = Number(num);
+      if (!isFinite(n)) return '0';
+      return n.toLocaleString('us-US');
+    }
+
+    async function loadMeta() {
+      const data = await requestJson(`${API_URL}?action=meta`);
+      if (!data || !data.success) {
+        alert('Không tải được metadata văn phòng làm việc.');
+        return;
+      }
+      state.meta = data;
+      const branchWorkOptions = '<option value="">-- chọn VP --</option>' + (data.options?.branch_work || []).map(item => `<option value="${item.id}">${item.label}</option>`).join('');
+      elems.currentBranch.innerHTML = branchWorkOptions;
+
+      const savedBranchId = localStorage.getItem('current_branch_id') || '';
+      if (savedBranchId) {
+        elems.currentBranch.value = savedBranchId;
+      }
+
+      // await loadCreaterOptions(elems.currentBranch.value || '');
+    }
+
+    async function loadCreaterOptions(branchId) {
+      const data = await requestJson(`${API_URL}?action=meta_money&branch_id=${encodeURIComponent(branchId || '')}`);
+      if (!data || !data.success) {
+        elems.creater.innerHTML = '<option value="">-- Tất cả --</option>';
+        return;
+      }
+      const creaters = data.options?.creaters || [];
+      elems.creater.innerHTML = '<option value="">-- Tất cả --</option>' + creaters.map(item => `<option value="${item.id}">${item.label}</option>`).join('');
+    }
+
+    function resetFilters() {
+      // elems.currentBranch.value = '';
+      // elems.type.value = '';
+      elems.creater.value = '';
+      elems.dateFrom.value = '';
+      elems.dateTo.value = '';
+      elems.timeFrom.value = '';
+      elems.timeTo.value = '';
+      // elems.limit.value = '100';
+      state.page = 1;
+      // localStorage.setItem('current_branch_id', '');
+      loadCreaterOptions('');
+      saveFiltersToStorage();
+      loadList(1);
+    }
+
+    function saveFiltersToStorage() {
+      const filterData = {
+        branch_id: elems.currentBranch.value,
+        creater_id: elems.creater.value,
+        date_from: elems.dateFrom.value,
+        date_to: elems.dateTo.value,
+        time_from: elems.timeFrom.value,
+        time_to: elems.timeTo.value,
+        // limit: elems.limit.value,
+        page: state.page
+      };
+      localStorage.setItem('moneyListFilters2', JSON.stringify(filterData));
+    }
+
+    function loadFiltersFromStorage() {
+      const raw = localStorage.getItem('moneyListFilters2');
+      if (!raw) return;
+      try {
+        const saved = JSON.parse(raw);
+        if (saved.branch_id !== undefined) elems.currentBranch.value = saved.branch_id;
+        if (saved.creater_id !== undefined) elems.creater.value = saved.creater_id;
+        if (saved.date_from !== undefined) elems.dateFrom.value = saved.date_from;
+        if (saved.date_to !== undefined) elems.dateTo.value = saved.date_to;
+        if (saved.time_from !== undefined) elems.timeFrom.value = saved.time_from;
+        if (saved.time_to !== undefined) elems.timeTo.value = saved.time_to;
+        // if (saved.limit !== undefined) elems.limit.value = saved.limit;
+        if (saved.page !== undefined) state.page = Number(saved.page) || 1;
+      } catch (err) {
+        console.warn('Lỗi đọc filter', err);
+      }
+    }
+
+    function renderSummary() {
+      const totalEmployees = Number(state.total) || state.rows.length || 0;
+      const totalCollected = state.rows.reduce((sum, row) => sum + (Number(row.sum_thu_ho_vnd) || 0) + (Number(row.sum_phi_thu_ho_vnd) || 0), 0);
+      elems.totalBadge.textContent = `Tổng: ${formatCurrency(totalEmployees)} nhân viên`;
+      elems.totalAmountBadge.textContent = `Tổng đã thu: ${formatCurrency(totalCollected)} đ`;
+    }
+
+    function normalizeRows(rawRows) {
+      if (Array.isArray(rawRows)) return rawRows;
+      if (!rawRows || typeof rawRows !== 'object') return [];
+      return Object.keys(rawRows).map(key => ({
+        __key: key,
+        ...rawRows[key],
+        user_id: key
+      }));
+    }
+
+    function buildRow(row) {
+      return `
+        <tr>
+          <td>${row.e_mail || row.user_id || '-'} </td>
+          <td class="text-right">${formatCurrency(row.don_nhan || 0)}</td>
+          <td class="text-right">${formatCurrency(row.sum_sender_paid_vnd || 0)} đ</td>
+          <td class="text-right">${formatCurrency(row.don_giao || 0)}</td>
+          <td class="text-right">${formatCurrency(row.sum_receiver_paid_vnd || 0)} đ</td>
+          <td class="text-right">${formatCurrency(row.sum_thu_ho_vnd || 0)} đ</td>
+          <td class="text-right">${formatCurrency(row.sum_phi_thu_ho_vnd || 0)} đ</td>
+          <td class="text-right"><strong>${formatCurrency(row.tong_da_thu)} đ</strong></td>
+        </tr>
+      `;
+    }
+
+    function renderTable() {
+      if (!state.rows.length) {
+        elems.tableBody.innerHTML = '';
+        elems.emptyState.style.display = 'block';
+        elems.pagination.innerHTML = '';
+        renderSummary();
+        return;
+      }
+      elems.emptyState.style.display = 'none';
+      html = state.rows.map(buildRow).join('');
+      // thêm một hàng tổng cộng ở cuối bảng, giữ các thông tin này để submit api tạo phiếu thu tiền hàng cho tất cả các nhân viên trong danh sách hiện tại
+      const totalRow = {
+        e_mail: 'Tổng cộng',
+        don_nhan: state.rows.reduce((sum, r) => sum + (Number(r.don_nhan) || 0), 0),
+        sum_sender_paid_vnd: state.rows.reduce((sum, r) => sum + (Number(r.sum_sender_paid_vnd) || 0), 0),
+        don_giao: state.rows.reduce((sum, r) => sum + (Number(r.don_giao) || 0), 0),
+        sum_receiver_paid_vnd: state.rows.reduce((sum, r) => sum + (Number(r.sum_receiver_paid_vnd) || 0), 0),
+        sum_thu_ho_vnd: state.rows.reduce((sum, r) => sum + (Number(r.sum_thu_ho_vnd) || 0), 0),
+        sum_phi_thu_ho_vnd: state.rows.reduce((sum, r) => sum + (Number(r.sum_phi_thu_ho_vnd) || 0), 0),
+        tong_da_thu: state.rows.reduce((sum, r) => sum + (Number(r.tong_da_thu) || 0), 0)
+      };
+      html += buildRow(totalRow);
+      elems.tableBody.innerHTML = html;
+      renderPagination();
+      renderSummary();
+    }
+
+    function renderPagination() {
+      const totalPages = Math.max(1, Math.ceil((state.total || 0) / (state.limit || 1)));
+      const current = Number(state.page) || 1;
+      if (totalPages <= 1) {
+        elems.pagination.innerHTML = '';
+        return;
+      }
+      let start = Math.max(1, current - 3);
+      let end = Math.min(totalPages, start + 6);
+      if (end - start < 6) start = Math.max(1, end - 6);
+
+      const parts = [];
+      parts.push(`<button data-page="${Math.max(1, current - 1)}" ${current === 1 ? 'disabled' : ''}>‹</button>`);
+      if (start > 1) parts.push(`<button data-page="1">1</button>`);
+      if (start > 2) parts.push(`<span class="mx-2">…</span>`);
+      for (let p = start; p <= end; p++) {
+        parts.push(`<button data-page="${p}" class="${p === current ? 'active' : ''}">${p}</button>`);
+      }
+      if (end < totalPages - 1) parts.push(`<span class="mx-2">…</span>`);
+      if (end < totalPages) parts.push(`<button data-page="${totalPages}">${totalPages}</button>`);
+      parts.push(`<button data-page="${Math.min(totalPages, current + 1)}" ${current === totalPages ? 'disabled' : ''}>›</button>`);
+
+      elems.pagination.innerHTML = parts.join('');
+      Array.from(elems.pagination.querySelectorAll('button[data-page]')).forEach(btn => {
+        btn.addEventListener('click', () => {
+          const p = Number(btn.getAttribute('data-page')) || 1;
+          if (p === current) return;
+          loadList(p);
+        });
+      });
+    }
+
+    async function loadList(page = 1) {
+      state.page = page;
+      // state.limit = Number(elems.limit.value) || 30;
+      state.filters.branch_id = elems.currentBranch.value;
+      state.filters.creater_id = elems.creater.value;
+      state.filters.date_from = elems.dateFrom.value;
+      state.filters.date_to = elems.dateTo.value;
+      state.filters.time_from = elems.timeFrom.value;
+      state.filters.time_to = elems.timeTo.value;
+
+      const params = new URLSearchParams();
+      params.set('action', 'list_money_2');
+      params.set('page', state.page);
+      // params.set('limit', state.limit);
+      if (state.filters.branch_id) params.set('branch_id', state.filters.branch_id);
+      if (state.filters.creater_id) params.set('creater_id', state.filters.creater_id);
+      if (state.filters.date_from) params.set('date_from', state.filters.date_from);
+      if (state.filters.date_to) params.set('date_to', state.filters.date_to);
+      if (state.filters.time_from) params.set('time_from', state.filters.time_from);
+      if (state.filters.time_to) params.set('time_to', state.filters.time_to);
+
+      saveFiltersToStorage();
+      const data = await requestJson(`${API_URL}?${params.toString()}`);
+      if (!data || !data.success) {
+        alert(data?.message || 'Lỗi tải danh sách phiếu thu.');
+        return;
+      }
+      state.rows = normalizeRows(data.data);
+      state.total = Number(data.total) || state.rows.length;
+      renderTable();
+    }
+
+    // Event listeners
+    elems.filterBtn.addEventListener('click', () => loadList(1));
+    elems.resetFilterBtn.addEventListener('click', resetFilters);
+    elems.collectMoneyBtn.addEventListener('click',  async () => {
+      // đảm bảo các field được chọn đầy đủ trước khi submit
+
+      const branchId = elems.currentBranch.value;
+      if (!branchId || !elems.dateFrom.value || !elems.dateTo.value) {
+        alert('Vui lòng chọn đầy đủ các trường trước khi thu tiền.');
+        return;
+      }
+      // submit lên api cargo.php : post : make_vexe_cargos_phieu_thu để tạo phiếu thu tiền hàng cho tất cả các nhân viên trong danh sách hiện tại
+      // confirm trước khi submit
+      if (!confirm('Bạn có chắc chắn muốn tạo phiếu thu tiền hàng cho tất cả các nhân viên trong danh sách hiện tại?')) {
+        return;
+      }
+      // lấy thông tin totalRow để gửi lên api
+      const totalRow = state.rows.reduce((acc, row) => {
+        acc.don_nhan += Number(row.don_nhan) || 0;
+        acc.sum_sender_paid_vnd += Number(row.sum_sender_paid_vnd) || 0;
+        acc.don_giao += Number(row.don_giao) || 0;
+        acc.sum_receiver_paid_vnd += Number(row.sum_receiver_paid_vnd) || 0;
+        acc.sum_thu_ho_vnd += Number(row.sum_thu_ho_vnd) || 0;
+        acc.sum_phi_thu_ho_vnd += Number(row.sum_phi_thu_ho_vnd) || 0;
+        acc.tong_da_thu += Number(row.tong_da_thu) || 0;
+        return acc;
+      }, {
+        don_nhan: 0,
+        sum_sender_paid_vnd: 0,
+        don_giao: 0,
+        sum_receiver_paid_vnd: 0,
+        sum_thu_ho_vnd: 0,
+        sum_phi_thu_ho_vnd: 0,
+        tong_da_thu: 0
+      });
+      const data = await requestJson(`${API_URL}?action=make_vexe_cargos_phieu_thu`, {
+        method: 'POST',
+        body: JSON.stringify({
+          branch_id: branchId,
+          date_from: elems.dateFrom.value,
+          date_to: elems.dateTo.value,
+          time_from: elems.timeFrom.value,
+          time_to: elems.timeTo.value,
+          total_row: totalRow
+        })
+      });
+      // báo lỗi nếu api trả về lỗi
+      if (!data || !data.success) {
+        alert(data?.message || 'Lỗi tạo phiếu thu tiền hàng.');
+        return;
+      }
+      alert('Đã tạo phiếu thu tiền hàng danh sách hiện tại.');
+      await loadList(state.page);
+    });
+    elems.refreshBtn.addEventListener('click', () => location.reload());
+    // elems.limit.addEventListener('change', () => loadList(1));
+    elems.currentBranch.addEventListener('change', async () => {
+      localStorage.setItem('current_branch_id', elems.currentBranch.value || '');
+      await loadCreaterOptions(elems.currentBranch.value || '');
+      elems.creater.value = '';
+    });
+
+    (async function init() {
+      await loadMeta();
+      loadFiltersFromStorage();
+      if (elems.currentBranch.value) {
+        localStorage.setItem('current_branch_id', elems.currentBranch.value);
+        const savedCreaterId = elems.creater.value;
+        await loadCreaterOptions(elems.currentBranch.value);
+        if (savedCreaterId) {
+          elems.creater.value = savedCreaterId;
+        }
+      }
+      await loadList(state.page || 1);
+    })();
+  </script>
+  <script src="scroll-top.js"></script>
+</body>
+</html>

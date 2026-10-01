@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Đăng nhập CMS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="cms.css">
+    <link href="/html_logo.ico" rel="shortcut icon">
+    <style>
+        input[type="text"], input[type="password"] { width: 95%; }
+        button { width: 100%; padding: 10px; }
+    </style>
+</head>
+<body>
+    <div class="cms-login-container">
+        <h2>Đăng nhập CMS</h2>
+        <div id="cms-error" class="cms-error" style="display:none"></div>
+        <form id="cms-loginForm">
+            <div class="cms-form-group">
+                <label for="cms-email">Email đăng nhập</label>
+                <input type="text" id="cms-email" name="cms-email" required autofocus>
+            </div>
+            <div class="cms-form-group">
+                <label for="cms-password">Mật khẩu</label>
+                <input type="password" id="cms-password" name="cms-password" required>
+            </div>
+            <button type="submit" id="cms-loginBtn">Đăng nhập</button>
+        </form>
+    </div>
+    <script>
+            // Absolute API base (override by setting window.__API_BASE__ before this script if needed)
+            // Use same-origin by default; can be overridden by setting window.__API_BASE__
+            const API_BASE = window.__API_BASE__ || '';
+            // Redirect relative /api/ URLs to absolute API base to avoid origin mismatches
+            (function(){
+                const _fetch = window.fetch.bind(window);
+                window.fetch = function(input, init){
+                    try {
+                        if (typeof input === 'string' && input.startsWith('/api/')) input = API_BASE + input;
+                        else if (input instanceof Request && input.url && input.url.startsWith('/api/')) input = new Request(API_BASE + input.url, input);
+                    } catch(e){}
+                    return _fetch(input, init);
+                };
+            })();
+
+        document.getElementById('cms-loginForm').onsubmit = async function(e) {
+            e.preventDefault();
+            document.getElementById('cms-loginBtn').disabled = true;
+            document.getElementById('cms-error').style.display = 'none';
+            const email = document.getElementById('cms-email').value.trim();
+            const password = document.getElementById('cms-password').value;
+            try {
+                    const res = await fetch('/api/login.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, username: email, password })
+                });
+                let data = null;
+                try {
+                    data = await res.json();
+                } catch (e) {
+                    data = { success: false, message: 'Phản hồi server không hợp lệ' };
+                }
+                if (res.ok && data.success && (data.token || data.api_token)) {
+                    const tok = data.token || data.api_token;
+                    localStorage.setItem('cms_token', tok);
+
+                    // Fetch full user info from /api/generic.php?action=me (awaited)
+                    try {
+                            const meRes = await fetch(`/api/generic.php?action=me`, { headers: { 'Authorization': 'Bearer ' + tok } });
+                        if (meRes && meRes.ok) {
+                            const meJson = await meRes.json();
+                            if (meJson && meJson.success && meJson.user) {
+                                const u = meJson.user;
+                                localStorage.setItem('cms_user_id', u.user_id ?? u.id ?? '');
+                                localStorage.setItem('cms_user_email', u.e_mail ?? u.email ?? '');
+                                localStorage.setItem('cms_user_name', u.first_name ?? u.name ?? '');
+                                if (u.role_ids) localStorage.setItem('cms_user_roles', isNaN(u.role_ids) ? JSON.stringify(u.role_ids) : String(u.role_ids));
+
+                                                    try {
+                        const uid = localStorage.getItem('cms_user_id') || '';
+                        if (uid) {
+                                const url = `/api/generic.php?action=user_css&user_id=${encodeURIComponent(uid)}`;
+                            console.debug('cms-login: fetching user_css from', url);
+                                const resCss = await fetch(url, { headers: { 'Authorization': 'Bearer ' + tok } });
+                            let cssText = '';
+                            try {
+                                const j = await resCss.json();
+                                cssText = j.css_content ?? j.css ?? j.data ?? '';
+                                console.debug('cms-login: user_css response', j && (j.success ? 'success' : 'no-success'));
+                            } catch (e) {
+                                try { cssText = await resCss.text(); console.debug('cms-login: user_css text response', cssText.slice(0,200)); } catch (e2) { cssText = ''; }
+                            }
+                            const cleaned = String(cssText || '').replace(/<[^>]+>/g, '');
+                            localStorage.setItem('cms_user_css', cleaned);
+                            console.debug('cms-login: stored cms_user_css length', (cleaned || '').length);
+                        } else {
+                            console.debug('cms-login: no user_id available to fetch user_css');
+                        }
+                    } catch (e) { if (typeof console !== 'undefined' && console.warn) console.warn('cms-login: fetch user css error', e); }
+
+                try {
+                window.location.href = u.login_url_2 || '/control2/';
+                } catch (e) {
+                window.location.href = '/control2/cargo-list-tram.html';
+                }
+                            } else {
+                                // fallback to login response
+                                localStorage.setItem('cms_user_id', data.user?.user_id ?? data.user_id ?? '');
+                                localStorage.setItem('cms_user_email', data.user?.e_mail ?? data.e_mail ?? '');
+                                localStorage.setItem('cms_user_name', data.user?.first_name ?? data.first_name ?? '');
+                                if (data.user && data.user.role_ids) localStorage.setItem('cms_user_roles', JSON.stringify(data.user.role_ids));
+                            }
+
+
+                        } else {
+                            // fallback
+                            localStorage.setItem('cms_user_id', data.user?.user_id ?? data.user_id ?? '');
+                            localStorage.setItem('cms_user_email', data.user?.e_mail ?? data.e_mail ?? '');
+                            localStorage.setItem('cms_user_name', data.user?.first_name ?? data.first_name ?? '');
+                            if (data.user && data.user.role_ids) localStorage.setItem('cms_user_roles', JSON.stringify(data.user.role_ids));
+                        }
+                    } catch (e) {
+                        localStorage.setItem('cms_user_id', data.user?.user_id ?? data.user_id ?? '');
+                        localStorage.setItem('cms_user_email', data.user?.e_mail ?? data.e_mail ?? '');
+                        localStorage.setItem('cms_user_name', data.user?.first_name ?? data.first_name ?? '');
+                        if (data.user && data.user.role_ids) localStorage.setItem('cms_user_roles', JSON.stringify(data.user.role_ids));
+                    }
+
+                    // Fetch user's custom CSS and save to localStorage.cms_user_css (awaited before redirect)
+                    // If user has driver role (135) redirect to driver page
+                    // try {
+                    //     let roles = data.user?.role_ids || data.role_ids || [];
+                    //     if (typeof roles === 'string') {
+                    //         roles = roles.split(',').map(s=>s.trim()).filter(s=>s!=='');
+                    //     }
+                    //     if (!Array.isArray(roles)) roles = Array.from(roles || []);
+                    //     const hasDriver = roles.map(r => String(r)).indexOf('135') !== -1;
+                    //     if (hasDriver) {
+                    //         window.location.href = 'driver.html';
+                    //     } else {
+                    //         window.location.href = 'cms-list.html?table=pms_plans';
+                    //     }
+                    // } catch (e) {
+                    //     window.location.href = 'cms-list.html?table=pms_plans';
+                    // }
+                } else {
+                    document.getElementById('cms-error').innerText = data.message || 'Đăng nhập thất bại';
+                    document.getElementById('cms-error').style.display = 'block';
+                }
+            } catch (err) {
+                document.getElementById('cms-error').innerText = 'Lỗi kết nối máy chủ';
+                document.getElementById('cms-error').style.display = 'block';
+            }
+            document.getElementById('cms-loginBtn').disabled = false;
+        };
+    </script>
+</body>
+</html>

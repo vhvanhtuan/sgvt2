@@ -1,0 +1,3347 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>CMS Edit</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="cms.css">
+    <link rel="stylesheet" href="scroll-top.css">
+    <link rel="stylesheet" href="cms-chat.css">
+    <!-- Select2 + Bootstrap 5 theme (for large selects) -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/gh/apalfrey/select2-bootstrap-5-theme@latest/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="cms-toasts.css" rel="stylesheet">
+    <link href="/html_logo.ico" rel="shortcut icon">
+    <style>
+        .cms-form-group label { padding-right: 10px; }
+        .cms-form-group label:nth-of-type(3n+1) { color: red; }
+        .cms-form-group label:nth-of-type(3n+2) { color: rgb(25, 0, 255); }
+        .cms-form-group label:nth-of-type(3n+3) { color: rgb(9, 80, 0); }
+        input, textarea, select { width: 100%; box-sizing: border-box; }
+        /* Flexible form layout: fields can specify f.form_width (number => percent or CSS value) */
+        #cms-edit-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+        .cms-field-wrap { display: inline-block; vertical-align: top; box-sizing: border-box; padding-right: 6px; }
+        .cms-form-actions-top { margin-top: 0; margin-bottom: 18px; }
+        .cms-recalc-wrap { width: 100%; flex: 0 0 100%; margin-top: 8px; margin-bottom: 8px; }
+        .cms-recalc-btn { min-width: 140px; }
+        #cms-edit-form textarea { min-height: 140px; }
+    </style>
+</head>
+<body>
+    <div class="cms-edit-container">
+        <div class="cms-topbar">
+            <div id="cms-shortcuts" style="margin-right:12px"></div>
+            <h2 id="cms-edit-title">Chỉnh sửa</h2>
+            <div class="cms-topbar-actions"></div>
+        </div>
+        <div id="cms-error" class="cms-error" style="display:none"></div>
+        <!-- [DEBUG - TẠM THỜI] Panel đối chiếu quyền -->
+        <div id="cms-debug-panel" style="background:#fffbe6;border:2px dashed #f0a500;border-radius:6px;padding:10px 14px;margin:8px 0;font-size:13px;">
+            <div id="cms-debug-toggle" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;user-select:none" onclick="var b=document.getElementById('cms-debug-body');if(!b)return;b.style.display=b.style.display==='none'?'block':'none'">
+                <strong style="color:#c00">&#128269; DEBUG - Đối chiếu quyền</strong>
+                <button type="button" onclick="event.stopPropagation(); loadDebugPerm()" style="padding:3px 10px;font-size:12px;cursor:pointer">&#8635; Tải</button>
+                <span style="color:#888;font-size:11px">[Xóa panel này khi xong debug]</span>
+            </div>
+            <div id="cms-debug-body" style="margin-top:8px;display:none">
+                <div id="cms-debug-token" style="margin-bottom:8px"></div>
+                <div id="cms-debug-content" style="color:#666">-- Đang tải... --</div>
+            </div>
+        </div>
+        <!-- END DEBUG -->
+        <div class="cms-form-actions cms-form-actions-top">
+            <button type="button" class="cms-save-btn" data-role="save">Lưu</button>
+            <button type="button" class="cms-btn-back" data-role="back">Quay lại</button>
+        </div>
+        <form id="cms-edit-form"></form>
+        <div class="cms-form-actions">
+            <button type="button" class="cms-save-btn" data-role="save">Lưu</button>
+            <button type="button" class="cms-btn-back" data-role="back">Quay lại</button>
+        </div>
+    </div>
+    <button id="scrollTopBtn" class="scroll-top-btn" type="button" title="Lên đầu trang">↑</button>
+    <div id="cms-toast-container" class="toast-container position-fixed" aria-live="polite" aria-atomic="true"></div>
+        <!-- jQuery and Select2 (used for enhancing large select fields) -->
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+        <script src="cms-help.js"></script>
+        <script src="cms-top-menu.js"></script>
+        <script src="scroll-top.js"></script>
+        <script>
+        const token = localStorage.getItem('cms_token');
+        if (!token) window.location.href = 'cms-login.html';
+
+        // Load user menus (shortcuts) into #cms-shortcuts
+        (async function loadUserMenus(){
+            try {
+                if (window.renderCmsTopMenu) {
+                    await window.renderCmsTopMenu(document.getElementById('cms-shortcuts'));
+                }
+                try { await initCmsHelp(token); } catch (e) {}
+                try { initFieldWidthSelector(); } catch (e) {}
+            } catch (e) { /* ignore */ }
+        })();
+
+        // hàm reload trang
+        function reloadPage() {
+            window.location.reload();
+        }
+
+        // Field width selector: create select and append to #cms-shortcuts
+        function initFieldWidthSelector() {
+            const container = document.getElementById('cms-shortcuts');
+            if (!container) return;
+            // Avoid duplicate
+            if (document.getElementById('cms-field-width-select')) return;
+            const sel = document.createElement('select');
+            sel.id = 'cms-field-width-select';
+            sel.title = 'Chọn số cột / chiều ngang field';
+            sel.style.marginLeft = '8px';
+            sel.style.padding = '4px';
+            sel.style.width = '40px';
+            const opts = [ {label: '0', value: ''}, {label: '1', value: '99'}, {label: '2', value: '49'}, {label: '3', value: '32.3'}, {label: '4', value: '24'}, {label: '5', value: '19'} ];
+            opts.forEach(o => {
+                const op = document.createElement('option');
+                op.value = String(o.value);
+                op.text = String(o.label);
+                sel.appendChild(op);
+            });
+            // restore stored value (percent)
+            const stored = localStorage.getItem('cms_field_wrap_percent');
+            if (stored) {
+                // if there's a matching option select it, else add a custom option
+                const match = Array.from(sel.options).some(o => o.value === stored);
+                if (!match) {
+                    const custom = document.createElement('option');
+                    custom.value = stored;
+                    custom.text = stored + '%';
+                    sel.appendChild(custom);
+                }
+                sel.value = stored;
+            } else {
+                sel.value = '100';
+            }
+            sel.addEventListener('change', function() {
+                localStorage.setItem('cms_field_wrap_percent', this.value);
+                applyFieldWrapWidth();
+            });
+            container.appendChild(sel);
+        }
+
+        // Apply stored width to all .cms-field-wrap elements (skip fields with fixed metadata width)
+        function applyFieldWrapWidth() {
+            const stored = localStorage.getItem('cms_field_wrap_percent');
+            const els = document.querySelectorAll('.cms-field-wrap');
+            els.forEach(el => {
+                try {
+                    if (el.dataset.fixedWidth === '1') return; // respect field-specific width
+                    if (stored && stored.trim() !== '') el.style.width = stored + '%';
+                    else el.style.width = '';
+                } catch (e) {}
+            });
+        }
+
+        function escapeRegExp(value) {
+            return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function parseFormulas(formulaText) {
+            if (!formulaText || !String(formulaText).trim()) return [];
+            return String(formulaText)
+                .split(/\r?\n|;/)
+                .map(line => line.trim())
+                .filter(line => line !== '')
+                .map(line => {
+                    const formula = { text: line, type: 'assignment', target: null, expr: null, condition: null, fields: [], func: null, funcCode: null, fieldString: null };
+                    const ifMatch = line.match(/^\s*if\s*\(([^)]+)\)\s*(.+)$/i);
+                    if (ifMatch) {
+                        formula.type = 'conditional';
+                        formula.condition = ifMatch[1].trim();
+                        line = ifMatch[2].trim();
+                    }
+                    
+                    // Detect: function('CODE', 'field1, field2, ...')
+                    const fnCallMatch = line.match(/^\s*function\s*\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]*)['"]\s*\)\s*$/);
+                    if (fnCallMatch) {
+                        formula.type = 'function';
+                        formula.func = fnCallMatch[1]; // function code like 'A03BCF'
+                        formula.funcCode = fnCallMatch[1];
+                        formula.fieldString = fnCallMatch[2]; // field list like 'tong_km, tong_vnd'
+                        // Parse field list to array
+                        formula.fields = (fnCallMatch[2] || '')
+                            .split(',')
+                            .map(s => s.trim())
+                            .filter(s => s !== '');
+                        return formula;
+                    }
+                    
+                    const assignMatch = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([\s\S]+)$/);
+                    if (!assignMatch) return null;
+                    formula.target = assignMatch[1];
+                    formula.expr = assignMatch[2].trim();
+                    return formula;
+                })
+                .filter(item => item);
+        }
+
+        function getFieldValueForFormula(fieldName) {
+            const els = Array.from(document.getElementsByName(fieldName));
+            if (!els.length) return '';
+            const first = els[0];
+            if (first.type === 'checkbox') {
+                const checkboxes = els.filter(el => el.type === 'checkbox');
+                if (checkboxes.length === 1) {
+                    return checkboxes[0].checked ? (checkboxes[0].value || '1') : '0';
+                }
+                return checkboxes.filter(el => el.checked).map(el => el.value).join(',');
+            }
+            if (first.type === 'radio') {
+                const checked = els.find(el => el.checked);
+                return checked ? checked.value : '';
+            }
+            return first.value;
+        }
+
+        function evaluateFormulaExpression(expr, values) {
+            let expression = String(expr);
+            Object.keys(values).forEach(name => {
+                const raw = values[name];
+                const number = parseFloat(String(raw).replace(/[\s,]/g, ''));
+                const replacement = Number.isFinite(number) ? String(number) : '0';
+                const regex = new RegExp('\\b' + escapeRegExp(name) + '\\b', 'g');
+                expression = expression.replace(regex, replacement);
+            });
+            expression = expression.replace(/,/g, '.');
+            try {
+                return Function('return ' + expression)();
+            } catch (err) {
+                return null;
+            }
+        }
+
+        function bindFormulaInputs() {
+            if (!Array.isArray(window.cmsFormulas) || window.cmsFormulas.length === 0) return;
+            const fieldNames = new Set();
+            window.cmsFormulas.forEach(formula => {
+                if (formula.type === 'function') {
+                    // For function formulas, fields are already parsed into formula.fields
+                    (formula.fields || []).forEach(name => fieldNames.add(name));
+                } else {
+                    // For math/assignment formulas, extract field names from expression
+                    formula.fields.forEach(name => fieldNames.add(name));
+                }
+            });
+            fieldNames.forEach(name => {
+                const els = Array.from(document.getElementsByName(name));
+                els.forEach(el => {
+                    const eventName = (el.tagName === 'SELECT' || el.type === 'checkbox' || el.type === 'radio') ? 'change' : 'input';
+                    el.addEventListener(eventName, () => {
+                        recomputeFormulas();
+                    });
+                });
+            });
+        }
+
+        function recomputeFormulas(options = {}) {
+            const skipRemoteFunctions = !!(options && options.skipRemoteFunctions);
+            if (!Array.isArray(window.cmsFormulas) || window.cmsFormulas.length === 0) return;
+            for (let pass = 0; pass < 5; pass++) {
+                let anyChanged = false;
+                window.cmsFormulas.forEach(formula => {
+                    try {
+                        // Handle remote function call formulas
+                        if (formula.type === 'function' && formula.funcCode && formula.fields) {
+                            if (skipRemoteFunctions) return;
+                            // Build a key from current field values to detect changes
+                            const values = {};
+                            (formula.fields || []).forEach(name => {
+                                values[name] = getFieldValueForFormula(name);
+                            });
+                            const valuesKey = JSON.stringify(values);
+                            if (formula._lastValuesKey === valuesKey) return; // no change
+                            
+                            // Detect which field changed by comparing with previous values
+                            let changedField = '';
+                            if (formula._lastValues) {
+                                (formula.fields || []).forEach(fname => {
+                                    if (formula._lastValues[fname] !== values[fname]) {
+                                        changedField = fname; // Last changed field
+                                    }
+                                });
+                            }
+                            
+                            // Store current values for next comparison
+                            formula._lastValues = Object.assign({}, values);
+                            formula._lastValuesKey = valuesKey;
+                            formula._changedField = changedField;
+                            callPmsFunction(formula.funcCode, formula.fields, formula).catch(() => {});
+                            return;
+                        }
+                        
+                        // Handle math/assignment formulas
+                        const values = {};
+                        formula.fields.forEach(name => {
+                            values[name] = getFieldValueForFormula(name);
+                        });
+                        if (formula.type === 'conditional') {
+                            const conditionResult = evaluateFormulaExpression(formula.condition, values);
+                            if (!conditionResult) return;
+                        }
+                        const result = evaluateFormulaExpression(formula.expr, values);
+                        const newValue = (result === null || result === undefined || Number.isNaN(result)) ? '' : String(result);
+                        const targets = Array.from(document.getElementsByName(formula.target));
+                        targets.forEach(target => {
+                            const finalValue = target.dataset && target.dataset.numberField === '1' ? formatNumberString(newValue) : newValue;
+                            if (target.value !== finalValue) {
+                                target.value = finalValue;
+                                anyChanged = true;
+                            }
+                        });
+                    } catch (e) {
+                        // ignore errors
+                    }
+                });
+                if (!anyChanged) break;
+            }
+        }
+
+        async function gatherFormData() {
+            const payload = {};
+            try {
+                const form = document.getElementById('cms-edit-form');
+                if (!form) return payload;
+
+                const els = Array.from(form.querySelectorAll('[data-field], [name^="child_"]'))
+                    .filter(el => !el.disabled);
+                const groups = new Map();
+                els.forEach(el => {
+                    const name = el.name || el.getAttribute('name');
+                    if (!name) return;
+                    if (!groups.has(name)) groups.set(name, []);
+                    groups.get(name).push(el);
+                });
+
+                groups.forEach((controls, name) => {
+                    if (!controls || controls.length === 0) return;
+                    const first = controls[0];
+
+                    if (first.type === 'checkbox') {
+                        if (controls.length === 1) {
+                            payload[name] = first.checked ? (first.value || '1') : '0';
+                        } else {
+                            payload[name] = controls.filter(node => node.checked).map(node => node.value);
+                        }
+                        return;
+                    }
+
+                    if (first.type === 'radio') {
+                        const checked = controls.find(node => node.checked);
+                        payload[name] = checked ? checked.value : '';
+                        return;
+                    }
+
+                    if (first.tagName === 'SELECT' && first.multiple) {
+                        payload[name] = Array.from(first.selectedOptions).map(o => o.value);
+                        return;
+                    }
+
+                    if (name.indexOf('child_') === 0) {
+                        payload[name] = controls.map(node => node.value);
+                        return;
+                    }
+
+                    payload[name] = first.value;
+                });
+            } catch (e) {}
+            return payload;
+        }
+
+        async function callPmsFunction(funcCode, fieldList, formula) {
+            if (!table) return;
+            if (formula._calling) return;
+            formula._calling = true;
+            try {
+                await ensureChildTablesReady();
+                const formData = await gatherFormData();
+                
+                // Get which field changed from formula metadata
+                const changedField = formula._changedField || '';
+                
+                const body = { 
+                    function: funcCode, 
+                    args: fieldList,
+                    form: formData, 
+                    id: isNew ? 'new' : id,
+                    field_changed: changedField
+                };
+                let url = '/api/generic.php?action=do_pms_function&function=' + encodeURIComponent(funcCode) + '&table=' + encodeURIComponent(table);
+                if (changedField) {
+                    url += '&field_changed=' + encodeURIComponent(changedField);
+                }
+                
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify(body)
+                });
+                const jr = await res.json();
+                if (jr && typeof jr === 'object') {
+                    const data = jr.data || {};
+                    const calc_message = jr.calc_message || '';
+                    if (data && typeof data === 'object') {
+                        Object.keys(data).forEach(k => {
+                            try {
+                                const targets = [];
+                                const targetById = document.getElementById(k);
+                                if (targetById) {
+                                    targets.push(targetById);
+                                }
+                                Array.from(document.getElementsByName(k)).forEach(target => {
+                                    if (!targets.includes(target)) {
+                                        targets.push(target);
+                                    }
+                                });
+                                targets.forEach(target => {
+                                    const val = data[k] === null || data[k] === undefined ? '' : String(data[k]);
+                                    const finalValue = (target.dataset && target.dataset.numberField === '1') ? formatNumberString(val) : val;
+                                    if (target.value !== finalValue) {
+                                        target.value = finalValue;
+                                        try {
+                                            const evt = new Event('input', { bubbles: true });
+                                            target.dispatchEvent(evt);
+                                            const evt2 = new Event('change', { bubbles: true });
+                                            target.dispatchEvent(evt2);
+                                        } catch (e) {}
+                                    }
+                                });
+                            } catch (e) {}
+                        });
+                        try { recomputeFormulas(); } catch (e) {}
+                    }
+                    if(calc_message) alert(calc_message);
+                    
+                    // Xử lý call_functions - thực hiện các function JavaScript từ backend
+                    if(jr.call_functions && typeof jr.call_functions === 'string') {
+                        const functionCalls = jr.call_functions
+                            .split(';')
+                            .map(fn => fn.trim())
+                            .filter(fn => fn.length > 0);
+                        
+                        for(const fnCall of functionCalls) {
+                            try {
+                                // Kiểm tra nếu là function call có tham số (eg: fnName(arg1, arg2))
+                                // hay chỉ là function name (eg: fnName)
+                                if(typeof window[fnCall] === 'function') {
+                                    window[fnCall]();
+                                } else if(fnCall.includes('(')) {
+                                    // Thực hiện như function call: eval() hoặc Function()
+                                    new Function(fnCall)();
+                                }
+                            } catch(e) {
+                                console.error('Error calling function:', fnCall, e);
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+            } finally {
+                formula._calling = false;
+            }
+        }
+
+        function getFunctionFormulas() {
+            if (!Array.isArray(window.cmsFormulas)) return [];
+            return window.cmsFormulas.filter(formula => formula && formula.type === 'function' && formula.funcCode);
+        }
+
+        function getMetaExtraObjects() {
+            const sources = [
+                meta && meta.extra,
+                meta && meta.table_extra,
+                meta && meta.table_names_extra,
+                meta && meta.table_config,
+                meta && meta.child_tables,
+                meta && meta.children,
+                meta && meta.table_children
+            ];
+            const objects = [];
+            sources.forEach(source => {
+                if (source === null || source === undefined) return;
+                const raw = typeof source === 'string' ? parseJsonLoose(source) : source;
+                if (raw && typeof raw === 'object') {
+                    objects.push(raw);
+                }
+            });
+            return objects;
+        }
+
+        function getObjectValueIgnoreCase(source, candidateKeys) {
+            if (!source || typeof source !== 'object' || Array.isArray(source)) return undefined;
+            const entries = Object.entries(source);
+            for (const candidateKey of (candidateKeys || [])) {
+                const found = entries.find(([key]) => String(key || '').trim().toLowerCase() === String(candidateKey || '').trim().toLowerCase());
+                if (found) return found[1];
+            }
+            return undefined;
+        }
+
+        function normalizeCustomActionButton(raw, fallbackIndex = 0) {
+            if (!raw) return null;
+            if (typeof raw === 'string') {
+                const text = String(raw).trim();
+                return text ? { label: text, function_code: text } : null;
+            }
+            if (typeof raw !== 'object' || Array.isArray(raw)) return null;
+
+            const labelKeys = ['label', 'name', 'title', 'text', 'button_label', 'button_text', 'button'];
+            const functionKeys = ['function', 'func', 'function_code', 'code', 'value', 'pms_function', 'action'];
+            let label = '';
+            let functionCode = '';
+
+            for (const key of labelKeys) {
+                const value = raw[key];
+                if (value !== undefined && value !== null && String(value).trim() !== '') {
+                    label = String(value).trim();
+                    break;
+                }
+            }
+            for (const key of functionKeys) {
+                const value = raw[key];
+                if (value !== undefined && value !== null && String(value).trim() !== '') {
+                    functionCode = String(value).trim();
+                    break;
+                }
+            }
+
+            if (!functionCode) {
+                const entries = Object.entries(raw).filter(([key, value]) => {
+                    return key && value !== undefined && value !== null && String(value).trim() !== '';
+                });
+                if (entries.length === 1) {
+                    const [entryKey, entryValue] = entries[0];
+                    if (typeof entryValue === 'string') {
+                        label = entryKey;
+                        functionCode = entryValue.trim();
+                    }
+                }
+            }
+
+            if (!functionCode) return null;
+            return {
+                label: label || functionCode,
+                function_code: functionCode
+            };
+        }
+
+        function getCustomActionButtonsFromMeta() {
+            const collectButtons = (source) => {
+                if (!source) return [];
+                if (Array.isArray(source)) {
+                    const result = [];
+                    source.forEach((entry, index) => {
+                        if (!entry) return;
+                        if (typeof entry === 'string') {
+                            const button = normalizeCustomActionButton(entry, index);
+                            if (button) result.push(button);
+                            return;
+                        }
+                        if (typeof entry === 'object' && !Array.isArray(entry)) {
+                            const directButton = normalizeCustomActionButton(entry, index);
+                            if (directButton) {
+                                result.push(directButton);
+                                return;
+                            }
+                            Object.entries(entry).forEach(([key, value]) => {
+                                if (value === undefined || value === null || String(value).trim() === '') return;
+                                const button = normalizeCustomActionButton({ label: key, function: value }, index);
+                                if (button) result.push(button);
+                            });
+                        }
+                    });
+                    return result;
+                }
+                if (typeof source === 'object') {
+                    const result = [];
+                    Object.entries(source).forEach(([key, value]) => {
+                        if (value === undefined || value === null || String(value).trim() === '') return;
+                        if (typeof value === 'object' && !Array.isArray(value)) {
+                            const directButton = normalizeCustomActionButton({ label: key, ...value });
+                            if (directButton) result.push(directButton);
+                            return;
+                        }
+                        const button = normalizeCustomActionButton({ label: key, function: value });
+                        if (button) result.push(button);
+                    });
+                    return result;
+                }
+                const button = normalizeCustomActionButton(source, 0);
+                return button ? [button] : [];
+            };
+
+            const buttonKeys = ['buttons', 'custom_buttons', 'action_buttons', 'pms_buttons'];
+            const extras = getMetaExtraObjects();
+            const allButtons = [];
+
+            extras.forEach(extra => {
+                const rawButtons = getObjectValueIgnoreCase(extra, buttonKeys);
+                if (rawButtons) {
+                    allButtons.push(...collectButtons(rawButtons));
+                }
+            });
+
+            const deduped = [];
+            const seen = new Set();
+            allButtons.forEach(button => {
+                if (!button || !button.function_code) return;
+                const dedupeKey = String(button.label || '') + '|' + String(button.function_code || '');
+                if (seen.has(dedupeKey)) return;
+                seen.add(dedupeKey);
+                deduped.push(button);
+            });
+
+            return deduped;
+        }
+
+        async function triggerCustomPmsFunction(functionCode, buttonConfig) {
+            if (!functionCode || !table) return;
+            const fieldList = (meta && Array.isArray(meta.fields) ? meta.fields : [])
+                .filter(field => field && field.name && field.show_form !== false)
+                .map(field => field.name)
+                .filter(Boolean);
+            await callPmsFunction(functionCode, fieldList, {
+                _calling: false,
+                _changedField: ''
+            });
+        }
+
+        function createRecalculateBlock(customButtons = [], hasRemotePmsFunction = false) {
+            const wrap = document.createElement('div');
+            wrap.className = 'cms-recalc-wrap';
+            wrap.id = 'cms-recalculate-wrap';
+            wrap.style.display = 'flex';
+            wrap.style.gap = '8px';
+            wrap.style.flexWrap = 'wrap';
+            wrap.style.marginTop = '12px';
+
+            if (hasRemotePmsFunction) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.id = 'cms-recalculate-btn';
+                btn.className = 'cms-btn cms-recalc-btn tinh-toan-lai-btn';
+                btn.innerText = 'Tính toán lại';
+                btn.addEventListener('click', () => {
+                    triggerRecalculateFunctions().catch(() => {});
+                });
+                wrap.appendChild(btn);
+            }
+
+            (customButtons || []).forEach(buttonConfig => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'cms-btn cms-action-btn';
+                btn.innerText = buttonConfig && buttonConfig.label ? buttonConfig.label : (buttonConfig && buttonConfig.function_code ? buttonConfig.function_code : 'Action');
+                btn.addEventListener('click', () => {
+                    if(!confirm('Nên lưu trước khi thực hiện với những chức năng reload trang. Bạn có chắc muốn thực hiện chức năng "' + buttonConfig.function_code + '"?')) return;
+                    const originalText = btn.innerText;
+                    btn.disabled = true;
+                    btn.innerText = 'Đang xử lý...';
+                    triggerCustomPmsFunction(buttonConfig && buttonConfig.function_code, buttonConfig)
+                        .catch(() => {})
+                        .finally(() => {
+                            btn.disabled = false;
+                            btn.innerText = originalText;
+                        });
+                });
+                wrap.appendChild(btn);
+            });
+
+            return wrap;
+        }
+
+        async function triggerRecalculateFunctions() {
+            const formulas = getFunctionFormulas();
+            if (formulas.length === 0) return;
+
+            const btn = document.getElementById('cms-recalculate-btn');
+            const originalText = btn ? btn.innerText : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = 'Đang tính...';
+            }
+
+            try {
+                invalidateFunctionFormulaCache();
+                for (const formula of formulas) {
+                    formula._changedField = '';
+                    await callPmsFunction(formula.funcCode, formula.fields || [], formula);
+                }
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = originalText || 'Tính toán lại';
+                }
+            }
+        }
+
+        function formatNumberString(value) {
+            let raw = String(value || '');
+            raw = raw.replace(/[^0-9.,]/g, '');
+            raw = raw.replace(/,/g, '');
+            if (raw === '' || raw === '-' || raw === '.' || raw === '-.') {
+                return raw;
+            }
+            const parts = raw.split('.');
+            const intPart = parts[0].replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+            const decimals = parts.slice(1).join('').replace(/[^0-9]/g, '');
+            const formattedInt = intPart ? intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '0';
+            return formattedInt + (decimals ? '.' + decimals : '');
+        }
+
+        function parseNumericValue(value) {
+            if (value === undefined || value === null) return '';
+            let raw = String(value).replace(/[^0-9.,]/g, '').replace(/,/g, '');
+            const parts = raw.split('.');
+            if (parts.length <= 1) return raw;
+            return parts.shift() + '.' + parts.join('').replace(/\./g, '');
+        }
+
+        function sanitizeNumberInputValue(value) {
+            return formatNumberString(parseNumericValue(value));
+        }
+
+        // Apply extra attributes from metadata (e.g., step="0.01", style="...", min="0", max="100")
+        function applyExtraAttributes(element, extraStr) {
+            if (!element || !extraStr || !String(extraStr).trim()) return;
+            try {
+                const extra = String(extraStr).trim();
+                // Simple attribute parser: look for key="value" or key='value' patterns
+                // Also handle shorthand attributes like "disabled" or "readonly"
+                const attrRegex = /(\w+)(?:=(?:"([^"]*)"|'([^']*)'|(\S+)))?/g;
+                let match;
+                while ((match = attrRegex.exec(extra)) !== null) {
+                    const attrName = match[1];
+                    const attrValue = match[2] || match[3] || match[4] || ''; // pick whichever group matched
+                    if (attrName === 'style' && attrValue) {
+                        // For style, merge with existing inline styles
+                        const existing = element.getAttribute('style') || '';
+                        element.setAttribute('style', existing + (existing && !existing.endsWith(';') ? '; ' : '') + attrValue);
+                    } else if (attrName === 'class' && attrValue) {
+                        // For class, add to existing classes
+                        element.classList.add(...attrValue.split(/\s+/).filter(Boolean));
+                    } else if (!attrValue) {
+                        // Shorthand boolean attributes
+                        element.setAttribute(attrName, '');
+                    } else {
+                        // Regular attribute
+                        element.setAttribute(attrName, attrValue);
+                    }
+                }
+            } catch (e) {
+                if (typeof console !== 'undefined' && console.warn) {
+                    console.warn('applyExtraAttributes error:', e);
+                }
+            }
+        }
+
+        function isTruthyMetaFlag(value) {
+            const normalized = String(value || '').trim().toLowerCase();
+            if (!normalized) return true;
+            return !['0', 'false', 'off', 'no', 'null'].includes(normalized);
+        }
+
+        function hasTruthyAttributeFlag(source, attrName) {
+            const text = String(source || '').trim();
+            const name = String(attrName || '').trim();
+            if (!text || !name) return false;
+
+            const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const attrRegex = new RegExp(`(?:^|\\s)${escapedName}(?:\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s]+)))?(?=\\s|$)`, 'i');
+            const match = text.match(attrRegex);
+            if (!match) return false;
+
+            const rawValue = match[1] ?? match[2] ?? match[3];
+            return rawValue === undefined ? true : isTruthyMetaFlag(rawValue);
+        }
+
+        function hasKeywordFlag(source, keyword) {
+            const text = String(source || '').trim();
+            const key = String(keyword || '').trim().toLowerCase();
+            if (!text || !key) return false;
+            return text
+                .split(/[,|;\s]+/)
+                .map(item => item.trim().toLowerCase())
+                .filter(Boolean)
+                .includes(key);
+        }
+
+        function hasSelect2Extra(extraStr) {
+            const extraText = String(extraStr || '').trim();
+            if (!extraText) return false;
+
+            const attrMatch = extraText.match(/(?:^|\s)select2(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s]+)))?(?=\s|$)/i);
+            if (attrMatch) {
+                const rawValue = attrMatch[1] ?? attrMatch[2] ?? attrMatch[3];
+                return rawValue === undefined ? true : isTruthyMetaFlag(rawValue);
+            }
+
+            const jsonMatch = extraText.match(/["']select2["']\s*:\s*(?:"([^"]*)"|'([^']*)'|(true|false|1|0|null))/i);
+            if (jsonMatch) {
+                const rawValue = jsonMatch[1] ?? jsonMatch[2] ?? jsonMatch[3];
+                return isTruthyMetaFlag(rawValue);
+            }
+
+            return false;
+        }
+
+        function shouldInitSelect2(element) {
+            if (!element || element.tagName !== 'SELECT') return false;
+
+            const explicitFlag = element.getAttribute('data-select2-enabled');
+            if (explicitFlag !== null) {
+                return isTruthyMetaFlag(explicitFlag);
+            }
+
+            if (element.hasAttribute('select2')) {
+                return isTruthyMetaFlag(element.getAttribute('select2'));
+            }
+
+            return false;
+        }
+
+        // Strip HTML tags from text
+        function stripTags(text) {
+            return String(text || '').replace(/<[^>]+>/g, '');
+        }
+
+        // Apply user CSS stored in localStorage.cms_user_css
+        function applyUserCss() {
+            try {
+                const css = localStorage.getItem('cms_user_css') || '';
+                const cleaned = stripTags(css);
+                let style = document.getElementById('cms-user-css');
+                if (!style) {
+                    style = document.createElement('style');
+                    style.id = 'cms-user-css';
+                    document.getElementsByTagName('head')[0].appendChild(style);
+                }
+                style.innerHTML = cleaned;
+            } catch (e) {
+                if (typeof console !== 'undefined' && console.warn) console.warn('applyUserCss error', e);
+            }
+        }
+
+        try {
+            const existing = localStorage.getItem('cms_user_css');
+            if (!existing) {
+                // fallback: try to fetch user_css from API for this table (hosting may need this)
+                (async function(){
+                    try {
+                        if (!token) return;
+                        console.debug('cms-edit: no local cms_user_css, fetching from API');
+                        const res = await fetch(`/api/generic.php?action=user_css&table=${encodeURIComponent(table || '')}`, { headers: { 'Authorization': 'Bearer ' + token } });
+                        if (res && res.ok) {
+                            try {
+                                const j = await res.json();
+                                const cssText = j && (j.css_content ?? j.css) ? (j.css_content ?? j.css) : '';
+                                const cleaned = stripTags(cssText || '');
+                                if (cleaned) {
+                                    localStorage.setItem('cms_user_css', cleaned);
+                                    applyUserCss();
+                                    console.debug('cms-edit: fetched and stored cms_user_css');
+                                }
+                            } catch (e) { /* ignore parse errors */ }
+                        } else {
+                            console.debug('cms-edit: user_css fetch failed', res && res.status);
+                        }
+                    } catch (e) {
+                        console.debug('cms-edit: user_css fetch error', e);
+                    }
+                })();
+            }
+            applyUserCss();
+        } catch (e) {}
+        // Absolute API base (override via window.__API_BASE__ if needed)
+        // Use same-origin by default; can be overridden by setting window.__API_BASE__
+        const API_BASE = window.__API_BASE__ || '';
+        // Redirect relative /api/ URLs to absolute API base to avoid origin mismatches
+        (function(){
+            const _fetch = window.fetch.bind(window);
+            window.fetch = function(input, init){
+                try {
+                    if (typeof input === 'string' && input.startsWith('/api/')) input = API_BASE + input;
+                    else if (input instanceof Request && input.url && input.url.startsWith('/api/')) input = new Request(API_BASE + input.url, input);
+                } catch(e){}
+                return _fetch(input, init);
+            };
+        })();
+        const params = new URLSearchParams(window.location.search);
+        const table = params.get('table');
+        const id = params.get('id');
+        const isNew = (id === 'new');
+        let currentRecordId = id;
+        let meta = null;
+        let primaryKey = '';
+        let record = {};
+        let isRecordLocked = false;
+        let childTableConfigs = [];
+        let childTableStates = [];
+        let childTablesReady = false;
+        let childTablesLoadingPromise = null;
+        let childFormulaRecomputeTimer = null;
+        const saveButtons = document.querySelectorAll('button[data-role="save"]');
+        const backButtons = document.querySelectorAll('button[data-role="back"]');
+
+        async function ensureChildTablesReady(timeoutMs = 4000) {
+            if (childTablesReady) return;
+            const startedAt = Date.now();
+            while (!childTablesReady && (Date.now() - startedAt) < timeoutMs) {
+                if (childTablesLoadingPromise) {
+                    try {
+                        await childTablesLoadingPromise;
+                    } catch (e) {}
+                    if (childTablesReady) return;
+                }
+                await new Promise(resolve => setTimeout(resolve, 60));
+            }
+        }
+
+        function invalidateFunctionFormulaCache() {
+            if (!Array.isArray(window.cmsFormulas)) return;
+            window.cmsFormulas.forEach(formula => {
+                if (formula && formula.type === 'function') {
+                    formula._lastValues = null;
+                    formula._lastValuesKey = '';
+                }
+            });
+        }
+
+        function scheduleRecomputeAfterChildChange() {
+            if (childFormulaRecomputeTimer) {
+                clearTimeout(childFormulaRecomputeTimer);
+            }
+            childFormulaRecomputeTimer = setTimeout(() => {
+                try {
+                    // Child record edits should not auto-call remote function formulas.
+                    // Keep local math/assignment formulas in sync only.
+                    recomputeFormulas({ skipRemoteFunctions: true });
+                } catch (e) {}
+            }, 120);
+        }
+
+        function parseJsonLoose(text) {
+            const raw = String(text || '').trim();
+            if (!raw) return null;
+            try {
+                return JSON.parse(raw);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function normalizeChildColumn(col) {
+            if (!col || typeof col !== 'object') return null;
+            const name = String(col.name || '').trim();
+            if (!name) return null;
+            const hasReadonlyProp = Object.prototype.hasOwnProperty.call(col, 'readonly')
+                || Object.prototype.hasOwnProperty.call(col, 'readOnly');
+            const hasDisabledProp = Object.prototype.hasOwnProperty.call(col, 'disabled');
+            const readonlyRaw = hasReadonlyProp
+                ? (col.readonly !== undefined ? col.readonly : col.readOnly)
+                : undefined;
+            const disabledRaw = hasDisabledProp ? col.disabled : undefined;
+            const extra = String(col.extra || '').trim();
+            const more = String(col.more || '').trim();
+            return {
+                name,
+                label: String(col.label || name),
+                input_type: String(col.input_type || 'text').toLowerCase(),
+                q_code: String(col.q_code || '').trim(),
+                required: Number(col.required || 0) === 1,
+                readonly: hasReadonlyProp ? isTruthyMetaFlag(readonlyRaw) : hasTruthyAttributeFlag(extra, 'readonly'),
+                disabled: hasDisabledProp ? isTruthyMetaFlag(disabledRaw) : hasTruthyAttributeFlag(extra, 'disabled'),
+                more,
+                extra
+            };
+        }
+
+        function normalizeChildConfig(raw, fallbackIndex = 0) {
+            if (!raw || typeof raw !== 'object') return null;
+            const component = String(raw.component || '').trim().toLowerCase();
+            if (component !== 'child_table') return null;
+
+            const childTable = String(raw.child_table || '').trim();
+            const childPk = String(raw.child_pk || '').trim();
+            const parentFk = String(raw.parent_fk || '').trim();
+            if (!childTable || !childPk || !parentFk) return null;
+
+            const cols = Array.isArray(raw.columns) ? raw.columns.map(normalizeChildColumn).filter(Boolean) : [];
+            if (!cols.length) return null;
+
+            const filter = raw.filter && typeof raw.filter === 'object' ? raw.filter : {};
+            const fixedValues = raw.fixed_values && typeof raw.fixed_values === 'object' ? raw.fixed_values : {};
+            const actions = raw.actions && typeof raw.actions === 'object' ? raw.actions : {};
+            const canEditRaw = raw.can_edit !== undefined ? raw.can_edit : actions.can_edit;
+            const canDeleteRaw = raw.can_delete !== undefined ? raw.can_delete : actions.can_delete;
+            const addButtonLabelRaw = raw.add_button_label !== undefined ? raw.add_button_label : actions.add_button_label;
+
+            return {
+                config_key: String(raw.config_key || raw.key || raw.child_table || ('child_' + fallbackIndex)).trim(),
+                title: String(raw.title || 'Bang du lieu con'),
+                child_table: childTable,
+                child_pk: childPk,
+                parent_fk: parentFk,
+                parent_pk: String(raw.parent_pk || primaryKey || 'id').trim(),
+                columns: cols,
+                filter,
+                fixed_values: fixedValues,
+                actions: {
+                    can_add: true,
+                    can_edit: canEditRaw === undefined || canEditRaw === null || String(canEditRaw).trim() === '' ? true : Number(canEditRaw) !== 0,
+                    can_delete: canDeleteRaw === undefined || canDeleteRaw === null || String(canDeleteRaw).trim() === '' ? true : Number(canDeleteRaw) !== 0,
+                    add_button_label: String(addButtonLabelRaw || 'Them dong')
+                }
+            };
+        }
+
+        function normalizeChildConfigList(raw) {
+            if (!raw || typeof raw !== 'object') return [];
+
+            if (Array.isArray(raw)) {
+                return raw
+                    .map((child, index) => normalizeChildConfig(child, index))
+                    .filter(Boolean);
+            }
+
+            const component = String(raw.component || '').trim().toLowerCase();
+            if (component === 'child_tables' && Array.isArray(raw.children)) {
+                return raw.children
+                    .map((child, index) => normalizeChildConfig(child, index))
+                    .filter(Boolean);
+            }
+
+            if (Array.isArray(raw.children)) {
+                return raw.children
+                    .map((child, index) => normalizeChildConfig(child, index))
+                    .filter(Boolean);
+            }
+
+            const cfg = normalizeChildConfig(raw, 0);
+            return cfg ? [cfg] : [];
+        }
+
+        function getChildConfigsFromMeta() {
+            const sources = [
+                meta && meta.extra,
+                meta && meta.table_extra,
+                meta && meta.child_tables,
+                meta && meta.children,
+                meta && meta.table_children,
+                meta && meta.table_names_extra
+            ];
+
+            for (const source of sources) {
+                if (source === null || source === undefined) continue;
+                const raw = typeof source === 'string' ? parseJsonLoose(source) : source;
+                const configs = normalizeChildConfigList(raw);
+                if (configs.length > 0) return configs;
+            }
+
+            return [];
+        }
+
+        function createChildState(config) {
+            return {
+                config,
+                rows: [],
+                deletedIds: [],
+                optionsMap: {},
+                root: null,
+                tbody: null,
+                note: null,
+                addBtn: null
+            };
+        }
+
+        function setSaveButtonText(text) {
+            saveButtons.forEach(btn => {
+                btn.innerText = text;
+            });
+        }
+
+        function setSaveButtonsDisabled(disabled) {
+            saveButtons.forEach(btn => {
+                btn.disabled = disabled;
+            });
+        }
+
+        function isLockedValue(value) {
+            if (value === null || value === undefined) return false;
+            const normalized = String(value).trim().toLowerCase();
+            return normalized === '1' || normalized === 'true' || normalized === 'yes';
+        }
+
+        function applyLockedSaveState() {
+            if (!isNew && isRecordLocked) {
+                setSaveButtonsDisabled(true);
+                const errEl = document.getElementById('cms-error');
+                if (errEl) {
+                    errEl.innerText = 'Bản ghi đã khóa (is_locked=1), không thể lưu cập nhật.';
+                    errEl.style.display = 'block';
+                }
+                return;
+            }
+            setSaveButtonsDisabled(false);
+        }
+
+        function resolveTypeNotNullFallbackType(fieldMeta, currentValue) {
+            const valueText = currentValue === null || currentValue === undefined ? '' : String(currentValue).trim();
+            if (valueText === '') return '';
+
+            const configured = String(fieldMeta?.type_not_null || '').trim().toLowerCase();
+            if (!configured || configured === '0' || configured === 'false' || configured === 'off' || configured === 'no') {
+                return '';
+            }
+
+            if (configured === '1' || configured === 'true' || configured === 'yes' || configured === 'on' || configured === 'type_not_null') {
+                return 'text';
+            }
+            if (configured === 'int' || configured === 'integer') return 'number';
+            if (configured === 'datetime' || configured === 'timestamp') return 'datetime-local';
+            return configured;
+        }
+
+        function createFallbackInputControl(fieldMeta, fallbackType, currentValue) {
+            const rawVal = currentValue === null || currentValue === undefined ? '' : String(currentValue);
+            let input;
+            if (fallbackType === 'textarea') {
+                input = document.createElement('textarea');
+                input.value = rawVal;
+            } else if (fallbackType === 'number') {
+                input = document.createElement('input');
+                input.type = 'text';
+                input.value = sanitizeNumberInputValue(rawVal);
+                input.dataset.numberField = '1';
+                input.addEventListener('input', function() {
+                    const caret = this.selectionStart;
+                    const oldLen = this.value.length;
+                    this.value = sanitizeNumberInputValue(this.value);
+                    const newLen = this.value.length;
+                    if (typeof caret === 'number') {
+                        this.selectionStart = this.selectionEnd = Math.max(0, caret + newLen - oldLen);
+                    }
+                });
+            } else {
+                input = document.createElement('input');
+                const safeType = /^[a-z][a-z0-9-]*$/i.test(fallbackType) ? fallbackType : 'text';
+                input.type = safeType;
+                input.value = rawVal;
+            }
+            input.name = fieldMeta.name;
+            input.dataset.field = fieldMeta.name;
+            input.required = !!fieldMeta.required;
+            input.setAttribute('data-field-control', '1');
+            applyExtraAttributes(input, fieldMeta.extra);
+            return input;
+        }
+
+        function getUrlParamPayload() {
+            const payload = {};
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                for (const [k, v] of urlParams.entries()) {
+                    payload[k] = v;
+                }
+            } catch (e) {}
+            return payload;
+        }
+
+        function applyUrlIdDefaultsToRecord(rec) {
+            if (!rec || !meta || !Array.isArray(meta.fields)) return;
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                for (const [k, v] of urlParams.entries()) {
+                    if (k === 'table' || k === 'id') continue;
+                    if (!/_id$/i.test(k)) continue;
+                    if (!meta.fields.some(f => f && String(f.name || '') === k)) continue;
+                    const current = rec[k];
+                    if (current === undefined || current === null || String(current).trim() === '') {
+                        rec[k] = v;
+                    }
+                }
+            } catch (e) {}
+        }
+
+        function applyUrlIdDefaultsToControls() {
+            const form = document.getElementById('cms-edit-form');
+            if (!form) return;
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                for (const [name, value] of urlParams.entries()) {
+                    if (name === 'table' || name === 'id') continue;
+                    if (!/_id$/i.test(name)) continue;
+                    const stringValue = String(value ?? '').trim();
+                    if (stringValue === '') continue;
+                    const escapedName = typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+                        ? CSS.escape(name)
+                        : name.replace(/"/g, '\\"');
+                    const controls = Array.from(form.querySelectorAll('[name="' + escapedName + '"]'));
+                    if (!controls.length) continue;
+
+                    const first = controls[0];
+                    let currentValue = '';
+                    if (first.tagName === 'SELECT') {
+                        currentValue = String(first.value || '').trim();
+                    } else if (first.type === 'radio') {
+                        const checked = controls.find(c => c.checked);
+                        currentValue = checked ? String(checked.value || '').trim() : '';
+                    } else if (first.type === 'checkbox') {
+                        if (controls.length === 1) {
+                            currentValue = first.checked ? String(first.value || '').trim() : '';
+                        } else {
+                            currentValue = controls.filter(c => c.checked).map(c => String(c.value || '').trim()).join(',');
+                        }
+                    } else {
+                        currentValue = String(first.value || '').trim();
+                    }
+                    // console.log('type=', first.type, 'name=', first.name, 'set to', stringValue);
+                    // if (currentValue !== '') continue;
+
+                    if (first.tagName === 'SELECT') {
+                        const match = Array.from(first.options).find(opt => String(opt.value) === stringValue);
+                        if (match) {
+                            first.value = stringValue;
+                            first.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    } else if (first.type === 'radio') {
+                        const target = controls.find(c => c.type === 'radio' && String(c.value) === stringValue);
+                        if (target) {
+                            target.checked = true;
+                            target.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    } else if (first.type === 'checkbox') {
+                        controls.forEach(c => {
+                            if (String(c.value) === stringValue) {
+                                c.checked = true;
+                                c.dispatchEvent(new Event('change', { bubbles: true }));
+                            }
+                        });
+                    }
+                }
+            } catch (e) {}
+        }
+
+        async function fetchOptionsByQCode(qCode, extraPayload) {
+            const code = String(qCode || '').trim();
+            if (!code) return [];
+            try {
+                const payload = Object.assign({ q_code: code }, getUrlParamPayload(), extraPayload || {});
+                const res = await fetch('/api/generic.php?action=options', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success && Array.isArray(data.options)) {
+                    return data.options;
+                }
+            } catch (e) {}
+            return [];
+        }
+
+        function collectCurrentFormValues(form) {
+            const data = {};
+            if (!form || !meta || !Array.isArray(meta.fields)) return data;
+
+            for (const f of meta.fields) {
+                if (!f || !f.show_form) continue;
+                const name = f.name;
+                if (!name) continue;
+
+                const type = String(f.input_type || f.type || '').toLowerCase();
+                const named = Array.from(form.querySelectorAll(`[name="${name}"]`));
+                if (!named.length) continue;
+
+                if (type === 'checkbox') {
+                    const checkboxes = named.filter(node => node.type === 'checkbox');
+                    if (checkboxes.length > 1) {
+                        data[name] = checkboxes.filter(node => node.checked).map(node => node.value).join(',');
+                    } else if (checkboxes.length === 1) {
+                        data[name] = checkboxes[0].checked ? (checkboxes[0].value || '1') : '0';
+                    } else {
+                        data[name] = named[0].value;
+                    }
+                } else if (type === 'radio') {
+                    const radios = named.filter(node => node.type === 'radio');
+                    const checked = radios.find(node => node.checked);
+                    data[name] = checked ? checked.value : '';
+                } else {
+                    data[name] = named[0].value;
+                }
+            }
+
+            return data;
+        }
+
+        function getFieldSelectedValues(fieldName) {
+            const form = document.getElementById('cms-edit-form');
+            const parseValues = (rawVal) => {
+                if (Array.isArray(rawVal)) return rawVal.map(v => String(v));
+                if (rawVal === null || rawVal === undefined) return [];
+                const text = String(rawVal).trim();
+                if (!text) return [];
+                if (text.startsWith('[') && text.endsWith(']')) {
+                    try {
+                        const arr = JSON.parse(text);
+                        if (Array.isArray(arr)) return arr.map(v => String(v));
+                    } catch (_) {}
+                }
+                return text.split(',').map(s => s.trim()).filter(Boolean);
+            };
+
+            if (!form) return parseValues(record && record[fieldName]);
+            const named = Array.from(form.querySelectorAll(`[name="${fieldName}"]`));
+            if (!named.length) return parseValues(record && record[fieldName]);
+
+            if (named[0].tagName === 'SELECT') {
+                const selected = String(named[0].value ?? '');
+                if (selected !== '') return [selected];
+                return parseValues(record && record[fieldName]);
+            }
+            if (named[0].type === 'radio') {
+                const checked = named.find(node => node.checked);
+                if (checked) return [String(checked.value ?? '')];
+                return parseValues(record && record[fieldName]);
+            }
+            if (named[0].type === 'checkbox') {
+                const checkedVals = named.filter(node => node.checked).map(node => String(node.value ?? ''));
+                if (checkedVals.length > 0) return checkedVals;
+                return parseValues(record && record[fieldName]);
+            }
+            return [String(named[0].value ?? '')];
+        }
+
+        function buildDynamicOptionControl(fieldMeta, renderType, options, selectedValues) {
+            const type = String(renderType || 'select').toLowerCase();
+            const selectedSet = new Set((selectedValues || []).map(v => String(v)));
+
+            if (type === 'checkbox') {
+                const wrap = document.createElement('div');
+                wrap.setAttribute('data-field-control', '1');
+                options.forEach(opt => {
+                    const value = String(opt.value ?? '');
+                    const line = document.createElement('label');
+                    line.style.display = 'inline-flex';
+                    line.style.alignItems = 'center';
+                    line.style.marginRight = '14px';
+                    line.style.marginBottom = '6px';
+
+                    const chk = document.createElement('input');
+                    chk.type = 'checkbox';
+                    chk.name = fieldMeta.name;
+                    chk.dataset.field = fieldMeta.name;
+                    chk.value = value;
+                    chk.checked = selectedSet.has(value);
+                    applyExtraAttributes(chk, fieldMeta.extra);
+
+                    const txt = document.createElement('span');
+                    txt.innerText = ' ' + String(opt.label ?? value);
+
+                    line.appendChild(chk);
+                    line.appendChild(txt);
+                    wrap.appendChild(line);
+                });
+                return wrap;
+            }
+
+            if (type === 'radio') {
+                const wrap = document.createElement('div');
+                wrap.setAttribute('data-field-control', '1');
+                options.forEach(opt => {
+                    const value = String(opt.value ?? '');
+                    const line = document.createElement('label');
+                    line.style.display = 'inline-flex';
+                    line.style.alignItems = 'center';
+                    line.style.marginRight = '14px';
+                    line.style.marginBottom = '6px';
+
+                    const radio = document.createElement('input');
+                    radio.type = 'radio';
+                    radio.name = fieldMeta.name;
+                    radio.dataset.field = fieldMeta.name;
+                    radio.value = value;
+                    radio.checked = selectedSet.has(value);
+                    applyExtraAttributes(radio, fieldMeta.extra);
+
+                    const txt = document.createElement('span');
+                    txt.innerText = ' ' + String(opt.label ?? value);
+
+                    line.appendChild(radio);
+                    line.appendChild(txt);
+                    wrap.appendChild(line);
+                });
+                return wrap;
+            }
+
+            const preferred = selectedValues && selectedValues.length > 0 ? String(selectedValues[0]) : '';
+            const fallbackType = resolveTypeNotNullFallbackType(fieldMeta, preferred);
+            if (fallbackType) {
+                return createFallbackInputControl(fieldMeta, fallbackType, preferred);
+            }
+
+            const select = document.createElement('select');
+            select.name = fieldMeta.name;
+            select.dataset.field = fieldMeta.name;
+            select.required = !!fieldMeta.required;
+            select.setAttribute('data-field-control', '1');
+
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.text = '-- chọn --';
+            select.appendChild(placeholder);
+
+            let hasPreferred = false;
+            options.forEach(opt => {
+                const value = String(opt.value ?? '');
+                const option = document.createElement('option');
+                option.value = value;
+                option.text = String(opt.label ?? value);
+                if (preferred !== '' && preferred === value) {
+                    option.selected = true;
+                    hasPreferred = true;
+                }
+                select.appendChild(option);
+            });
+            if (!hasPreferred) {
+                select.value = '';
+            }
+            applyExtraAttributes(select, fieldMeta.extra);
+            return select;
+        }
+
+        function applyOnChangeOptionsToField(sourceFieldMeta, responseData) {
+            const targetName = String(responseData.apply_to_object || sourceFieldMeta.apply_to_object || '').trim();
+            if (!targetName) return;
+            const targetMeta = (meta.fields || []).find(x => x && x.name === targetName);
+            if (!targetMeta) return;
+
+            const form = document.getElementById('cms-edit-form');
+            if (!form) return;
+
+            const group = Array.from(form.querySelectorAll('.cms-field-wrap')).find(g => {
+                return !!g.querySelector(`[name="${targetName}"]`) || !!g.querySelector(`[data-field="${targetName}"]`);
+            });
+            if (!group) return;
+
+            const oldControl = group.querySelector('[data-field-control="1"]');
+            const selectedValues = getFieldSelectedValues(targetName);
+            const renderType = String(responseData.object_type || sourceFieldMeta.object_type || targetMeta.input_type || targetMeta.type || 'select').toLowerCase();
+            const options = Array.isArray(responseData.options) ? responseData.options : [];
+            const newControl = buildDynamicOptionControl(targetMeta, renderType, options, selectedValues);
+
+            if (oldControl) {
+                // Cleanly teardown Select2 before replacing control to avoid orphan UI nodes.
+                if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
+                    const selects = oldControl.matches && oldControl.matches('select')
+                        ? [oldControl]
+                        : Array.from(oldControl.querySelectorAll('select'));
+                    selects.forEach(sel => {
+                        const $sel = jQuery(sel);
+                        if ($sel.hasClass('select2-hidden-accessible')) {
+                            try { $sel.select2('destroy'); } catch (e) {}
+                        }
+                    });
+                }
+                oldControl.replaceWith(newControl);
+                Array.from(group.querySelectorAll('span.select2-container')).forEach(node => {
+                    if (!node.previousElementSibling || node.previousElementSibling.tagName !== 'SELECT') {
+                        node.remove();
+                    }
+                });
+            } else {
+                group.appendChild(newControl);
+            }
+        }
+
+        function createChildTableRoot(state) {
+            const childTableConfig = state.config;
+            const wrap = document.createElement('div');
+            wrap.id = 'cms-child-table-wrap-' + childTableConfig.config_key;
+            wrap.style.width = '100%';
+            wrap.style.flex = '0 0 100%';
+            wrap.style.marginTop = '16px';
+            wrap.style.borderTop = '1px solid #ddd';
+            wrap.style.paddingTop = '14px';
+
+            const top = document.createElement('div');
+            top.style.display = 'flex';
+            top.style.alignItems = 'center';
+            top.style.justifyContent = 'space-between';
+            top.style.gap = '10px';
+            top.style.flexWrap = 'wrap';
+
+            const title = document.createElement('h3');
+            title.id = 'cms-child-table-title-' + childTableConfig.config_key;
+            title.style.margin = '0';
+            title.style.fontSize = '18px';
+            title.style.fontWeight = '600';
+            title.innerText = childTableConfig ? childTableConfig.title : 'Du lieu con';
+
+            const addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.id = 'cms-child-add-btn-' + childTableConfig.config_key;
+            addBtn.className = 'cms-btn cms-btn-add';
+            addBtn.innerText = (childTableConfig && childTableConfig.actions && childTableConfig.actions.add_button_label) || 'Them dong';
+
+            top.appendChild(title);
+            top.appendChild(addBtn);
+
+            const note = document.createElement('div');
+            note.id = 'cms-child-note-' + childTableConfig.config_key;
+            note.style.marginTop = '8px';
+            note.style.color = '#666';
+            note.style.fontSize = '13px';
+
+            const tableWrap = document.createElement('div');
+            tableWrap.style.overflowX = 'auto';
+            tableWrap.style.marginTop = '10px';
+
+            const tbl = document.createElement('table');
+            tbl.id = 'cms-child-table-' + childTableConfig.config_key;
+            tbl.className = 'cms-table';
+            tbl.style.minWidth = '720px';
+
+            const thead = document.createElement('thead');
+            const trh = document.createElement('tr');
+            (childTableConfig && childTableConfig.columns || []).forEach(col => {
+                const th = document.createElement('th');
+                th.innerText = col.label || col.name;
+                trh.appendChild(th);
+            });
+            const tha = document.createElement('th');
+            tha.innerText = 'Thao tac';
+            trh.appendChild(tha);
+            thead.appendChild(trh);
+
+            const tbody = document.createElement('tbody');
+            tbody.id = 'cms-child-tbody-' + childTableConfig.config_key;
+
+            tbl.appendChild(thead);
+            tbl.appendChild(tbody);
+            tableWrap.appendChild(tbl);
+
+            wrap.appendChild(top);
+            wrap.appendChild(note);
+            wrap.appendChild(tableWrap);
+
+            state.root = wrap;
+            state.tbody = tbody;
+            state.note = note;
+            state.addBtn = addBtn;
+
+            return wrap;
+        }
+
+        function childValueToString(v) {
+            if (v === null || v === undefined) return '';
+            return String(v);
+        }
+
+        function parseChildSelectedValues(rawVal) {
+            if (Array.isArray(rawVal)) return rawVal.map(v => String(v));
+            if (rawVal === null || rawVal === undefined) return [];
+            const text = String(rawVal).trim();
+            if (!text) return [];
+            if (text.startsWith('[') && text.endsWith(']')) {
+                try {
+                    const arr = JSON.parse(text);
+                    if (Array.isArray(arr)) return arr.map(v => String(v));
+                } catch (e) {}
+            }
+            return text.split(',').map(s => s.trim()).filter(Boolean);
+        }
+
+        function applyChildFieldAttributes(el, state, col, rowIndex, controlSuffix) {
+            el.name = 'child_' + col.name;
+            if (controlSuffix) {
+                el.id = buildChildFieldId(state, col, rowIndex) + '_' + controlSuffix;
+            } else {
+                el.id = buildChildFieldId(state, col, rowIndex);
+            }
+            el.dataset.childTable = state && state.config ? state.config.child_table : '';
+            el.dataset.childConfigKey = state && state.config ? state.config.config_key : '';
+            el.dataset.childField = col.name;
+            el.dataset.childRowIndex = Number.isInteger(rowIndex) ? String(rowIndex) : '';
+        }
+
+        function renderChildChoiceInput(state, col, value, rowIndex) {
+            const inputType = String(col.input_type || '').toLowerCase();
+            const opts = Array.isArray(state.optionsMap[col.name]) ? state.optionsMap[col.name] : [];
+
+            if (inputType === 'checkbox' && opts.length === 0) {
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                applyChildFieldAttributes(input, state, col, rowIndex);
+                input.value = '1';
+                const normalizedVal = String(value ?? '').trim().toLowerCase();
+                input.checked = normalizedVal === '1' || normalizedVal === 'true' || normalizedVal === 'yes' || value === true || value === 1;
+                applyExtraAttributes(input, col.extra || '');
+                return input;
+            }
+
+            const wrap = document.createElement('div');
+            wrap.setAttribute('data-field-control', '1');
+            wrap.style.minWidth = '140px';
+
+            if (inputType === 'checkbox') {
+                const selectedSet = new Set(parseChildSelectedValues(value));
+                const allCheckboxes = [];
+
+                if (opts.length > 1) {
+                    const checkAllLine = document.createElement('label');
+                    checkAllLine.style.display = 'inline-flex';
+                    checkAllLine.style.alignItems = 'center';
+                    checkAllLine.style.marginRight = '14px';
+                    checkAllLine.style.marginBottom = '6px';
+                    checkAllLine.style.fontSize = '12px';
+                    checkAllLine.style.color = '#666';
+
+                    const checkAllChk = document.createElement('input');
+                    checkAllChk.type = 'checkbox';
+                    checkAllChk.dataset.childCheckAll = col.name;
+
+                    const checkAllTxt = document.createElement('span');
+                    checkAllTxt.innerText = ' Chọn tất cả';
+
+                    checkAllChk.addEventListener('change', function() {
+                        const isChecked = this.checked;
+                        allCheckboxes.forEach(chk => {
+                            chk.checked = isChecked;
+                            chk.dispatchEvent(new Event('change', { bubbles: true }));
+                        });
+                    });
+
+                    checkAllLine.appendChild(checkAllChk);
+                    checkAllLine.appendChild(checkAllTxt);
+                    wrap.appendChild(checkAllLine);
+                }
+
+                opts.forEach((opt, optIndex) => {
+                    const optValue = String(opt.value ?? '');
+                    const line = document.createElement('label');
+                    line.style.display = 'inline-flex';
+                    line.style.alignItems = 'center';
+                    line.style.marginRight = '14px';
+                    line.style.marginBottom = '6px';
+
+                    const chk = document.createElement('input');
+                    chk.type = 'checkbox';
+                    applyChildFieldAttributes(chk, state, col, rowIndex, String(optIndex + 1));
+                    chk.value = optValue;
+                    chk.checked = selectedSet.has(optValue);
+                    applyExtraAttributes(chk, col.extra || '');
+                    allCheckboxes.push(chk);
+
+                    const txt = document.createElement('span');
+                    txt.innerText = ' ' + String(opt.label ?? optValue);
+
+                    chk.addEventListener('change', function() {
+                        const checkAll = wrap.querySelector('input[data-child-check-all="' + col.name + '"]');
+                        if (!checkAll) return;
+                        const allChecked = allCheckboxes.length > 0 && allCheckboxes.every(node => node.checked);
+                        const someChecked = allCheckboxes.some(node => node.checked);
+                        checkAll.checked = allChecked;
+                        checkAll.indeterminate = someChecked && !allChecked;
+                    });
+
+                    line.appendChild(chk);
+                    line.appendChild(txt);
+                    wrap.appendChild(line);
+                });
+
+                const checkAll = wrap.querySelector('input[data-child-check-all="' + col.name + '"]');
+                if (checkAll) {
+                    const allChecked = allCheckboxes.length > 0 && allCheckboxes.every(node => node.checked);
+                    const someChecked = allCheckboxes.some(node => node.checked);
+                    checkAll.checked = allChecked;
+                    checkAll.indeterminate = someChecked && !allChecked;
+                }
+
+                return wrap;
+            }
+
+            const radioOptions = opts.length > 0
+                ? opts
+                : [{ value: '1', label: 'Có' }, { value: '0', label: 'Không' }];
+            const selectedValue = childValueToString(value);
+            radioOptions.forEach((opt, optIndex) => {
+                const optValue = String(opt.value ?? '');
+                const line = document.createElement('label');
+                line.style.display = 'inline-flex';
+                line.style.alignItems = 'center';
+                line.style.marginRight = '14px';
+                line.style.marginBottom = '6px';
+
+                const radio = document.createElement('input');
+                radio.type = 'radio';
+                applyChildFieldAttributes(radio, state, col, rowIndex, String(optIndex + 1));
+                radio.value = optValue;
+                radio.checked = selectedValue === optValue;
+                applyExtraAttributes(radio, col.extra || '');
+
+                const txt = document.createElement('span');
+                txt.innerText = ' ' + String(opt.label ?? optValue);
+
+                line.appendChild(radio);
+                line.appendChild(txt);
+                wrap.appendChild(line);
+            });
+            return wrap;
+        }
+
+        function notifyParentFormAboutChildChange(state, tr, col, sourceEl) {
+            const form = document.getElementById('cms-edit-form');
+            if (!form) return;
+
+            const rowIndex = tr && tr.dataset ? Number(tr.dataset.rowIndex || -1) : -1;
+            const currentRow = Number.isInteger(rowIndex) && rowIndex >= 0 ? state.rows[rowIndex] : null;
+            const detail = {
+                source: 'child-record',
+                childTable: state && state.config ? state.config.child_table : '',
+                childConfigKey: state && state.config ? state.config.config_key : '',
+                rowIndex: Number.isInteger(rowIndex) ? rowIndex : -1,
+                field: col && col.name ? col.name : (sourceEl && sourceEl.name ? sourceEl.name : ''),
+                value: sourceEl ? (sourceEl.type === 'checkbox' ? !!sourceEl.checked : sourceEl.value) : '',
+                row: currentRow ? Object.assign({}, currentRow) : null
+            };
+
+            try {
+                form.dispatchEvent(new CustomEvent('input', { bubbles: true, cancelable: false, detail }));
+            } catch (e) {
+                try { form.dispatchEvent(new Event('input', { bubbles: true })); } catch (err) {}
+            }
+
+            try {
+                form.dispatchEvent(new CustomEvent('change', { bubbles: true, cancelable: false, detail }));
+            } catch (e) {
+                try { form.dispatchEvent(new Event('change', { bubbles: true })); } catch (err) {}
+            }
+
+            // Child changes can affect function formulas even when parent fields are unchanged.
+            scheduleRecomputeAfterChildChange();
+        }
+
+        function buildChildFieldId(state, col, rowIndex) {
+            const configKey = state && state.config && state.config.config_key ? String(state.config.config_key).trim() : 'child';
+            const safeConfigKey = configKey.replace(/[^A-Za-z0-9_-]/g, '_');
+            const base = (col && col.name ? String(col.name).trim() : 'field').replace(/[^A-Za-z0-9_-]/g, '_');
+            const idx = Number.isInteger(rowIndex) ? rowIndex + 1 : 1;
+            return `${safeConfigKey}_${base}_${idx}`;
+        }
+
+        function renderChildSelect(state, col, value, rowIndex) {
+            const sel = document.createElement('select');
+            sel.name = 'child_' + col.name;
+            sel.id = buildChildFieldId(state, col, rowIndex);
+            sel.dataset.childTable = state && state.config ? state.config.child_table : '';
+            sel.dataset.childConfigKey = state && state.config ? state.config.config_key : '';
+            sel.dataset.childField = col.name;
+            sel.dataset.childRowIndex = Number.isInteger(rowIndex) ? String(rowIndex) : '';
+            sel.style.minWidth = '120px';
+
+            const ph = document.createElement('option');
+            ph.value = '';
+            ph.text = '-- chon --';
+            sel.appendChild(ph);
+
+            const opts = Array.isArray(state.optionsMap[col.name]) ? state.optionsMap[col.name] : [];
+            opts.forEach(o => {
+                const op = document.createElement('option');
+                op.value = childValueToString(o.value);
+                op.text = childValueToString(o.label || o.value);
+                sel.appendChild(op);
+            });
+
+            const current = childValueToString(value);
+            if (current && !opts.some(o => childValueToString(o.value) === current)) {
+                const op = document.createElement('option');
+                op.value = current;
+                op.text = current;
+                sel.appendChild(op);
+            }
+            sel.value = current;
+            applyExtraAttributes(sel, col.extra || '');
+            if (hasSelect2Extra(col.extra || '')) {
+                sel.setAttribute('data-select2-enabled', '1');
+            }
+            return sel;
+        }
+
+        function renderChildFileInput(state, col, value, rowIndex) {
+            const wrap = document.createElement('div');
+            wrap.dataset.fileField = '1';
+            wrap.setAttribute('data-field-control', '1');
+            wrap.style.display = 'flex';
+            wrap.style.flexDirection = 'column';
+            wrap.style.gap = '4px';
+            wrap.style.minWidth = '160px';
+
+            // Hidden input stores the file URL — read by collectChildRowFromTr via [name="child_X"]
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'child_' + col.name;
+            hidden.id = buildChildFieldId(state, col, rowIndex);
+            hidden.dataset.childTable = state && state.config ? state.config.child_table : '';
+            hidden.dataset.childConfigKey = state && state.config ? state.config.config_key : '';
+            hidden.dataset.childField = col.name;
+            hidden.dataset.childRowIndex = Number.isInteger(rowIndex) ? String(rowIndex) : '';
+            hidden.value = childValueToString(value);
+
+            const preview = document.createElement('div');
+
+            function refreshChildFilePreview(fileUrl) {
+                preview.innerHTML = '';
+                if (!fileUrl) return;
+                const a = document.createElement('a');
+                a.href = fileUrl;
+                a.target = '_blank';
+                a.rel = 'noopener';
+                try { a.innerText = fileUrl.split('/').pop() || fileUrl; } catch(e) { a.innerText = fileUrl; }
+                a.style.fontSize = '13px';
+                preview.appendChild(a);
+                const btnRem = document.createElement('button');
+                btnRem.type = 'button';
+                btnRem.style.marginLeft = '6px';
+                btnRem.style.fontSize = '12px';
+                btnRem.innerText = 'Xóa';
+                btnRem.addEventListener('click', async function() {
+                    if (!confirm('Xóa file này?')) return;
+                    try {
+                        const payload = { table: state.config.child_table, col: col.name, file_url: hidden.value };
+                        const resp = await fetch('/api/generic.php?action=file_delete', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                            body: JSON.stringify(payload)
+                        });
+                        const jr = await resp.json();
+                        if (jr && jr.success) {
+                            hidden.value = '';
+                            refreshChildFilePreview('');
+                            hidden.dispatchEvent(new Event('change', { bubbles: true }));
+                        } else {
+                            alert('Xóa file thất bại: ' + (jr && jr.message ? jr.message : ''));
+                        }
+                    } catch (err) {
+                        alert('Lỗi xóa file: ' + (err && err.message ? err.message : ''));
+                    }
+                });
+                preview.appendChild(btnRem);
+            }
+
+            refreshChildFilePreview(childValueToString(value));
+
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.name = 'file_child_' + col.name;
+            applyExtraAttributes(fileInput, col.extra || '');
+            fileInput.addEventListener('change', async function(ev) {
+                const fl = ev.target.files && ev.target.files[0];
+                if (!fl) return;
+                try {
+                    const fd = new FormData();
+                    fd.append('action', 'file_upload');
+                    fd.append('table', state.config.child_table);
+                    fd.append('col', col.name);
+                    fd.append('id', 'new');
+                    fd.append('file', fl);
+                    const upl = await fetch('/api/generic.php?action=file_upload', {
+                        method: 'POST',
+                        body: fd,
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    const jr = await upl.json();
+                    if (jr && jr.success && jr.file_url) {
+                        hidden.value = jr.file_url;
+                        refreshChildFilePreview(jr.file_url);
+                        // bubble change up to the wrap div so renderChildRows' syncChildRow fires
+                        hidden.dispatchEvent(new Event('change', { bubbles: true }));
+                    } else {
+                        alert('Upload thất bại: ' + (jr && jr.message ? jr.message : ''));
+                    }
+                } catch (err) {
+                    alert('Lỗi upload: ' + (err && err.message ? err.message : ''));
+                }
+            });
+
+            wrap.appendChild(hidden);
+            wrap.appendChild(preview);
+            wrap.appendChild(fileInput);
+            return wrap;
+        }
+
+        function renderChildInput(state, col, value, rowIndex) {
+            if (col.input_type === 'file') {
+                return renderChildFileInput(state, col, value, rowIndex);
+            }
+            if (col.input_type === 'select') {
+                return renderChildSelect(state, col, value, rowIndex);
+            }
+            if (col.input_type === 'checkbox' || col.input_type === 'radio') {
+                return renderChildChoiceInput(state, col, value, rowIndex);
+            }
+            const isTextarea = col.input_type === 'textarea';
+            const input = document.createElement(isTextarea ? 'textarea' : 'input');
+            applyChildFieldAttributes(input, state, col, rowIndex);
+            if (col.input_type === 'number') {
+                input.type = 'text';
+                input.dataset.childNumberField = '1';
+                input.value = sanitizeNumberInputValue(value);
+                input.addEventListener('input', function() {
+                    var caret = this.selectionStart;
+                    var oldLength = this.value.length;
+                    this.value = sanitizeNumberInputValue(this.value);
+                    var newLength = this.value.length;
+                    if (typeof caret === 'number') {
+                        var diff = newLength - oldLength;
+                        this.selectionStart = this.selectionEnd = Math.max(0, caret + diff);
+                    }
+                });
+                input.addEventListener('paste', function(e) {
+                    e.preventDefault();
+                    var pasted = (e.clipboardData || window.clipboardData).getData('text');
+                    var start = this.selectionStart != null ? this.selectionStart : this.value.length;
+                    var end = this.selectionEnd != null ? this.selectionEnd : this.value.length;
+                    var next = this.value.slice(0, start) + pasted + this.value.slice(end);
+                    this.value = sanitizeNumberInputValue(next);
+                    this.dispatchEvent(new Event('input', { bubbles: true }));
+                });
+            } else if (col.input_type === 'date') {
+                input.type = 'date';
+            } else if (col.input_type === 'time') {
+                input.type = 'time';
+            } else if (!isTextarea) {
+                input.type = 'text';
+            }
+            if (col.input_type !== 'number') {
+                input.value = childValueToString(value);
+            }
+            if (hasKeywordFlag(col.more, 'html')) {
+                input.setAttribute('data-formatted', '1');
+            }
+            if (col.required) input.required = true;
+            if (col.readonly) {
+                input.readOnly = true;
+                input.setAttribute('readonly', 'readonly');
+            }
+            if (col.disabled) {
+                input.disabled = true;
+                input.setAttribute('disabled', 'disabled');
+            }
+            applyExtraAttributes(input, col.extra || '');
+            return input;
+        }
+
+        function createEmptyChildRow(state) {
+            const childTableConfig = state.config;
+            const row = { __isNew: true, __deleted: false };
+            (childTableConfig.columns || []).forEach(col => {
+                row[col.name] = '';
+            });
+            Object.keys(childTableConfig.fixed_values || {}).forEach(k => {
+                row[k] = childTableConfig.fixed_values[k];
+            });
+            return row;
+        }
+
+        function collectChildRowFromTr(state, tr) {
+            const childTableConfig = state.config;
+            const idx = Number(tr.dataset.rowIndex || -1);
+            if (!Number.isInteger(idx) || idx < 0 || idx >= state.rows.length) return;
+            const row = state.rows[idx];
+            (childTableConfig.columns || []).forEach(col => {
+                const named = Array.from(tr.querySelectorAll(`[name="child_${col.name}"]`));
+                if (!named.length) return;
+                named.forEach(el => {
+                    if (el.tagName === 'TEXTAREA' && el.getAttribute('data-xinha-initialized') === '1') {
+                        try { syncXinhaForElement(el); } catch(e) {}
+                    }
+                });
+
+                const first = named[0];
+                if (col.input_type === 'number' || first.dataset.childNumberField === '1') {
+                    const cleaned = parseNumericValue(first.value);
+                    row[col.name] = cleaned !== '' ? Number(cleaned) : null;
+                } else if (col.input_type === 'checkbox') {
+                    const checkboxes = named.filter(el => el.type === 'checkbox');
+                    if (checkboxes.length > 1) {
+                        row[col.name] = checkboxes.filter(el => el.checked).map(el => el.value).join(',');
+                    } else if (checkboxes.length === 1) {
+                        row[col.name] = checkboxes[0].checked ? (checkboxes[0].value || '1') : '0';
+                    } else {
+                        row[col.name] = first.value;
+                    }
+                } else if (col.input_type === 'radio') {
+                    const radios = named.filter(el => el.type === 'radio');
+                    const checked = radios.find(el => el.checked);
+                    row[col.name] = checked ? checked.value : '';
+                } else {
+                    row[col.name] = first.value;
+                }
+            });
+        }
+
+        function renderChildRows(state) {
+            const childTableConfig = state.config;
+            const tbody = state.tbody;
+            const note = state.note;
+            if (!tbody) return;
+
+            tbody.innerHTML = '';
+            const activeRows = state.rows.filter(r => !r.__deleted);
+            if (note) {
+                if (currentRecordId === 'new' || !currentRecordId) {
+                    note.innerText = 'Can luu ban ghi cha truoc khi CRUD du lieu con.';
+                } else {
+                    note.innerText = `So dong: ${activeRows.length}. Du lieu con se duoc luu khi bam "Luu" form cha.`;
+                }
+            }
+
+            if (activeRows.length === 0) {
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = (childTableConfig.columns || []).length + 1;
+                td.style.color = '#777';
+                td.innerText = 'Chua co du lieu con.';
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+                return;
+            }
+
+            state.rows.forEach((row, idx) => {
+                if (row.__deleted) return;
+                const tr = document.createElement('tr');
+                tr.dataset.rowIndex = String(idx);
+
+                (childTableConfig.columns || []).forEach(col => {
+                    const td = document.createElement('td');
+                    const el = renderChildInput(state, col, row[col.name], idx);
+                    const syncChildRow = (sourceEl) => {
+                        collectChildRowFromTr(state, tr);
+                        notifyParentFormAboutChildChange(state, tr, col, sourceEl || el);
+                    };
+                    const childControls = el.matches && el.matches('[name="child_' + col.name + '"]')
+                        ? [el]
+                        : Array.from(el.querySelectorAll('[name="child_' + col.name + '"]'));
+                    if (childControls.length > 0) {
+                        childControls.forEach(control => {
+                            const isTextLikeInput = control.tagName === 'TEXTAREA' || (control.tagName === 'INPUT' && !['checkbox', 'radio', 'file', 'hidden'].includes(String(control.type || '').toLowerCase()));
+                            if (isTextLikeInput) {
+                                control.addEventListener('input', () => syncChildRow(control));
+                            }
+                            control.addEventListener('change', () => syncChildRow(control));
+                        });
+                    } else {
+                        el.addEventListener('change', () => syncChildRow(el));
+                    }
+                    td.appendChild(el);
+                    tr.appendChild(td);
+                });
+
+                const tda = document.createElement('td');
+                const btnDelete = document.createElement('button');
+                btnDelete.type = 'button';
+                btnDelete.className = 'cms-btn cms-btn-delete';
+                btnDelete.innerText = 'Xoa';
+                btnDelete.addEventListener('click', () => {
+                    const pk = childTableConfig.child_pk;
+                    const pkVal = row[pk];
+                    if (pkVal !== undefined && pkVal !== null && String(pkVal).trim() !== '') {
+                        state.deletedIds.push(pkVal);
+                    }
+                    row.__deleted = true;
+                    renderChildRows(state);
+                    notifyParentFormAboutChildChange(state, tr, null, null);
+                });
+                tda.appendChild(btnDelete);
+                tr.appendChild(tda);
+
+                tbody.appendChild(tr);
+            });
+
+            try { initXinhaEditors(document.getElementById('cms-child-table-area')); } catch (e) {}
+        }
+
+        async function loadChildSelectOptions(state) {
+            const childTableConfig = state.config;
+            state.optionsMap = {};
+            for (const col of (childTableConfig.columns || [])) {
+                if (!['select', 'checkbox', 'radio'].includes(col.input_type)) continue;
+                if (!col.q_code) {
+                    state.optionsMap[col.name] = [];
+                    continue;
+                }
+                try {
+                    const opts = await fetchOptionsByQCode(col.q_code);
+                    state.optionsMap[col.name] = Array.isArray(opts) ? opts : [];
+                } catch (e) {
+                    state.optionsMap[col.name] = [];
+                }
+            }
+        }
+
+        async function loadChildRows(state) {
+            const childTableConfig = state.config;
+            state.rows = [];
+            state.deletedIds = [];
+
+            if (currentRecordId === 'new' || !currentRecordId) {
+                renderChildRows(state);
+                return;
+            }
+
+            let url = `/api/generic.php?action=list&table=${encodeURIComponent(childTableConfig.child_table)}&page=1&limit=1000`;
+            url += `&${encodeURIComponent(childTableConfig.parent_fk)}=${encodeURIComponent(currentRecordId)}`;
+            Object.keys(childTableConfig.filter || {}).forEach(k => {
+                const v = childTableConfig.filter[k];
+                url += `&${encodeURIComponent(k)}=${encodeURIComponent(v)}`;
+            });
+
+            const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+            const data = await res.json();
+            if (!data || !data.success) {
+                state.rows = [];
+                renderChildRows(state);
+                return;
+            }
+            state.rows = Array.isArray(data.rows) ? data.rows.map(r => Object.assign({ __isNew: false, __deleted: false }, r)) : [];
+            renderChildRows(state);
+        }
+
+        async function renderChildTablesIfNeeded() {
+            if (childTablesLoadingPromise) {
+                await childTablesLoadingPromise;
+                return;
+            }
+
+            childTablesLoadingPromise = (async () => {
+                childTablesReady = false;
+                childTableConfigs = getChildConfigsFromMeta();
+                if (!Array.isArray(childTableConfigs) || childTableConfigs.length === 0) {
+                    childTableStates = [];
+                    childTablesReady = true;
+                    return;
+                }
+
+                const form = document.getElementById('cms-edit-form');
+                if (!form) return;
+
+                childTableStates = childTableConfigs.map(cfg => createChildState(cfg));
+
+                for (const state of childTableStates) {
+                    const block = createChildTableRoot(state);
+                    form.appendChild(block);
+
+                    if (state.addBtn) {
+                        state.addBtn.disabled = false;
+                        state.addBtn.style.display = 'inline-block';
+                        state.addBtn.addEventListener('click', () => {
+                            state.rows.unshift(createEmptyChildRow(state));
+                            renderChildRows(state);
+                            notifyParentFormAboutChildChange(state, null, null, null);
+                            try { initSelect2Large(); } catch (e) {}
+                        });
+                    }
+                }
+
+                for (const state of childTableStates) {
+                    await loadChildSelectOptions(state);
+                    await loadChildRows(state);
+                                                             }
+
+                try { initSelect2Large(); } catch (e) {}
+                childTablesReady = true;
+            })();
+
+            try {
+                await childTablesLoadingPromise;
+            } finally {
+                childTablesLoadingPromise = null;
+            }
+        }
+
+        async function triggerOnChangeQuery(fieldMeta) {
+            if (!fieldMeta || !fieldMeta.on_change_q_code) return;
+            const form = document.getElementById('cms-edit-form');
+            if (!form) return;
+
+            const formValues = collectCurrentFormValues(form);
+            const changedValue = Object.prototype.hasOwnProperty.call(formValues, fieldMeta.name)
+                ? formValues[fieldMeta.name]
+                : '';
+            const payload = Object.assign({}, getUrlParamPayload(), {
+                on_change_q_code: fieldMeta.on_change_q_code,
+                field_name: fieldMeta.name,
+                field_value: changedValue,
+                form_values: formValues
+            });
+
+            try {
+                const res = await fetch('/api/generic.php?action=on_change_options', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data && data.success) {
+                    applyOnChangeOptionsToField(fieldMeta, data);
+                    try { initSelect2Large(); } catch (e) {}
+                }
+            } catch (e) {}
+        }
+
+        async function waitForFieldReady(fieldName, timeoutMs = 2400, intervalMs = 80) {
+            const startedAt = Date.now();
+            let lastSnapshot = null;
+            let stableCount = 0;
+
+            while (Date.now() - startedAt < timeoutMs) {
+                const selectedValues = getFieldSelectedValues(fieldName);
+                const snapshot = JSON.stringify(selectedValues);
+                if (selectedValues.length > 0) {
+                    if (snapshot === lastSnapshot) {
+                        stableCount += 1;
+                    } else {
+                        stableCount = 1;
+                        lastSnapshot = snapshot;
+                    }
+
+                    if (stableCount >= 2) {
+                        return;
+                    }
+                }
+
+                await new Promise(resolve => setTimeout(resolve, intervalMs));
+            }
+        }
+
+        function getParentDependencyFields(depField, deps) {
+            return deps
+                .filter(d => String(d.apply_to_object || '').trim() === depField)
+                .map(d => String(d.name || '').trim())
+                .filter(Boolean);
+        }
+
+        async function runInitialOnChangeDependencies(deps) {
+            const pending = deps.slice();
+            const doneFields = new Set();
+            let safety = 0;
+
+            while (pending.length > 0 && safety < deps.length + 6) {
+                safety += 1;
+                let progressed = false;
+
+                for (let i = 0; i < pending.length; i++) {
+                    const dep = pending[i];
+                    const depField = String(dep.name || '').trim();
+                    if (!depField) {
+                        pending.splice(i, 1);
+                        i -= 1;
+                        continue;
+                    }
+
+                    const parentFields = getParentDependencyFields(depField, deps);
+                    const canRunNow = parentFields.every(parent => doneFields.has(parent));
+                    if (!canRunNow) continue;
+
+                    await waitForFieldReady(depField);
+                    await triggerOnChangeQuery(dep);
+                    doneFields.add(depField);
+
+                    pending.splice(i, 1);
+                    i -= 1;
+                    progressed = true;
+                }
+
+                if (!progressed) {
+                    // Fallback to avoid deadlock on circular/broken metadata.
+                    const dep = pending.shift();
+                    if (!dep) break;
+                    const depField = String(dep.name || '').trim();
+                    if (depField) {
+                        await waitForFieldReady(depField, 1200, 60);
+                    }
+                    await triggerOnChangeQuery(dep);
+                    if (depField) doneFields.add(depField);
+                }
+            }
+        }
+
+        async function bindOnChangeDependencies() {
+            const form = document.getElementById('cms-edit-form');
+            if (!form || !meta || !Array.isArray(meta.fields)) return;
+
+            const deps = meta.fields.filter(f => {
+                return f && String(f.on_change_q_code || '').trim() !== '' && String(f.apply_to_object || '').trim() !== '';
+            });
+            if (deps.length === 0) return;
+
+            for (const f of deps) {
+                const els = Array.from(form.querySelectorAll(`[name="${f.name}"]`));
+                els.forEach(el => {
+                    el.addEventListener('change', function() {
+                        triggerOnChangeQuery(f);
+                    });
+                });
+            }
+
+            await runInitialOnChangeDependencies(deps);
+        }
+
+        backButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                window.history.back();
+            });
+        });
+
+        saveButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.getElementById('cms-edit-form').requestSubmit();
+            });
+        });
+
+        if (!table || !id) {
+            document.getElementById('cms-error').innerText = 'Thiếu thông tin bảng hoặc id.';
+            document.getElementById('cms-error').style.display = 'block';
+        } else {
+            loadMetaAndData();
+        }
+
+        async function loadMetaAndData() {
+            document.getElementById('cms-error').style.display = 'none';
+            try {
+                // Lấy metadata
+                const metaRes = await fetch(API_BASE + `/api/generic.php?action=meta&table=${encodeURIComponent(table)}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                meta = await metaRes.json();
+                if (!meta.success) throw new Error(meta.message || 'Không lấy được metadata');
+                primaryKey = meta.primary_key;
+                if (isNew) {
+                    currentRecordId = 'new';
+                    isRecordLocked = false;
+                    document.getElementById('cms-edit-title').innerText = 'Thêm mới — ' + (meta.table_label || table);
+                    setSaveButtonText('Thêm mới');
+                    const dataRes = await fetch(API_BASE + `/api/generic.php?action=get&table=${encodeURIComponent(table)}&id=new`, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    const data = await dataRes.json();
+                    if (!data.success) throw new Error(data.message || 'Không lấy được dữ liệu khởi tạo');
+                    record = data.row || {};
+                    applyUrlIdDefaultsToRecord(record);
+                    await renderForm();
+                    applyLockedSaveState();
+                } else {
+                    currentRecordId = id;
+                    document.getElementById('cms-edit-title').innerText = meta.table_label || table;
+                    // Lấy dữ liệu
+                    const dataRes = await fetch(API_BASE + `/api/generic.php?action=get&table=${encodeURIComponent(table)}&id=${encodeURIComponent(id)}`, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    const data = await dataRes.json();
+                    if (!data.success) throw new Error(data.message || 'Không lấy được dữ liệu');
+                    record = data.row || {};
+                    isRecordLocked = isLockedValue(record.is_locked);
+                    applyUrlIdDefaultsToRecord(record);
+                    await renderForm();
+                    applyLockedSaveState();
+                }
+            } catch (err) {
+                document.getElementById('cms-error').innerText = err.message || 'Lỗi không xác định';
+                document.getElementById('cms-error').style.display = 'block';
+            }
+            // [DEBUG] load permission info
+            if (table) loadDebugPerm();
+        }
+
+        function validateChildRowsBeforeSave() {
+            for (const state of childTableStates) {
+                const childTableConfig = state.config;
+                const activeRows = state.rows.filter(r => !r.__deleted);
+                for (const row of activeRows) {
+                    for (const col of (childTableConfig.columns || [])) {
+                        if (!col.required) continue;
+                        const v = row[col.name];
+                        if (v === null || v === undefined || String(v).trim() === '') {
+                            return { ok: false, message: `Thiếu dữ liệu bắt buộc ở bảng con: ${col.label || col.name}` };
+                        }
+                    }
+                }
+            }
+            return { ok: true, message: '' };
+        }
+
+        async function saveChildTableRows(parentId) {
+            const parentValue = String(parentId || '').trim();
+            if (!parentValue) return;
+
+            for (const state of childTableStates) {
+                const childTableConfig = state.config;
+                const pk = childTableConfig.child_pk;
+                const tableName = childTableConfig.child_table;
+                const activeRows = state.rows.filter(r => !r.__deleted);
+
+                for (const deletedId of state.deletedIds) {
+                    const delUrl = `/api/generic.php?action=delete&table=${encodeURIComponent(tableName)}&id=${encodeURIComponent(deletedId)}`;
+                    const delRes = await fetch(delUrl, {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    const delData = await delRes.json();
+                    if (!delData || !delData.success) {
+                        throw new Error(delData && delData.message ? delData.message : 'Xóa dữ liệu con thất bại');
+                    }
+                }
+
+                for (const row of activeRows) {
+                    const payload = {};
+                    (childTableConfig.columns || []).forEach(col => {
+                        payload[col.name] = row[col.name];
+                    });
+
+                    payload[childTableConfig.parent_fk] = Number(parentValue);
+                    Object.keys(childTableConfig.fixed_values || {}).forEach(k => {
+                        payload[k] = childTableConfig.fixed_values[k];
+                    });
+
+                    const rowPk = row[pk];
+                    if (rowPk !== undefined && rowPk !== null && String(rowPk).trim() !== '') {
+                        const editUrl = `/api/generic.php?action=edit&table=${encodeURIComponent(tableName)}&id=${encodeURIComponent(rowPk)}`;
+                        const editRes = await fetch(editUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + token
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        const editData = await editRes.json();
+                        if (!editData || !editData.success) {
+                            throw new Error(editData && editData.message ? editData.message : 'Cập nhật dữ liệu con thất bại');
+                        }
+                    } else {
+                        const insUrl = `/api/generic.php?action=insert&table=${encodeURIComponent(tableName)}`;
+                        const insRes = await fetch(insUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + token
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        const insData = await insRes.json();
+                        if (!insData || !insData.success) {
+                            throw new Error(insData && insData.message ? insData.message : 'Thêm dữ liệu con thất bại');
+                        }
+                        if (insData.insert_id) {
+                            row[pk] = insData.insert_id;
+                        }
+                    }
+                }
+
+                state.deletedIds = [];
+            }
+        }
+
+        function collectChildTablePayload() {
+            return (childTableStates || []).map(state => {
+                const childTableConfig = state.config;
+                const activeRows = (state.rows || []).filter(row => !row.__deleted).map(row => {
+                    const payload = {};
+                    (childTableConfig.columns || []).forEach(col => {
+                        payload[col.name] = row[col.name];
+                    });
+                    return payload;
+                });
+
+                return {
+                    config_key: childTableConfig.config_key,
+                    child_table: childTableConfig.child_table,
+                    child_pk: childTableConfig.child_pk,
+                    parent_fk: childTableConfig.parent_fk,
+                    rows: activeRows,
+                    deleted_ids: Array.isArray(state.deletedIds) ? state.deletedIds.slice() : []
+                };
+            });
+        }
+
+        // [DEBUG] Đối chiếu quyền
+        async function loadDebugPerm() {
+            if (!table) return;
+            document.getElementById('cms-debug-content').textContent = 'Đang tải...';
+            try {
+                const res = await fetch(`/api/generic.php?action=debug_perm&table=${encodeURIComponent(table)}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                renderDebugPerm(data);
+            } catch(e) {
+                document.getElementById('cms-debug-content').textContent = 'Lỗi: ' + e.message;
+            }
+        }
+
+        // Render cms_token info in debug panel (copy / inline edit / clear)
+        function renderTokenInfo() {
+            const el = document.getElementById('cms-debug-token');
+            if (!el) return;
+            const t = localStorage.getItem('cms_token');
+
+            // If no token, show an inline input to set one
+            if (!t) {
+                el.innerHTML = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><strong style="min-width:86px">cms_token:</strong><input id="cms-token-input" placeholder="Chưa có token..." style="padding:6px;font-family:monospace;width:340px"><button id="cms-token-set" style="padding:4px 8px">Đặt token</button></div>`;
+                const setBtn = document.getElementById('cms-token-set');
+                const input = document.getElementById('cms-token-input');
+                if (setBtn) setBtn.addEventListener('click', () => {
+                    const val = String(input.value || '').trim();
+                    if (!val) { alert('Token rỗng. Hủy bỏ.'); return; }
+                    localStorage.setItem('cms_token', val);
+                    renderTokenInfo();
+                    alert('Token đã được đặt');
+                });
+                return;
+            }
+
+            const masked = t.length > 24 ? t.slice(0,10) + '…' + t.slice(-8) : t;
+            el.innerHTML = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><strong style="min-width:86px">cms_token:</strong><span id="cms-token-masked" style="font-family:monospace;color:#333">${masked}</span><button id="cms-token-copy" style="padding:4px 8px">Sao chép</button><button id="cms-token-update" style="padding:4px 8px">Cập nhật</button><button id="cms-token-clear" style="padding:4px 8px">Xóa token</button></div><div id="cms-token-input-wrap" style="margin-top:8px;display:none"></div>`;
+
+            const copyBtn = document.getElementById('cms-token-copy');
+            const updateBtn = document.getElementById('cms-token-update');
+            const clearBtn = document.getElementById('cms-token-clear');
+
+            if (copyBtn) copyBtn.addEventListener('click', async () => {
+                try { await navigator.clipboard.writeText(t); alert('Đã sao chép token vào clipboard'); } catch (e) { prompt('Copy token:', t); }
+            });
+
+            if (clearBtn) clearBtn.addEventListener('click', () => {
+                if (!confirm('Xóa token khỏi localStorage?')) return;
+                localStorage.removeItem('cms_token'); renderTokenInfo(); alert('Token đã bị xóa');
+            });
+
+            if (updateBtn) updateBtn.addEventListener('click', () => {
+                const wrap = document.getElementById('cms-token-input-wrap');
+                if (!wrap) return;
+                wrap.style.display = 'block';
+                wrap.innerHTML = '';
+                const input = document.createElement('input');
+                input.id = 'cms-token-input';
+                input.style.padding = '6px';
+                input.style.fontFamily = 'monospace';
+//                input.style.width = '420px';
+                input.value = t;
+                const save = document.createElement('button');
+                save.id = 'cms-token-save';
+                save.style.padding = '4px 8px';
+                save.innerText = 'Lưu';
+                const cancel = document.createElement('button');
+                cancel.id = 'cms-token-cancel';
+                cancel.style.padding = '4px 8px';
+                cancel.style.marginLeft = '6px';
+                cancel.innerText = 'Hủy';
+                wrap.appendChild(input);
+                wrap.appendChild(save);
+                wrap.appendChild(cancel);
+
+                save.addEventListener('click', () => {
+                    const newVal = String(input.value || '').trim();
+                    if (newVal === '') {
+                        if (confirm('Bạn đã nhập rỗng. Xóa token thay vì lưu?')) {
+                            localStorage.removeItem('cms_token');
+                            renderTokenInfo();
+                            alert('Token đã bị xóa');
+                            return;
+                        } else {
+                            return;
+                        }
+                    }
+                    localStorage.setItem('cms_token', newVal);
+                    renderTokenInfo();
+                    alert('Token đã được cập nhật');
+                });
+
+                cancel.addEventListener('click', () => {
+                    renderTokenInfo();
+                });
+            });
+        }
+
+        try { renderTokenInfo(); } catch (e) {}
+
+        function renderDebugPerm(data) {
+            const el = document.getElementById('cms-debug-content');
+            if (!data || !data.success) {
+                el.textContent = 'Lỗi: ' + (data && data.message ? data.message : 'không rõ');
+                return;
+            }
+            let html = `<b>User ID: ${data.user_id}</b> — Quyền hiện tại:<br>`;
+            if (!data.user_roles.length) {
+                html += '<span style="color:#c00">Không có role nào</span><br>';
+            } else {
+                data.user_roles.forEach(r => {
+                    html += `<span style="background:#e8f0fe;padding:2px 7px;margin:2px;display:inline-block;border-radius:3px">ID ${r.role_id}: ${r.name}</span>`;
+                });
+            }
+            html += '<br><br>';
+            html += `<b>Rules quyen_voi_table cho bảng "${data.table}":</b><br>`;
+            if (!data.table_rules.length) {
+                html += '<span style="color:#c00">Không có rule nào</span>';
+            } else {
+                data.table_rules.forEach(rule => {
+                    const mc = rule.matched ? '#276827' : '#aaa';
+                    const mt = rule.matched ? '&#10003; KHỚP' : '&#10007; không khớp';
+                    const perms = [];
+                    if (rule.can_read)   perms.push('<span style="color:green">read</span>');
+                    if (rule.can_create) perms.push('<span style="color:blue">create</span>');
+                    if (rule.can_update) perms.push('<span style="color:darkorange">update</span>');
+                    if (rule.can_delete) perms.push('<span style="color:red">delete</span>');
+                    const rolesTags = rule.roles.map(r => `<span style="font-size:12px;background:#f5f5f5;padding:1px 5px;border-radius:3px;margin:1px">ID ${r.role_id}: ${r.name}</span>`).join(' ');
+                    html += `<div style="border:1px solid ${mc};border-radius:4px;padding:5px 10px;margin:4px 0">`;
+                    html += `<div><b>Rule #${rule.id}</b> <span style="color:${mc};font-size:12px">${mt}</span></div>`;
+                    html += `<div>Roles: ${rolesTags || '<span style="color:#aaa">trống</span>'}</div>`;
+                    html += `<div>Quyền: ${perms.length ? perms.join(' | ') : '<span style="color:#aaa">không có</span>'}</div>`;
+                    if (rule.self_record) html += `<div style="color:#888;font-size:12px">self_record: ${rule.self_record}</div>`;
+                    html += '</div>';
+                });
+            }
+            el.innerHTML = html;
+        }
+
+        async function renderForm() {
+            const form = document.getElementById('cms-edit-form');
+            form.innerHTML = '';
+            const previewFormulas = parseFormulas(meta && meta.formulas ? meta.formulas : '');
+            const hasRemotePmsFunction = previewFormulas.some(formula => formula && formula.type === 'function' && formula.funcCode);
+            for (const f of (meta.fields || [])) {
+                if (!f.show_form) continue;
+                if (f.server_auto) continue;
+                const isPK = (f.name === primaryKey);
+                // Thêm mới: bỏ qua field primary key (Auto Increment)
+                if (isNew && isPK) continue;
+                const group = document.createElement('div');
+                // Wrapper that may receive a width from server metadata (f.form_width)
+                group.className = 'cms-form-group cms-field-wrap';
+                // Allow specifying width via metadata: number => percent, or raw CSS value (e.g. '300px' or '30%')
+                try {
+                    let w = '' + (f.form_width ?? '');
+                    w = w.trim();
+                    if (w) {
+                        // If metadata provides width, mark as fixed and apply it
+                        let wCss = '';
+                        if (/^\d+$/.test(w)) wCss = w + '%';
+                        else wCss = w;
+                        group.dataset.fixedWidth = '1';
+                        group.style.width = wCss;
+                    } else {
+                        // no metadata width: leave width empty so global selector can control it
+                        group.dataset.fixedWidth = '0';
+                    }
+                } catch (e) {
+                    group.dataset.fixedWidth = '0';
+                }
+                const label = document.createElement('label');
+                label.innerText = f.label || f.name;
+                if (!isPK && f.required) label.innerHTML += ' <span style="color:#d32f2f">*</span>';
+                // Sửa: thêm badge "Khóa chính" bên cạnh label
+                if (!isNew && isPK) label.innerHTML += ' <span style="color:#888;font-size:12px;font-weight:normal">(khóa chính)</span>';
+                // Store label reference to potentially add check-all later
+                const labelContainer = document.createElement('div');
+                labelContainer.style.display = 'flex';
+                labelContainer.style.alignItems = 'center';
+                labelContainer.style.gap = '12px';
+                labelContainer.style.marginBottom = '6px';
+                labelContainer.appendChild(label);
+                if (f.link_url) {
+                    const link = document.createElement('a');
+                    link.href = String(f.link_url).trim();
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
+                    link.innerText = 'Link';
+                    link.style.fontSize = '0.9em';
+                    link.style.color = '#1665d8';
+                    link.style.textDecoration = 'none';
+                    link.style.marginLeft = '4px';
+                    labelContainer.appendChild(link);
+                }
+                let input;
+                // Render theo input_type
+                const val = record[f.name] ?? '';
+                const fieldType = String(f.input_type || f.type || '').toLowerCase();
+                const fallbackTypeForNotNull = resolveTypeNotNullFallbackType(f, val);
+                const parseSelectedValues = (rawVal) => {
+                    if (Array.isArray(rawVal)) return rawVal.map(v => String(v));
+                    if (rawVal === null || rawVal === undefined) return [];
+                    const text = String(rawVal).trim();
+                    if (!text) return [];
+                    if (text.startsWith('[') && text.endsWith(']')) {
+                        try {
+                            const arr = JSON.parse(text);
+                            if (Array.isArray(arr)) return arr.map(v => String(v));
+                        } catch (_) {
+                            // Fallback xuống split bằng dấu phẩy.
+                        }
+                    }
+                    return text.split(',').map(s => s.trim()).filter(Boolean);
+                };
+                // Sửa: field primary key → readonly text
+                if (!isNew && isPK) {
+                    input = document.createElement('input');
+                    input.type = 'text';
+                    input.name = f.name;
+                    input.value = val;
+                    input.readOnly = true;
+                    input.style.background = '#f0f0f0';
+                    input.style.color = '#888';
+                    input.style.cursor = 'not-allowed';
+                    group.appendChild(labelContainer);
+                    group.appendChild(input);
+                    form.appendChild(group);
+                    continue;
+                }
+
+                // type_not_null: nếu field đang có giá trị thì render theo kiểu fallback,
+                // không phụ thuộc input_type/select/q_code hiện tại.
+                if (fallbackTypeForNotNull) {
+                    input = createFallbackInputControl(f, fallbackTypeForNotNull, val);
+                    group.appendChild(labelContainer);
+                    group.appendChild(input);
+                    form.appendChild(group);
+                    continue;
+                }
+
+                let options = [];
+                if (f.q_code) {
+                    options = await fetchOptionsByQCode(f.q_code);
+                }
+
+                if (fieldType === 'checkbox') {
+                    if (options.length > 0) {
+                        const selectedSet = new Set(parseSelectedValues(val));
+                        input = document.createElement('div');
+                        
+                        // Create check-all checkbox to add to labelContainer
+                        const checkAllLabel = document.createElement('label');
+                        checkAllLabel.style.display = 'inline-flex';
+                        checkAllLabel.style.alignItems = 'center';
+                        checkAllLabel.style.cursor = 'pointer';
+                        checkAllLabel.style.fontSize = '13px';
+                        checkAllLabel.style.color = '#666';
+                        
+                        const checkAllChk = document.createElement('input');
+                        checkAllChk.type = 'checkbox';
+                        checkAllChk.style.cursor = 'pointer';
+                        checkAllChk.dataset.checkAll = f.name;
+                        
+                        const checkAllText = document.createElement('span');
+                        checkAllText.innerText = ' Chọn tất cả';
+                        
+                        checkAllLabel.appendChild(checkAllChk);
+                        checkAllLabel.appendChild(checkAllText);
+                        labelContainer.appendChild(checkAllLabel);
+                        
+                        // Track all checkboxes for this field
+                        const allCheckboxes = [];
+                        
+                        options.forEach(opt => {
+                            const optValue = String(opt.value ?? '');
+                            const wrap = document.createElement('label');
+                            wrap.style.display = 'inline-flex';
+                            wrap.style.alignItems = 'center';
+                            wrap.style.marginRight = '14px';
+                            wrap.style.marginBottom = '6px';
+
+                            const chk = document.createElement('input');
+                            chk.type = 'checkbox';
+                            chk.name = f.name;
+                            chk.dataset.field = f.name;
+                            chk.value = optValue;
+                            chk.checked = selectedSet.has(optValue);
+                            allCheckboxes.push(chk);
+                            // Apply extra attributes to individual checkbox input
+                            applyExtraAttributes(chk, f.extra);
+
+                            const txt = document.createElement('span');
+                            txt.innerText = ' ' + (opt.label ?? optValue);
+
+                            wrap.appendChild(chk);
+                            wrap.appendChild(txt);
+                            input.appendChild(wrap);
+                        });
+                        
+                        // Event listener cho check-all checkbox
+                        checkAllChk.addEventListener('change', function() {
+                            const isChecked = this.checked;
+                            allCheckboxes.forEach(chk => {
+                                chk.checked = isChecked;
+                            });
+                        });
+                        
+                        // Event listener cho từng checkbox con để cập nhật check-all status
+                        allCheckboxes.forEach(chk => {
+                            chk.addEventListener('change', function() {
+                                const allChecked = allCheckboxes.every(c => c.checked);
+                                const someChecked = allCheckboxes.some(c => c.checked);
+                                checkAllChk.checked = allChecked;
+                                checkAllChk.indeterminate = someChecked && !allChecked;
+                            });
+                        });
+                        
+                        // Initialize check-all initial state
+                        const allChecked = allCheckboxes.every(c => c.checked);
+                        const someChecked = allCheckboxes.some(c => c.checked);
+                        checkAllChk.checked = allChecked;
+                        checkAllChk.indeterminate = someChecked && !allChecked;
+                    } else {
+                        input = document.createElement('input');
+                        input.type = 'checkbox';
+                        input.name = f.name;
+                        input.dataset.field = f.name;
+                        input.value = '1';
+                        const normalizedVal = String(val ?? '').trim().toLowerCase();
+                        input.checked = normalizedVal === '1' || normalizedVal === 'true' || normalizedVal === 'yes' || val === true || val === 1;
+                        // Apply extra attributes to single checkbox input
+                        applyExtraAttributes(input, f.extra);
+                    }
+                } else if (fieldType === 'radio') {
+                    input = document.createElement('div');
+                    const radioOptions = options.length > 0
+                        ? options
+                        : [{ value: '1', label: 'Có' }, { value: '0', label: 'Không' }];
+                    radioOptions.forEach(opt => {
+                        const optValue = String(opt.value ?? '');
+                        const wrap = document.createElement('label');
+                        wrap.style.display = 'inline-flex';
+                        wrap.style.alignItems = 'center';
+                        wrap.style.marginRight = '14px';
+                        wrap.style.marginBottom = '6px';
+
+                        const radio = document.createElement('input');
+                        radio.type = 'radio';
+                        radio.name = f.name;
+                        radio.dataset.field = f.name;
+                        radio.value = optValue;
+                        if (String(val) == optValue) radio.checked = true;
+                        // Apply extra attributes to individual radio input
+                        applyExtraAttributes(radio, f.extra);
+
+                        const lbl = document.createElement('span');
+                        lbl.innerText = ' ' + (opt.label ?? optValue);
+
+                        wrap.appendChild(radio);
+                        wrap.appendChild(lbl);
+                        input.appendChild(wrap);
+                    });
+                } else if (f.q_code || fieldType === 'select') {
+                        const fallbackType = resolveTypeNotNullFallbackType(f, val);
+                        if (fallbackType) {
+                            input = createFallbackInputControl(f, fallbackType, val);
+                        } else {
+                            input = document.createElement('select');
+                            input.name = f.name;
+                            input.dataset.field = f.name;
+                            input.required = !!f.required;
+                            // prepend a null/placeholder option
+                            const placeholder = document.createElement('option');
+                            placeholder.value = '';
+                            placeholder.text = '-- chọn --';
+                            input.appendChild(placeholder);
+                            if (options.length > 0) {
+                                for (const opt of options) {
+                                    const option = document.createElement('option');
+                                    option.value = opt.value;
+                                    option.text = opt.label;
+                                    if (val == opt.value) option.selected = true;
+                                    input.appendChild(option);
+                                }
+                            } else if (f.q_code) {
+                                const option = document.createElement('option');
+                                option.value = '';
+                                option.text = '-- Không có dữ liệu --';
+                                input.appendChild(option);
+                            }
+                            // Apply extra attributes
+                            applyExtraAttributes(input, f.extra);
+                        }
+                } else if (fieldType === 'textarea') {
+                    input = document.createElement('textarea');
+                    input.name = f.name;
+                    input.dataset.field = f.name;
+                    input.value = val;
+                    if (f.required) input.required = true;
+                    // If server marks this field as formatted (table_definitions.is_formatted), tag it
+                    try {
+                        const isFormattedFlag = (f.is_formatted === true) || String(f.is_formatted) === '1' || String(f.is_formatted).toLowerCase() === 'true';
+                        if (isFormattedFlag) input.setAttribute('data-formatted', '1');
+                    } catch (e) {}
+                    // Apply extra attributes
+                    applyExtraAttributes(input, f.extra);
+                } else if (fieldType === 'number') {
+                    input = document.createElement('input');
+                    input.type = 'text';
+                    input.name = f.name;
+                    input.dataset.field = f.name;
+                    input.value = sanitizeNumberInputValue(val);
+                    if (f.required) input.required = true;
+                    input.dataset.numberField = '1';
+                    input.addEventListener('input', function() {
+                        const caret = this.selectionStart;
+                        const oldLen = this.value.length;
+                        this.value = sanitizeNumberInputValue(this.value);
+                        const newLen = this.value.length;
+                        if (typeof caret === 'number') {
+                            const diff = newLen - oldLen;
+                            this.selectionStart = this.selectionEnd = Math.max(0, caret + diff);
+                        }
+                    });
+                    input.addEventListener('paste', function(e) {
+                        e.preventDefault();
+                        const pasted = (e.clipboardData || window.clipboardData).getData('text');
+                        const start = this.selectionStart != null ? this.selectionStart : this.value.length;
+                        const end = this.selectionEnd != null ? this.selectionEnd : this.value.length;
+                        const next = this.value.slice(0, start) + pasted + this.value.slice(end);
+                        this.value = sanitizeNumberInputValue(next);
+                        this.dispatchEvent(new Event('input', { bubbles: true }));
+                    });
+                    // Apply extra attributes
+                    applyExtraAttributes(input, f.extra);
+                } else if (fieldType === 'date') {
+                    input = document.createElement('input');
+                    input.type = 'date';
+                    input.name = f.name;
+                    input.dataset.field = f.name;
+                    input.value = val;
+                    if (f.required) input.required = true;
+                    // Apply extra attributes
+                    applyExtraAttributes(input, f.extra);
+                } else if (fieldType === 'time') {
+                    input = document.createElement('input');
+                    input.type = 'time';
+                    input.name = f.name;
+                    input.dataset.field = f.name;
+                    input.value = val;
+                    if (f.required) input.required = true;
+                    // Apply extra attributes
+                    applyExtraAttributes(input, f.extra);
+                } else {
+                    input = document.createElement('input');
+                    input.type = 'text';
+                    input.name = f.name;
+                    input.dataset.field = f.name;
+                    input.value = val;
+                    if (f.required) input.required = true;
+                    // Apply extra attributes
+                    applyExtraAttributes(input, f.extra);
+                }
+                // Handle file inputs: show current link + upload control
+                if (fieldType === 'file' || fieldType === 'image') {
+                    // hidden input to store file_url (will be submitted as normal field)
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = f.name;
+                    hidden.value = val || '';
+
+                    const fileWrap = document.createElement('div');
+                    fileWrap.style.display = 'flex';
+                    fileWrap.style.flexDirection = 'column';
+                    fileWrap.style.gap = '6px';
+                    fileWrap.setAttribute('data-field-control', '1');
+
+                    const currentLink = document.createElement('div');
+                    if (val) {
+                        web_root = '/';
+                        const a = document.createElement('a');
+                        a.href = web_root + val;
+                        a.target = '_blank';
+                        a.rel = 'noopener';
+                        try { a.innerText = val.split('/').pop() || val; } catch(e) { a.innerText = val; }
+                        currentLink.appendChild(a);
+                        const btnRem = document.createElement('button');
+                        btnRem.type = 'button';
+                        btnRem.style.marginLeft = '8px';
+                        btnRem.innerText = 'Xóa';
+                        btnRem.addEventListener('click', async function(){
+                            if (!confirm('Xóa file hiện tại khỏi bản ghi?')) return;
+                            try {
+                                const payload = { table: table, col: f.name, id: isNew ? 'new' : id, file_url: val };
+                                const resp = await fetch('/api/generic.php?action=file_delete', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify(payload) });
+                                const jr = await resp.json();
+                                if (jr && jr.success) {
+                                    hidden.value = '';
+                                    currentLink.innerHTML = '';
+                                } else {
+                                    alert('Xóa file thất bại: ' + (jr && jr.message ? jr.message : 'Không xác định'));
+                                }
+                            } catch (err) {
+                                alert('Lỗi xóa file: ' + (err && err.message ? err.message : 'Kết nối lỗi'));
+                            }
+                        });
+                        currentLink.appendChild(btnRem);
+                    }
+
+                    const fileInput = document.createElement('input');
+                    fileInput.type = 'file';
+                    fileInput.name = `file_field_${f.name}`;
+                    // Apply extra attributes to file input
+                    applyExtraAttributes(fileInput, f.extra);
+                    fileInput.addEventListener('change', async function(ev){
+                        const fl = (ev.target.files && ev.target.files[0]) || null;
+                        if (!fl) return;
+                        // upload immediately
+                        try {
+                            const fd = new FormData();
+                            fd.append('action','file_upload');
+                            fd.append('table', table);
+                            fd.append('col', f.name);
+                            fd.append('id', isNew ? 'new' : id);
+                            fd.append('file', fl);
+                            const upl = await fetch('/api/generic.php?action=file_upload', { method: 'POST', body: fd, headers: { 'Authorization': 'Bearer ' + token } });
+                            const jr = await upl.json();
+                            if (jr && jr.success && jr.file_url) {
+                                hidden.value = jr.file_url;
+                                // update display
+                                currentLink.innerHTML = '';
+                                const a2 = document.createElement('a'); a2.href = jr.file_url; a2.target='_blank'; a2.rel='noopener'; a2.innerText = jr.file_url.split('/').pop() || jr.file_url;
+                                currentLink.appendChild(a2);
+                            } else {
+                                alert('Upload thất bại: ' + (jr && jr.message ? jr.message : 'Không xác định'));
+                            }
+                        } catch (err) {
+                            alert('Lỗi upload: ' + (err && err.message ? err.message : 'Kết nối lỗi'));
+                        }
+                    });
+
+                    fileWrap.appendChild(currentLink);
+                    fileWrap.appendChild(fileInput);
+                    // replace input with our file UI
+                    group.appendChild(labelContainer);
+                    group.appendChild(hidden);
+                    group.appendChild(fileWrap);
+                    form.appendChild(group);
+                    continue; // skip default append since already handled
+                }
+                // Field có extra chứa flag 'random_code': readonly, backend tự sinh mã duy nhất khi lưu.
+                if (hasKeywordFlag(f.extra, 'random_code') && input && input.tagName !== 'DIV') {
+                    input.readOnly = true;
+                    input.setAttribute('readonly', 'readonly');
+                    input.style.background = '#f5f5f5';
+                    input.style.color = '#888';
+                    input.style.cursor = 'not-allowed';
+                    if (isNew && (!input.value || input.value.trim() === '')) {
+                        input.placeholder = 'Tự động tạo khi lưu';
+                    }
+                }
+                group.appendChild(labelContainer);
+                input.setAttribute('data-field-control', '1');
+                group.appendChild(input);
+                form.appendChild(group);
+            }
+            const customActionButtons = getCustomActionButtonsFromMeta();
+            if (hasRemotePmsFunction || customActionButtons.length > 0) {
+                form.appendChild(createRecalculateBlock(customActionButtons, hasRemotePmsFunction));
+            }
+            
+            // Enter trong field sẽ submit form (trừ textarea để giữ xuống dòng).
+            if (!form.dataset.enterSubmitBound) {
+                form.addEventListener('keydown', function(e) {
+                    if (e.key !== 'Enter') return;
+                    const target = e.target;
+                    if (!target) return;
+                    if (target.tagName === 'TEXTAREA') return;
+                    if (target.tagName === 'BUTTON') return;
+                    if (!isNew && isRecordLocked) return;
+                    e.preventDefault();
+                    form.requestSubmit();
+                });
+                form.dataset.enterSubmitBound = '1';
+            }
+            // Apply global field width (from selector) after form rendered
+            try { applyFieldWrapWidth(); } catch (e) {}
+            // Apply URL _id defaults to select/radio/checkbox fields before dependency binding
+            try { applyUrlIdDefaultsToControls(); } catch (e) {}
+            // Render child-table block(s) early so formula/on-change payload can include child fields.
+            try { await renderChildTablesIfNeeded(); } catch (e) {}
+            // Bind dependent on-change queries after all fields are rendered
+            try { await bindOnChangeDependencies(); } catch (e) {}
+            // Wire formula auto-calculation if configured
+            try {
+                window.cmsFormulas = parseFormulas(meta.formulas || '');
+                if (window.cmsFormulas.length > 0) {
+                    const fieldNames = (meta.fields || []).map(f => f.name);
+                    window.cmsFormulas.forEach(formula => {
+                        formula.fields = fieldNames.filter(name => {
+                            const regex = new RegExp('\\b' + escapeRegExp(name) + '\\b', 'g');
+                            return regex.test(formula.text);
+                        });
+                    });
+                    bindFormulaInputs();
+                    // On initial form load, do not auto-call remote do_pms_function formulas.
+                    // Only compute local formulas to avoid unintended value overrides.
+                    recomputeFormulas({ skipRemoteFunctions: true });
+                }
+            } catch (e) {}
+            // Enhance selects explicitly marked with extra="select2"
+            try { initSelect2Large(); } catch (e) {}
+            // Initialize Xinha for formatted textareas (initXinhaEditors will no-op if none)
+            try { initXinhaEditors(document.getElementById('cms-edit-form')); } catch (e) {}
+        }
+
+        // Initialize select2 only for select elements explicitly marked in table_definitions.extra
+        function initSelect2Large() {
+            if (typeof jQuery === 'undefined' || typeof jQuery.fn.select2 === 'undefined') return;
+            const $form = jQuery('#cms-edit-form');
+            if (!$form.length) return;
+            $form.find('select').each(function() {
+                const $sel = jQuery(this);
+                // destroy existing select2 instance if present
+                if ($sel.hasClass('select2-hidden-accessible')) {
+                    try { $sel.select2('destroy'); } catch (e) {}
+                }
+                if (shouldInitSelect2(this)) {
+                    try {
+                        $sel.select2({
+                            theme: 'bootstrap-5',
+                            width: 'style',
+                            dropdownAutoWidth: true,
+                            placeholder: $sel.find('option[value=""]').text() || '-- chọn --'
+                        });
+                    } catch (e) {
+                        // ignore
+                    }
+                }
+            });
+        }
+
+        document.getElementById('cms-edit-form').onsubmit = async function(e) {
+            e.preventDefault();
+            if (!isNew && isRecordLocked) {
+                applyLockedSaveState();
+                return;
+            }
+            setSaveButtonsDisabled(true);
+            document.getElementById('cms-error').style.display = 'none';
+            const data = {};
+            for (const f of (meta.fields || [])) {
+                if (!f.show_form) continue;
+                const name = f.name;
+                const type = String(f.input_type || f.type || '').toLowerCase();
+                const escapedName = (typeof CSS !== 'undefined' && typeof CSS.escape === 'function')
+                    ? CSS.escape(name)
+                    : String(name).replace(/"/g, '\\"');
+                const namedControls = Array.from(e.target.querySelectorAll(`[name="${escapedName}"]`))
+                    .filter(node => !node.disabled);
+                if (!namedControls.length) continue;
+
+                const first = namedControls[0];
+                if (first.tagName === 'SELECT') {
+                    if (first.multiple) {
+                        data[name] = Array.from(first.selectedOptions || []).map(o => o.value);
+                    } else {
+                        data[name] = first.value;
+                    }
+                    continue;
+                }
+
+                if (first.type === 'checkbox' || type === 'checkbox') {
+                    const checkboxes = namedControls.filter(node => node.type === 'checkbox');
+                    if (checkboxes.length > 1) {
+                        data[name] = checkboxes.filter(node => node.checked).map(node => node.value).join(',');
+                    } else if (checkboxes.length === 1) {
+                        data[name] = checkboxes[0].checked ? (checkboxes[0].value || '1') : '0';
+                    } else {
+                        data[name] = '';
+                    }
+                    continue;
+                }
+
+                if (first.type === 'radio' || type === 'radio') {
+                    const radios = namedControls.filter(node => node.type === 'radio');
+                    const checked = radios.find(node => node.checked);
+                    data[name] = checked ? checked.value : '';
+                    continue;
+                }
+
+                if (type === 'number') {
+                    const cleaned = parseNumericValue(first.value);
+                    data[name] = cleaned !== '' ? Number(cleaned) : null;
+                } else {
+                    data[name] = first.value;
+                }
+            }
+            try {
+                let res;
+                if (isNew) {
+                    res = await fetch(`/api/generic.php?action=insert&table=${encodeURIComponent(table)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                        body: JSON.stringify(data)
+                    });
+                } else {
+                    res = await fetch(`/api/generic.php?action=edit&table=${encodeURIComponent(table)}&id=${encodeURIComponent(id)}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                        body: JSON.stringify(data)
+                    });
+                }
+                let result;
+                const rawText = await res.text();
+                if (!rawText.trim()) {
+                    document.getElementById('cms-error').innerText = 'Lỗi: server trả về response rỗng (HTTP ' + res.status + ')';
+                    document.getElementById('cms-error').style.display = 'block';
+                    setSaveButtonsDisabled(false);
+                    return;
+                }
+                try {
+                    result = JSON.parse(rawText);
+                } catch (err) {
+                    document.getElementById('cms-error').innerText = 'Lỗi phản hồi máy chủ (HTTP ' + res.status + '): ' + rawText.slice(0, 500);
+                    document.getElementById('cms-error').style.display = 'block';
+                    setSaveButtonsDisabled(false);
+                    return;
+                }
+                    if (result.success) {
+                    const parentIdForChild = isNew ? (result.insert_id || '') : id;
+
+                    const childValidation = validateChildRowsBeforeSave();
+                    if (!childValidation.ok) {
+                        document.getElementById('cms-error').innerText = childValidation.message;
+                        document.getElementById('cms-error').style.display = 'block';
+                        setSaveButtonsDisabled(false);
+                        return;
+                    }
+
+                    if (childTableStates.length > 0) {
+                        try {
+                            // Sync Xinha HTML editors → textarea.value, then re-collect all rows from DOM
+                            try { resyncAllChildRowsFromDom(); } catch(e) {}
+                            await saveChildTableRows(parentIdForChild);
+                        } catch (childErr) {
+                            document.getElementById('cms-error').innerText = childErr && childErr.message ? childErr.message : 'Lưu dữ liệu con thất bại';
+                            document.getElementById('cms-error').style.display = 'block';
+                            setSaveButtonsDisabled(false);
+                            return;
+                        }
+                    }
+
+                    const urlparams = new URLSearchParams(window.location.search);
+                    const fromParam = urlparams.get('from');
+                    // collect all *_id params from URL and append to redirect
+                    const extraParts = [];
+                    for (const [k, v] of urlparams.entries()) {
+                        if (!/_id$/i.test(k)) continue;
+                        extraParts.push(`${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+                    }
+                    const extraQs = extraParts.length ? '&' + extraParts.join('&') : '';
+                    if (isNew && childTableStates.length > 0 && parentIdForChild) {
+                        const nextParams = new URLSearchParams(window.location.search);
+                        nextParams.set('id', String(parentIdForChild));
+                        window.location.href = 'cms-edit.html?' + nextParams.toString();
+                        return;
+                    }
+
+                    if (fromParam === 'bus-man') {
+                        const to = `bus-man.html?table=${encodeURIComponent(table)}` + extraQs;
+                        window.location.href = to;
+                    } else {
+                        const to = `cms-list.html?table=${encodeURIComponent(table)}` + extraQs;
+                        window.location.href = to;
+                    }
+                } else {
+                    document.getElementById('cms-error').innerText = result.message || 'Lưu thất bại';
+                    document.getElementById('cms-error').style.display = 'block';
+                }
+            } catch (err) {
+                document.getElementById('cms-error').innerText = 'Lỗi kết nối máy chủ';
+                document.getElementById('cms-error').style.display = 'block';
+            }
+            applyLockedSaveState();
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="cms-toasts.js"></script>
+    <script src="cms-chat.js"></script>
+    <script>
+    // Sync a single Xinha editor whose _textArea matches the given element
+    function syncXinhaForElement(el) {
+        try {
+            if (!el || typeof xinha_editors === 'undefined' || !xinha_editors) return;
+            var list = Array.isArray(xinha_editors) ? xinha_editors : Object.values(xinha_editors);
+            for (var i = 0; i < list.length; i++) {
+                var ed = list[i];
+                if (ed && ed._textArea === el && typeof ed.synchronize === 'function') {
+                    ed.synchronize();
+                    return;
+                }
+            }
+        } catch(e) {}
+    }
+
+    // Sync ALL active Xinha editors to their underlying textareas
+    function syncAllXinhaEditors() {
+        try {
+            if (typeof xinha_editors === 'undefined' || !xinha_editors) return;
+            var list = Array.isArray(xinha_editors) ? xinha_editors : Object.values(xinha_editors);
+            list.forEach(function(ed) {
+                if (ed && typeof ed.synchronize === 'function') {
+                    try { ed.synchronize(); } catch(e) {}
+                }
+            });
+        } catch(e) {}
+    }
+
+    // Sync Xinha editors then re-collect every child row from the DOM
+    function resyncAllChildRowsFromDom() {
+        try { syncAllXinhaEditors(); } catch(e) {}
+        if (!Array.isArray(childTableStates)) return;
+        childTableStates.forEach(function(state) {
+            if (!state || !state.tbody) return;
+            var trs = Array.from(state.tbody.querySelectorAll('tr[data-row-index]'));
+            trs.forEach(function(tr) {
+                try { collectChildRowFromTr(state, tr); } catch(e) {}
+            });
+        });
+    }
+
+    // Initialize Xinha for dynamically created textareas (if Xinha is loaded)
+    function initXinhaEditors(scopeRoot) {
+        try {
+            if (typeof Xinha === 'undefined' || typeof Xinha.makeEditors === 'undefined') return;
+            var root = (scopeRoot && typeof scopeRoot.querySelectorAll === 'function') ? scopeRoot : document;
+            // Only initialize textareas explicitly marked as formatted by the server.
+            // Skip ones already initialized to avoid duplicated Xinha toolbars.
+            var tAs = root.querySelectorAll('textarea[data-formatted="1"]:not([data-xinha-initialized="1"])');
+            if (!tAs || tAs.length === 0) return;
+            var freshTextareas = Array.prototype.slice.call(tAs);
+            freshTextareas.forEach(function(ta) {
+                ta.setAttribute('data-xinha-initialized', '1');
+            });
+            // Xinha.makeEditors accepts an array of textarea elements
+            var editors = Xinha.makeEditors(freshTextareas, xinha_config || new Xinha.Config(), xinha_plugins || []);
+            Xinha.startEditors(editors);
+        } catch (e) {
+            if (typeof console !== 'undefined' && console.warn) console.warn('Xinha init error', e);
+        }
+    }
+    </script>
+    <script>
+      // Ensure Xinha only initializes CMS edit fields, not the chat textarea.
+      if (typeof xinha_editors === 'undefined' || xinha_editors === null) {
+                xinha_editors = '#cms-edit-form textarea[data-formatted="1"], #cms-child-table-area textarea[data-formatted="1"]';
+      }
+    </script>
+    <script src="/xinha/XinhaEasy.js" type="text/javascript"></script>
+</body>
+</html>

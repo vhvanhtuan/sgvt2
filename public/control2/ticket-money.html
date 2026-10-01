@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tiền vé</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="cms.css" />
+  <link rel="stylesheet" href="cargo.css" />
+  <link rel="stylesheet" href="scroll-top.css" />
+<link href="/html_logo.ico" rel="shortcut icon">
+  <style>
+    .filter-panel { background: #fff; border: 1px solid #d9dee6; border-radius: 10px; padding: 16px; margin-bottom: 18px; box-shadow: 0 1px 10px rgba(0,0,0,0.03); }
+    .filter-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; align-items: end; }
+    .table-card { background: #fff; border: 1px solid #d9dee6; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 10px rgba(0,0,0,0.03); }
+    .table-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid #e5e9ef; }
+    .summary-box { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+    .summary-badge { background: #e7f1ff; color: #0d47a1; border-radius: 8px; padding: 10px 12px; font-size: 13px; min-width: 110px; font-weight: 500; }
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
+    .table-scroll::-webkit-scrollbar { height: 8px; }
+    .table-scroll::-webkit-scrollbar-thumb { background: rgba(13, 110, 253, 0.35); border-radius: 999px; }
+    .table-scroll::-webkit-scrollbar-track { background: transparent; }
+    table.list-table { width: 100%; border-collapse: collapse; min-width: 1300px; }
+    table.list-table th, table.list-table td { border: 1px solid #e7edf3; padding: 12px 10px; text-align: left; vertical-align: middle; }
+    table.list-table th { background: #f8f9fa; color: #1f3f6c; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+    table.list-table tbody tr { transition: background-color 0.15s ease; }
+    table.list-table tbody tr:hover { background: #f8fbff; }
+    table.list-table tbody tr.selected { background: #e7f1ff; }
+    table.list-table td small { color: #556f88; display: block; margin-top: 4px; }
+    .pagination { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; padding: 14px 18px; }
+    .pagination button { border: 1px solid #c4cdd7; background: #fff; padding: 8px 12px; border-radius: 6px; cursor: pointer; color: #1f3f6c; transition: all 0.15s ease; }
+    .pagination button:hover { background: #f0f0f0; border-color: #999; }
+    .pagination button.active { background: #0d6efd; color: #fff; border-color: #0d6efd; }
+    .checkbox-center { text-align: center; }
+    .text-right { text-align: right; }
+    .empty-state { padding: 24px; text-align: center; color: #556f88; font-size: 16px; }
+    .ticket-table-body td{ text-align: right; }
+    @media (max-width: 768px) { .filter-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+    .day_vnd{    text-align: center !important;
+    color: red !important;}
+  </style>
+</head>
+<body>
+  <div id="cms-header"></div>
+  <script src="header-loader.js"></script>
+  <div class="page-shell">
+    <div class="page-title">
+      <div>
+        <h1>Danh sách phơi</h1>
+        <div class="status-pill">Danh sách phơi</div>
+      </div>
+      <div class="toolbar">
+        <button id="btn_export" class="btn btn-danger"><i class="fa fa-file-excel"></i> Xuất Excel</button>
+      </div>
+    </div>
+
+    <div class="filter-panel">
+      <div class="filter-grid">
+        <div class="field-group">
+          <label for="route_id">Tuyến</label>
+          <select id="route_id" class="form-select"></select>
+        </div>
+        <div class="field-group">
+          <label for="dept_date">Từ ngày</label>
+          <input type="date" id="dept_date" class="form-control" placeholder="Ngày" />
+        </div>
+        <div class="field-group">
+          <label for="to_dept_date">Đến ngày</label>
+          <input type="date" id="to_dept_date" class="form-control" placeholder="Ngày" />
+        </div>
+        <div class="field-group">
+          <label for="branch_id">VP bán</label>
+          <select id="branch_id" class="form-select"></select>
+        </div>
+        <div class="field-group">
+          <label for="branch_id_from">Lên</label>
+          <select id="branch_id_from" class="form-select"></select>
+        </div>
+        <div class="field-group">
+          <label for="branch_id_to">Xuống</label>
+          <select id="branch_id_to" class="form-select"></select>
+        </div>
+        <div class="field-group">
+          <button id="btn_filter" class="secondary" style="width:100%;">Lọc</button>
+        </div>
+        <div class="field-group">
+          <button id="btn_reset_filter" class="secondary" style="width:100%;">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-actions">
+        <div class="summary-box">
+          <div class="summary-badge" id="summary_total">Tổng: 0 phơi</div>
+        </div>
+      </div>
+      <div class="table-scroll">
+<table class="list-table" id="ticket-table">
+<thead>
+<tr>
+<th>Ngày</th>
+<th>Tuyến</th>
+<th>Chuyến</th>
+<th>Vé</th>
+<th>VND</th>
+<th>Tiền TC</th>
+<th>Tổng</th>
+</tr>
+</thead>
+<tbody id="ticket-table-body"></tbody>
+</table>
+        <div id="ticket-empty" class="empty-state" style="display:none;">Không có vé phù hợp.</div>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+
+  <button id="scrollTopBtn" class="scroll-top-btn" type="button" title="Lên đầu trang">↑</button>
+
+  <script src="scroll-top.js"></script>
+  <script src="departure-editor.js"></script>
+  <script>
+  const API_URL = '/api/cargo.php';
+  const token = localStorage.getItem('cms_token') || localStorage.getItem('api_token') || '';
+  if (!token) {
+    window.location.href = 'cms-login.html';
+  }
+
+  const state = {
+    rows: [],
+    selected: {},
+    page: 1,
+    limit: 100,
+    total: 0,
+    filters: { q: '', status_id: '', onboard_at: '', offboard_at: '' }
+  };
+
+  const elems = {
+    route_id: document.getElementById('route_id'),
+    dept_date: document.getElementById('dept_date'),
+    to_dept_date: document.getElementById('to_dept_date'),
+    branch_id: document.getElementById('branch_id'),
+    branch_id_from: document.getElementById('branch_id_from'),
+    branch_id_to: document.getElementById('branch_id_to'),
+    emptyState: document.getElementById('ticket-empty'),
+    btn_filter: document.getElementById('btn_filter'),
+    btn_reset_filter: document.getElementById('btn_reset_filter'),
+    btn_export: document.getElementById('btn_export'),
+    summary_total: document.getElementById('summary_total'),
+    tableBody: document.getElementById('ticket-table-body')
+  };
+
+  function redirectToLogin() {
+    localStorage.removeItem('cms_token');
+    localStorage.removeItem('api_token');
+    window.location.href = 'cms-login.html';
+  }
+
+  function isAuthError(data, response) {
+    if (response && (response.status === 401 || response.status === 403)) return true;
+    const msg = data && data.message ? String(data.message) : '';
+    return data && data.success === false && /invalid|expired|missing.*authorization|missing.*auth|access denied/i.test(msg);
+  }
+
+  async function requestJson(url, opts = {}) {
+    const headers = opts.headers || {};
+    headers['Authorization'] = 'Bearer ' + token;
+    if (!opts.method || opts.method.toUpperCase() === 'GET') {
+      headers['Accept'] = 'application/json';
+    }
+    if (opts.body && !opts.headers?.['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
+    }
+    const response = await fetch(url, Object.assign({ credentials: 'same-origin' }, opts, { headers }));
+    const text = await response.text();
+    let data;
+    try { data = JSON.parse(text); } catch (err) { data = { success: false, message: 'Invalid response', raw: text }; }
+    if (isAuthError(data, response)) {
+      redirectToLogin();
+      return data;
+    }
+    return data;
+  }
+
+  function formatCurrency(num) {
+    const n = Number(num);
+    if (!isFinite(n)) return '0';
+    return n.toLocaleString('vi-VN');
+  }
+
+  function getFilterStorageKey() {
+    return 'ticket_money_filter';
+  }
+
+  function saveFiltersToStorage() {
+    const filterData = {
+      route_id: elems.route_id.value,
+      dept_date: elems.dept_date.value,
+      to_dept_date: elems.to_dept_date.value,
+      branch_id: elems.branch_id.value,
+      branch_id_from: elems.branch_id_from.value,
+      branch_id_to: elems.branch_id_to.value
+    };
+    localStorage.setItem(getFilterStorageKey(), JSON.stringify(filterData));
+  }
+
+  function loadFiltersFromStorage() {
+    const raw = localStorage.getItem(getFilterStorageKey());
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw);
+      if (saved.route_id !== undefined) elems.route_id.value = saved.route_id;
+      if (saved.dept_date !== undefined) elems.dept_date.value = saved.dept_date;
+      if (saved.to_dept_date !== undefined) elems.to_dept_date.value = saved.to_dept_date;
+      if (saved.branch_id_from !== undefined) elems.branch_id_from.value = saved.branch_id_from;
+      if (saved.branch_id_to !== undefined) elems.branch_id_to.value = saved.branch_id_to;
+    } catch (err) {
+      console.warn('Không thể đọc filter session', err);
+    }
+  }
+
+  function resetFilters() {
+    elems.route_id.value = '';
+    elems.dept_date.value = '';
+    elems.to_dept_date.value = '';
+    elems.branch_id.value = '';
+    elems.branch_id_from.value = '';
+    elems.branch_id_to.value = '';
+    loadList();
+  }
+
+  function buildRow(row) {
+            // <br><small>ID:${row.id}</small>
+
+    const checked = '';//state.selected[String(row.id)] ? 'checked' : '';
+        // <td class="checkbox-center"><input type="checkbox" class="row-checkbox" data-id="${row.id}" ${checked} /></td>
+    return `
+      <tr class="${checked ? 'selected' : ''}">
+        <td>${row.dept_date || ''}</td>
+        <td>${row.route_id ? state.routes[row.route_id] : ''}</td>
+        <td><a target="_blank" href="ticket-departure.html?route_id=${row.route_id}&dept_date=${row.dept_date}&dept_id=${row.dept_id}" class="text-decoration-underline">${row.dept_time||''}</a></td>
+        <td>${formatNumberDisplay(row.ticket_count, 0) || ''}</td>
+        <td>${formatNumberDisplay(row.total_vnd, 0) || ''}</td>
+        <td>${formatNumberDisplay(row.vnd_trung_chuyen, 0) || ''}</td>
+        <td>${formatNumberDisplay(row.total, 0) || ''}</td>
+      </tr>`;
+  }
+
+  function renderTable() {
+    html = ''; //state.rows.map(buildRow).join('');
+    elems.tableBody.innerHTML='';
+    current_route_id=state.rows[0].route_id;
+    current_dept_date='';//state.rows[0].dept_date;
+    current_route_id2=0;
+    day_route_vnd=0;
+    day_vnd=0;
+    state.rows.forEach(element => {
+      row=element;
+      if(current_route_id!=element.route_id){
+      html += `<tr><th colspan="6"></th><th>${formatNumberDisplay(day_route_vnd,0)||''}</th><th colspan="2"></th></tr>`;
+      day_vnd+=day_route_vnd;
+      current_route_id=element.route_id;
+      day_route_vnd=0;
+      }
+      day_route_vnd += element.total;
+      // html += buildRow(element);
+      html += `
+      <tr>
+        <td>${current_dept_date!=row.dept_date ? row.dept_date: ''}</td>
+        <td>${current_route_id2!=row.route_id ? state.routes[row.route_id] : ''}</td>
+        <td><a target="_blank" href="ticket-departure.html?route_id=${row.route_id}&dept_date=${row.dept_date}&dept_id=${row.dept_id}" class="text-decoration-underline">${row.dept_time || ''}</a></td>
+        <td>${formatNumberDisplay(row.ticket_count, 0) || ''}</td>
+        <td>${formatNumberDisplay(row.total_vnd, 0) || ''}</td>
+        <td>${formatNumberDisplay(row.vnd_trung_chuyen, 0) || ''}</td>
+        <td>${formatNumberDisplay(row.total, 0) || ''}</td>
+      </tr>`;
+      current_dept_date=row.dept_date;
+      current_route_id2=row.route_id;
+    });
+    html += `<tr><th colspan="6"></th><th>${formatNumberDisplay(day_route_vnd,0)||''}</th><th colspan="2"></th></tr>`;
+    day_vnd+=day_route_vnd;
+    html += `<tr><th class="day_vnd" colspan="6">TỔNG CỘNG</th><th>${formatNumberDisplay(day_vnd,0)||''}</th><th colspan="2"></th></tr>`;
+    elems.tableBody.innerHTML = html;
+    elems.emptyState.style.display = state.rows.length ? 'none' : 'block';
+  }
+
+  function buildListParams() {
+    const params = new URLSearchParams();
+    params.set('action', 'get_ticket_vnd');
+    params.set('route_id', elems.route_id.value);
+    params.set('dept_date', elems.dept_date.value);
+    params.set('to_dept_date', elems.to_dept_date.value);
+    params.set('branch_id', elems.branch_id.value);
+    params.set('branch_id_from', elems.branch_id_from.value);
+    params.set('branch_id_to', elems.branch_id_to.value);
+   return params;
+  }
+
+  async function loadMeta() {
+    const data = await requestJson(`${API_URL}?action=meta_departures`);
+    if (!data || !data.success) {
+      return;
+    }
+    const opts = data.options || {};
+    elems.route_id.innerHTML = '<option value="">-- Tất cả tuyến --</option>' + (opts.vexe_routes || []).map(item => `<option value="${item.id}">${item.label}</option>`).join('');
+      elems.branch_id.innerHTML = '<option value="">-- Tất cả VP --</option>' + (opts.vexe_branches || []).map(item => `<option value="${item.id}">${item.label}</option>`).join('');
+      elems.branch_id_from.innerHTML = '<option value="">-- Tất cả VP --</option>' + (opts.vexe_branches || []).map(item => `<option value="${item.id}">${item.label}</option>`).join('');
+      elems.branch_id_to.innerHTML = '<option value="">-- Tất cả VP --</option>' + (opts.vexe_branches || []).map(item => `<option value="${item.id}">${item.label}</option>`).join('');
+}
+
+  async function loadList() {
+    saveFiltersToStorage();
+    const params = buildListParams();
+    const data = await requestJson(`${API_URL}?${params.toString()}`);
+    if (!data || !data.success) {
+      alert(data?.message || 'Không tải được danh sách phơi.');
+      return;
+    }
+      const serverHash = data.data_hash || null;
+      if (serverHash) {
+        try { localStorage.setItem('td_ticket_money_hash', String(serverHash)); } catch (e) { /* ignore */ }
+      }
+
+    state.rows = data.data || [];
+    state.routes = data.routes || [];
+    elems.summary_total.innerHTML = `Tổng: ${formatNumberDisplay(data.total) || 0} phơi`;
+    renderTable();
+  }
+
+  elems.btn_filter.addEventListener('click', () => loadList());
+  elems.btn_reset_filter.addEventListener('click', resetFilters);
+  
+  elems.btn_export.addEventListener('click', () => {
+    exportToExcel();
+  });
+  
+  function getRouteLabel(routeId) {
+    return state.routes[routeId] || routeId || 'Tất cả';
+  }
+  
+  function exportToExcel() {
+    // Load SheetJS library
+    if (typeof XLSX === 'undefined') {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+      script.onload = () => generateExcelFile();
+      document.head.appendChild(script);
+    } else {
+      generateExcelFile();
+    }
+  }
+  
+  function generateExcelFile() {
+    const workbook = XLSX.utils.book_new();
+    const exportData = [];
+    
+    // Header section
+    exportData.push(['DANH SÁCH PHƠI THEO BỘ ĐANG LỌC']);
+    exportData.push(['']);
+    
+    // Filter info
+    exportData.push(['BỘ LỌC:']);
+    exportData.push(['Tuyến:', getRouteLabel(elems.route_id.value)]);
+    exportData.push(['Từ ngày:', elems.dept_date.value || '']);
+    exportData.push(['Đến ngày:', elems.to_dept_date.value || '']);
+    exportData.push(['VP bán:', elems.branch_id.value ? elems.branch_id.options[elems.branch_id.selectedIndex].text : 'Tất cả']);
+    exportData.push(['Lên:', elems.branch_id_from.value ? elems.branch_id_from.options[elems.branch_id_from.selectedIndex].text : 'Tất cả']);
+    exportData.push(['Xuống:', elems.branch_id_to.value ? elems.branch_id_to.options[elems.branch_id_to.selectedIndex].text : 'Tất cả']);
+    exportData.push(['']);
+    
+    // Table headers
+    exportData.push(['Ngày', 'Tuyến', 'Chuyến', 'Vé', 'VND', 'Tiền TC', 'Tổng']);
+    
+    // Table data
+    let currentRoute = null;
+    let dayRouteTotal = 0;
+    let dayTotal = 0;
+    
+    state.rows.forEach((row, index) => {
+      if (currentRoute !== null && currentRoute !== row.route_id) {
+        exportData.push(['', '', '', '', '', '', dayRouteTotal, '', '']);
+        dayTotal += dayRouteTotal;
+        dayRouteTotal = 0;
+      }
+      
+      dayRouteTotal += (row.total || 0);
+      currentRoute = row.route_id;
+      
+      exportData.push([
+        row.dept_date || '',
+        state.routes[row.route_id] || '',
+        row.dept_time || '',
+        row.ticket_count || '',
+        row.total_vnd || '',
+        row.vnd_trung_chuyen || '',
+        row.total || '',
+        '',
+        ''
+      ]);
+    });
+    
+    // Final route total
+    if (currentRoute !== null) {
+      exportData.push(['', '', '', '', '', '', dayRouteTotal, '', '']);
+      dayTotal += dayRouteTotal;
+    }
+    
+    // Grand total
+    exportData.push(['', '', '', '', '', 'TỔNG CỘNG', dayTotal, '', '']);
+    
+    // Create sheet
+    const sheet = XLSX.utils.aoa_to_sheet(exportData);
+    
+    // Set column widths
+    sheet['!cols'] = [
+      { wch: 12 },  // Ngày
+      { wch: 20 },  // Tuyến
+      { wch: 12 },  // Chuyến
+      { wch: 10 },  // Vé
+      { wch: 15 },  // VND
+      { wch: 15 },  // Tiền TC
+      { wch: 15 },  // Tổng
+      { wch: 12 },  // Thu phơi
+      { wch: 10 }   // Lúc
+    ];
+    
+    XLSX.utils.book_append_sheet(workbook, sheet, 'Phơi');
+    
+    // Generate filename with current date
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    XLSX.writeFile(workbook, `Danh_sach_phoi_${dateStr}.xlsx`);
+  }
+
+
+      async function checkTicketsChanged() {
+
+      try {
+    const params = buildListParams(state.page);
+    const data = await requestJson(`${API_URL}?${params.toString()}&get_hash=1`);
+    if (!data || !data.success) {
+      alert(data?.message || 'Không tải được danh sách phơi.');
+      return;
+    }
+        let serverHash = null;
+        serverHash = data?data.data_hash:null;
+        const key = 'td_ticket_money_hash';
+        const localHash = localStorage.getItem(key) || null;
+        if (serverHash && serverHash !== localHash) {
+          await loadList(state.page);
+        }
+      } catch (err) {
+        console.error('checkTicketsChanged error', err);
+      }
+    }
+
+  (async function init() {
+    await loadMeta();
+    loadFiltersFromStorage();
+    await loadList();
+
+          try {
+        if (window.td_check_interval) clearInterval(window.td_check_interval);
+        window.td_check_interval = setInterval(() => {
+          try { checkTicketsChanged(); } catch (e) { console.error('td check error', e); }
+        }, 10000);
+      } catch (e) { console.error('start check interval error', e); }
+
+  })();
+  </script>
+</body>
+</html>

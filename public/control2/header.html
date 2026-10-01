@@ -1,0 +1,125 @@
+<!-- Reusable CMS header (Bootstrap navbar). Place this file in control2 and pages load it via fetch into #cms-header -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-success">
+  <div class="container-fluid">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#cmsNavbar" aria-controls="cmsNavbar" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="cmsNavbar">
+      <ul id="dynamic-menu" class="navbar-nav me-auto mb-2 mb-lg-0">
+      </ul>
+
+      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <form class="d-flex" role="search" onsubmit="return false;">
+            <input class="form-control form-control-sm me-2" type="search" placeholder="Tìm..." aria-label="Search">
+          </form>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin</a>
+          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+            <li><a class="dropdown-item" href="#">Thông tin</a></li>
+            <li><a class="dropdown-item" href="#">Đăng xuất</a></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<script>
+  (function(){
+    const menuEl = document.getElementById('dynamic-menu');
+    if(!menuEl) return;
+
+    const token = localStorage.getItem('api_token') || localStorage.getItem('cms_token') || '';
+    const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+
+    function buildMenu(items){
+      // group by control_type_id
+      const groups = {};
+      items.forEach(item => {
+        const gid = item.control_type_id || '0';
+        if(!groups[gid]) groups[gid] = { name: item.control_type_name || '', items: [] };
+        groups[gid].items.push(item);
+      });
+
+      const frag = document.createDocumentFragment();
+      Object.keys(groups).forEach(gid => {
+        const g = groups[gid];
+        const li = document.createElement('li');
+        li.className = 'nav-item dropdown';
+
+        const a = document.createElement('a');
+        a.className = 'nav-link dropdown-toggle';
+        a.href = '#';
+        a.id = 'menu-'+gid;
+        a.setAttribute('role','button');
+        a.setAttribute('data-bs-toggle','dropdown');
+        a.setAttribute('aria-expanded','false');
+        a.textContent = g.name || 'Menu';
+        li.appendChild(a);
+
+        const ul = document.createElement('ul');
+        ul.className = 'dropdown-menu';
+        ul.setAttribute('aria-labelledby', a.id);
+
+        g.items.forEach(it => {
+          const itemLi = document.createElement('li');
+          const link = document.createElement('a');
+          link.className = 'dropdown-item';
+          link.href = (it.php && it.php.trim() !== '') ? it.php : '#';
+          // Special handling for logout (control_type_id=8)
+          if (it.vn == 'Đăng xuất') {
+            link.href = '#';
+            link.onclick = (e) => { e.preventDefault(); window.cmsLogout && window.cmsLogout(); };
+          }
+          if(it.bold && String(it.bold) !== '0'){
+            const strong = document.createElement('strong');
+            strong.textContent = it.vn || it.php || 'Item';
+            link.appendChild(strong);
+          } else {
+            link.textContent = it.vn || it.php || 'Item';
+          }
+          itemLi.appendChild(link);
+          ul.appendChild(itemLi);
+        });
+
+        li.appendChild(ul);
+        frag.appendChild(li);
+      });
+      menuEl.innerHTML = '';
+      menuEl.appendChild(frag);
+    }
+
+    // Define logout function globally
+    window.cmsLogout = function() {
+      localStorage.removeItem('cms_token');
+      localStorage.removeItem('api_token');
+      window.location.href = 'cms-login.html';
+    };
+
+    fetch('/api/bussiness.php?action=get_control_menus', { headers })
+      .then(r => r.ok ? r.json() : Promise.reject(r))
+      .then(json => {
+        if(!json || !json.success || !Array.isArray(json.data)) throw new Error('No menu data');
+        const menuData = Array.isArray(json.data) ? json.data : [];
+        // Nếu đã login, thêm menu Logout có control_type_id=8
+        if (token) {
+          menuData.push({
+            control_type_id: 8,
+            control_type_name: 'Người dùng',
+            vn: 'Đăng xuất',
+            php: '#',
+            bold: 0
+          });
+        }
+        buildMenu(menuData);
+      })
+      .catch(err => {
+        console.warn('Failed to load control menus', err);
+        // fallback static items
+        menuEl.innerHTML = '\n          <li class="nav-item"><a class="nav-link" href="#">Định danh</a></li>\n          <li class="nav-item"><a class="nav-link" href="#">Sản phẩm</a></li>\n          <li class="nav-item"><a class="nav-link" href="#">Xe</a></li>';
+      });
+  })();
+</script>

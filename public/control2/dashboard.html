@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-" crossorigin="anonymous">
+  <style>
+    body{background:#f7f7f7;color:#222;margin:0}
+    .panel{background:#fff;border:1px solid #ddd;padding:12px;margin-bottom:18px}
+    h2{margin:6px 0 12px 0;font-size:16px;color:#333}
+    table{border-collapse:collapse;width:100%}
+    table th, table td{border:1px solid #e1e1e1;padding:6px}
+    .muted{color:#777;font-size:13px}
+    .small{font-size:12px}
+    .toggle{cursor:pointer;color:#c00;font-weight:bold}
+    .grid{overflow:auto}
+    .vehicle-cell{white-space:nowrap}
+    .content-wrapper{padding:20px}
+    /* make tables responsive */
+    .table-responsive {overflow-x:auto}
+    /* Ensure divs that hold tables don't overflow on small screens */
+    .table-container {
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+  </style>
+  <link rel="stylesheet" href="cms-chat.css">
+</head>
+<body>
+  <!-- Inline header (previously loaded from header.html) -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-success">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/control2/dashboard.html">SaigonViet Travel</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#cmsNavbar" aria-controls="cmsNavbar" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="cmsNavbar">
+        <ul id="dynamic-menu" class="navbar-nav me-auto mb-2 mb-lg-0">
+          <!-- Menu will be rendered here from API -->
+        </ul>
+
+        <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <form class="d-flex" role="search" onsubmit="return false;">
+              <input class="form-control form-control-sm me-2" type="search" placeholder="Tìm..." aria-label="Search">
+            </form>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin</a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+              <li><a class="dropdown-item" href="#">Thông tin</a></li>
+              <li><a class="dropdown-item" href="#">Đăng xuất</a></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+  <script>
+    (function(){
+      const menuEl = document.getElementById('dynamic-menu');
+      if(!menuEl) return;
+
+      const token = localStorage.getItem('api_token') || localStorage.getItem('cms_token') || '';
+      const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+
+      function buildMenu(items){
+        const groups = {};
+        items.forEach(item => {
+          const gid = item.control_type_id || '0';
+          if(!groups[gid]) groups[gid] = { name: item.control_type_name || '', items: [] };
+          groups[gid].items.push(item);
+        });
+
+        const frag = document.createDocumentFragment();
+        Object.keys(groups).forEach(gid => {
+          const g = groups[gid];
+          const li = document.createElement('li');
+          li.className = 'nav-item dropdown';
+
+          const a = document.createElement('a');
+          a.className = 'nav-link dropdown-toggle';
+          a.href = '#';
+          a.id = 'menu-'+gid;
+          a.setAttribute('role','button');
+          a.setAttribute('data-bs-toggle','dropdown');
+          a.setAttribute('aria-expanded','false');
+          a.textContent = g.name || 'Menu';
+          li.appendChild(a);
+
+          const ul = document.createElement('ul');
+          ul.className = 'dropdown-menu';
+          ul.setAttribute('aria-labelledby', a.id);
+
+          g.items.forEach(it => {
+            const itemLi = document.createElement('li');
+            const link = document.createElement('a');
+            link.className = 'dropdown-item';
+            link.href = (it.php && it.php.trim() !== '') ? it.php : '#';
+            if(it.bold && String(it.bold) !== '0'){
+              const strong = document.createElement('strong');
+              strong.textContent = it.vn || it.php || 'Item';
+              link.appendChild(strong);
+            } else {
+              link.textContent = it.vn || it.php || 'Item';
+            }
+            itemLi.appendChild(link);
+            ul.appendChild(itemLi);
+          });
+
+          li.appendChild(ul);
+          frag.appendChild(li);
+        });
+        menuEl.innerHTML = '';
+        menuEl.appendChild(frag);
+      }
+
+      fetch('/api/bussiness.php?action=get_control_menus', { headers })
+        .then(r => r.ok ? r.json() : Promise.reject(r))
+        .then(json => {
+          if(!json || !json.success || !Array.isArray(json.data)) throw new Error('No menu data');
+          buildMenu(json.data);
+        })
+        .catch(err => {
+          console.warn('Failed to load control menus', err);
+          menuEl.innerHTML = '\n            <li class="nav-item"><a class="nav-link" href="#">Định danh</a></li>\n            <li class="nav-item"><a class="nav-link" href="#">Sản phẩm</a></li>\n            <li class="nav-item"><a class="nav-link" href="#">Xe</a></li>';
+        });
+    })();
+  </script>
+  <div class="content-wrapper container-fluid">
+    <div class="panel">
+    <h2>HĐ ĐANG THỰC HIỆN HÔM NAY <span id="todayLabel" class="muted"></span></h2>
+    <div id="ongoingToday" class="table-container"></div>
+  </div>
+
+  <div class="panel">
+    <h2>REPORT [CÔNG NỢ XE PHẢI TRẢ ĐỐI TÁC, TÍNH ĐẾN THÁNG <span id="payableMonth"></span>]
+      <span id="togglePayable" class="toggle">[ẩn/hiện list]</span></h2>
+    <div id="debtPayable" class="table-container"></div>
+  </div>
+
+  <div class="panel">
+    <h2>REPORT [CÔNG NỢ XE PHẢI THU ĐỐI TÁC, TÍNH ĐẾN THÁNG <span id="receivableMonth"></span>]
+      <span id="toggleReceivable" class="toggle">[ẩn/hiện list]</span></h2>
+    <div id="debtReceivable" class="table-container"></div>
+  </div>
+
+  <div class="panel">
+    <h2>LỊCH CHẠY XE CÔNG TY [<span id="scheduleRange"></span>]</h2>
+    <div id="companySchedule" class="grid table-container"></div>
+  </div>
+
+  <div class="panel">
+    <h2>GIAO DỊCH TRONG THÁNG [<span id="transactionsMonthLabel"></span>]</h2>
+    <div id="transactionsMonth" class="table-container"></div>
+  </div>
+
+  <script>
+    // header menu rendering (dynamic menu loader is inlined in header.html originally)
+
+    const $ = id => document.getElementById(id);
+
+    function el(tag, attrs={}, txt=''){
+      const e = document.createElement(tag);
+      for(const k in attrs) e.setAttribute(k, attrs[k]);
+      if(txt) e.textContent = txt;
+      return e;
+    }
+
+    function renderOngoing(data){
+      const container = $('ongoingToday');
+      container.innerHTML='';
+      if(!data || data.length===0){ container.appendChild(el('div',{},'Không có HĐ hôm nay')); return; }
+      const t = el('table');
+      const thead = el('thead');
+      thead.innerHTML = '<tr><th>Ngày</th><th>Diễn giải</th><th>Loại xe</th><th>SL</th><th>Thời điểm</th><th>Khách</th><th>Giá nhận</th><th>Nhà xe</th></tr>';
+      t.appendChild(thead);
+      const tb = el('tbody');
+      data.forEach(r=>{
+        const tr = el('tr');
+        tr.appendChild(el('td',{}, r.date_range || ''));
+        tr.appendChild(el('td',{}, r.title || ''));
+        tr.appendChild(el('td',{}, r.vehicle_type || ''));
+        tr.appendChild(el('td',{}, r.sl || ''));
+        tr.appendChild(el('td',{}, r.time || ''));
+        tr.appendChild(el('td',{}, r.customer || ''));
+        tr.appendChild(el('td',{}, r.price || ''));
+        tr.appendChild(el('td',{}, r.vehicle || ''));
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb);
+      container.appendChild(t);
+    }
+
+    function renderDebt(containerId, report){
+      const container = $(containerId);
+      container.innerHTML='';
+      if(!report || !report.items || report.items.length===0){ container.appendChild(el('div',{},'Không có dữ liệu')); return; }
+      const t = el('table');
+      const thead = el('thead');
+      thead.innerHTML = '<tr><th>Đối tác</th><th>Công ty nợ</th><th>Đối tác nợ</th></tr>';
+      t.appendChild(thead);
+      const tb = el('tbody');
+      report.items.forEach(it=>{
+        const tr = el('tr');
+        tr.appendChild(el('td',{}, it.partner || ''));
+        tr.appendChild(el('td',{}, it.company_debt || '0'));
+        tr.appendChild(el('td',{}, it.partner_debt || '0'));
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb);
+      container.appendChild(t);
+    }
+
+    function renderSchedule(schedule){
+      const container = $('companySchedule');
+      container.innerHTML='';
+      if(!schedule){ container.appendChild(el('div',{},'Không có lịch')); return; }
+      $('scheduleRange').textContent = schedule.start_date + ' -> ' + schedule.end_date;
+      const t = el('table');
+      const thead = el('thead');
+      // build header days from start to end (display day numbers)
+      const start = new Date(schedule.start_date);
+      const end = new Date(schedule.end_date);
+      const days = [];
+      for(let d = new Date(start); d <= end; d.setDate(d.getDate()+1)){
+        days.push(new Date(d));
+      }
+      let headerHtml = '<tr><th>Xe</th>';
+      days.forEach(dd=> headerHtml += '<th>'+ (dd.getDate()) +'</th>');
+      headerHtml += '</tr>';
+      thead.innerHTML = headerHtml;
+      t.appendChild(thead);
+      const tb = el('tbody');
+      (schedule.vehicles||[]).forEach(v=>{
+        const tr = el('tr');
+        tr.appendChild(el('td',{class:'vehicle-cell'}, v.plate || ''));
+        const daySet = new Set((v.days||[]).map(String));
+        days.forEach(dd=>{
+          const dayNum = String(dd.getDate());
+          const td = el('td');
+          if(daySet.has(dayNum)) td.textContent = 'X';
+          tr.appendChild(td);
+        });
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb);
+      container.appendChild(t);
+    }
+
+    function renderTransactions(containerId, report){
+      const container = $(containerId);
+      container.innerHTML='';
+      if(!report || !report.items || report.items.length===0){ container.appendChild(el('div',{},'Không có giao dịch')); return; }
+      $('transactionsMonthLabel').textContent = report.month || '';
+      const t = el('table');
+      const thead = el('thead');
+      thead.innerHTML = '<tr><th>Nhà xe</th><th>Thu</th><th>Chi</th><th>Cho tháng</th><th>Ghi chú</th><th>Lúc</th></tr>';
+      t.appendChild(thead);
+      const tb = el('tbody');
+      report.items.forEach(it=>{
+        const tr = el('tr');
+        tr.appendChild(el('td',{}, it.partner || ''));
+        tr.appendChild(el('td',{}, it.thu || '0'));
+        tr.appendChild(el('td',{}, it.chi || '0'));
+        tr.appendChild(el('td',{}, it.month || ''));
+        tr.appendChild(el('td',{}, it.note || ''));
+        tr.appendChild(el('td',{}, it.date || ''));
+        tb.appendChild(tr);
+      });
+      t.appendChild(tb);
+      container.appendChild(t);
+    }
+
+    function toggleElement(elId){
+      const e = $(elId);
+      if(!e) return;
+      e.style.display = (e.style.display === 'none') ? '' : 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      $('togglePayable').addEventListener('click', ()=>{ toggleElement('debtPayable'); });
+      $('toggleReceivable').addEventListener('click', ()=>{ toggleElement('debtReceivable'); });
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const tokenFromUrl = urlParams.get('token') || urlParams.get('api_token') || urlParams.get('cms_token');
+      // Accept tokens stored by other pages (cms-list uses 'cms_token')
+      const token = tokenFromUrl || localStorage.getItem('api_token') || localStorage.getItem('cms_token') || '';
+      const fetchOpts = {};
+      if (token) {
+        fetchOpts.headers = { 'Authorization': 'Bearer ' + token };
+      }
+
+      // Try multiple candidate API URLs and log each attempt to help debugging
+      const candidates = [
+        '/api/bussiness.php?action=get_dashboard_info'
+      ];
+
+      async function tryFetch(urls, opts){
+        for(const u of urls){
+          console.debug('Attempting dashboard API:', u);
+          try{
+            const resp = await fetch(u, opts);
+            console.debug('Response status for', u, resp.status);
+            if(!resp.ok) continue;
+            const j = await resp.json();
+            if(j && j.success){ return {json:j, url:u}; }
+            // if json returned but not success, still return it so caller can inspect
+            if(j) return {json:j, url:u};
+          }catch(e){
+            console.debug('Fetch error for', u, e);
+            continue;
+          }
+        }
+        return null;
+      }
+
+      tryFetch(candidates, fetchOpts).then(result=>{
+        if(!result){ console.error('All dashboard API attempts failed'); const el = $('ongoingToday'); el.innerHTML='Không thể tải dữ liệu (API không tìm thấy)'; return; }
+        const resp = result.json;
+        if(!resp.success){ console.error('API error', resp); const el = $('ongoingToday'); el.innerHTML='Lỗi API'; return; }
+        const d = resp.data || {};
+        $('todayLabel').textContent = d.today_label || '';
+        renderOngoing(d.ongoing_today || []);
+        if(d.debt_payable_report){ $('payableMonth').textContent = d.debt_payable_report.month || ''; renderDebt('debtPayable', d.debt_payable_report); }
+        if(d.debt_receivable_report){ $('receivableMonth').textContent = d.debt_receivable_report.month || ''; renderDebt('debtReceivable', d.debt_receivable_report); }
+        renderSchedule(d.company_schedule || null);
+        renderTransactions('transactionsMonth', d.transactions_month || null);
+      });
+    });
+  </script>
+  <!-- Bootstrap JS bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-" crossorigin="anonymous"></script>
+  <script src="cms-chat.js"></script>
+  </div>
+</body>
+</html>

@@ -1,0 +1,80 @@
+
+.booking-progress-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  gap: 8px;
+  font-size: 16px;
+  flex-wrap: wrap;
+  overflow-x: auto;
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+.progress-step {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 16px;
+  background: #f3f6fa;
+  color: #888;
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s;
+  min-width: 120px;
+  max-width: 100vw;
+  box-sizing: border-box;
+}
+.progress-step.active {
+  background: #1976d2;
+  color: #fff;
+}
+.progress-step.done {
+  background: #4caf50;
+  color: #fff;
+}
+.step-index {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  color: #1976d2;
+  text-align: center;
+  line-height: 22px;
+  margin-right: 6px;
+  font-weight: bold;
+}
+.progress-step.active .step-index,
+.progress-step.done .step-index {
+  background: #fff;
+  color: #1976d2;
+}
+.progress-step.done {
+  background: #4caf50;
+  color: #fff;
+}
+.progress-step.done .step-index {
+  background: #fff;
+  color: #4caf50;
+}
+.step-arrow {
+  margin: 0 8px;
+  color: #bbb;
+  font-size: 18px;
+}
+
+@media (max-width: 700px) {
+  .booking-progress-bar {
+    font-size: 13px;
+    gap: 4px;
+    padding: 0 2px;
+  }
+  .progress-step {
+    padding: 4px 6px;
+    min-width: 80px;
+  }
+  .step-arrow {
+    margin: 0 3px;
+    font-size: 15px;
+  }
+}

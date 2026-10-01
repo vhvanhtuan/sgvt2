@@ -1,0 +1,27 @@
+{
+  "projects": [
+    {"id":1,"title":"Website Redesign","description":"Redesign company website for modern UX","owner_id":1,"status":"active","start_date":"2026-06-01","end_date":"2026-09-01"},
+    {"id":2,"title":"New Tour Package Launch","description":"Create and launch new international tour package","owner_id":1,"status":"planning","start_date":"2026-07-01","end_date":"2026-11-01"}
+  ],
+  "tasks": [
+    {"id":1,"project_id":1,"title":"Create wireframes","description":"Low-fidelity wireframes","created_by":1,"assignee_id":2,"status":"in_progress","priority":2},
+    {"id":2,"project_id":1,"title":"Design visual mockups","description":"High-fidelity mockups","created_by":1,"assignee_id":2,"status":"todo","priority":2},
+    {"id":3,"project_id":1,"title":"Integrate booking API","description":"Connect frontend to booking API","created_by":1,"assignee_id":4,"status":"todo","priority":3},
+    {"id":4,"project_id":2,"title":"Define itinerary","description":"Draft itinerary for 7-day package","created_by":1,"assignee_id":3,"status":"todo","priority":2}
+  ],
+  "milestones": [
+    {"id":1,"project_id":1,"title":"Design Phase","due_date":"2026-06-30","status":"open"},
+    {"id":2,"project_id":1,"title":"Implementation","due_date":"2026-08-15","status":"open"},
+    {"id":3,"project_id":2,"title":"Market Research","due_date":"2026-07-31","status":"open"}
+  ],
+  "tags": [
+    {"id":1,"name":"ui","color":"#1e90ff"},
+    {"id":2,"name":"backend","color":"#28a745"},
+    {"id":3,"name":"high-priority","color":"#ff4136"}
+  ],
+  "members": [
+    {"user_id":1,"role":"owner"},
+    {"user_id":2,"role":"designer"},
+    {"user_id":3,"role":"product_manager"}
+  ]
+}

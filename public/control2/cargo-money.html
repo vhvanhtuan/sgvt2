@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Danh sách phiếu thu</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="cms.css" />
+  <link rel="stylesheet" href="cargo.css" />
+  <link rel="stylesheet" href="scroll-top.css" />
+<link href="/html_logo.ico" rel="shortcut icon">
+  <style>
+    /* Filter Panel */
+    .filter-panel { background: #fff; border: 1px solid #d9dee6; border-radius: 10px; padding: 16px; margin-bottom: 18px; box-shadow: 0 1px 10px rgba(0,0,0,0.03); }
+    .filter-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; align-items: end; }
+
+    /* Table Card & Actions */
+    .table-card { background: #fff; border: 1px solid #d9dee6; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 10px rgba(0,0,0,0.03); }
+    .table-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid #e5e9ef; }
+    .table-actions .summary-box { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+    .summary-badge { 
+      background: #e7f1ff; 
+      color: #0d47a1; 
+      border-radius: 8px; 
+      padding: 10px 12px; 
+      font-size: 13px; 
+      min-width: 110px;
+      font-weight: 500;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+    }
+    .table-scroll::-webkit-scrollbar { height: 8px; }
+    .table-scroll::-webkit-scrollbar-thumb { background: rgba(13, 110, 253, 0.35); border-radius: 999px; }
+    .table-scroll::-webkit-scrollbar-track { background: transparent; }
+
+    /* Table Styles */
+    table.list-table { width: 100%; border-collapse: collapse; min-width: 800px; }
+    table.list-table th, table.list-table td { border-bottom: 1px solid #e7edf3; padding: 12px 10px; text-align: left; vertical-align: middle; }
+    table.list-table th { background: #f8f9fa; color: #1f3f6c; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+    table.list-table tbody tr { transition: background-color 0.15s ease; cursor: pointer; }
+    table.list-table tbody tr:hover { background: #f8fbff; }
+    table.list-table td small { color: #556f88; display: block; margin-top: 4px; }
+
+    /* Pagination */
+    .pagination { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; padding: 14px 18px; }
+    .pagination button { 
+      border: 1px solid #c4cdd7; 
+      background: #fff; 
+      padding: 8px 12px; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      color: #1f3f6c;
+      transition: all 0.15s ease;
+    }
+    .pagination button:hover { background: #f0f0f0; border-color: #999; }
+    .pagination button.active { background: #0d6efd; color: #fff; border-color: #0d6efd; }
+
+    /* Utilities */
+    .text-right { text-align: right; }
+    .empty-state { padding: 24px; text-align: center; color: #556f88; font-size: 16px; }
+    .phieu-type-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .phieu-type-cr { background: #d4edda; color: #155724; }
+    .phieu-type-cc { background: #fff3cd; color: #856404; }
+
+    @media (max-width: 768px) {
+      .filter-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div id="cms-header"></div>
+  <script src="header-loader.js"></script>
+  <div class="page-shell">
+    <div class="page-title">
+      <div>
+        <h1>Danh sách phiếu thu</h1>
+        <div class="status-pill">Nhấn vào phiếu thu để xem chi tiết</div>
+      </div>
+      <div class="toolbar">
+        <button id="btn-refresh"><i class="fa fa-sync"></i> Làm mới</button>
+      </div>
+    </div>
+
+    <div class="filter-panel">
+      <div class="filter-grid">
+        <div class="field-group hidden">
+          <label for="filter-search">Tìm kiếm</label>
+          <input type="search" id="filter-search" placeholder="Tìm theo ID, ghi chú..." />
+        </div>
+        <div class="field-group hidden">
+          <label for="filter-type">Loại phiếu</label>
+          <select id="filter-type">
+            <option value="">-- Tất cả --</option>
+            <option value="1">Phiếu thu Đã trả (CR)</option>
+            <option value="2">Phiếu thu Còn lại (CC)</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label for="filter-creater">Người tạo</label>
+          <select id="filter-creater"></select>
+        </div>
+        <div class="field-group">
+          <label for="filter-date-from">Thu cho ngày</label>
+          <input type="date" id="filter-date-from" />
+        </div>
+        <div class="field-group">
+          <label for="filter-date-to">Tạo ngày</label>
+          <input type="date" id="filter-date-to" />
+        </div>
+        <div class="field-group">
+          <label for="filter-limit">Phiếu/trang</label>
+          <select id="filter-limit">
+            <option value="15">15</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="100" selected>100</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <button id="btn-filter" class="secondary" style="width:100%;">Lọc</button>
+        </div>
+        <div class="field-group">
+          <button id="btn-reset-filter" class="secondary" style="width:100%;">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-actions">
+        <div class="summary-box">
+          <div class="summary-badge" id="summary-total">Tổng: 0 phiếu</div>
+          <div class="summary-badge" id="summary-total-amount">Tổng tiền: 0 đ</div>
+        </div>
+      </div>
+      <div class="table-scroll">
+<table class="list-table" id="money-table">
+<thead>
+<tr>
+<th>Mã phiếu</th>
+<th>VP</th>
+<th>Từ</th>
+<th>Đến</th>
+<th>Thu bởi</th>
+<th>Lúc</th>
+<th>Số tiền</th>
+<th>Gửi</th>
+<th>Tiền gửi</th>
+<th>Giao</th>
+<th>Tiền giao</th>
+<th>Thu hộ</th>
+<th>Cước khác</th>
+</tr>
+</thead>
+<tbody id="money-table-body"></tbody>
+</table>
+        <div id="money-empty" class="empty-state" style="display:none;">Không có phiếu thu phù hợp.</div>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+
+  <button id="scrollTopBtn" class="scroll-top-btn" type="button" title="Lên đầu trang">↑</button>
+
+  <div id="detail-modal" class="cargo-modal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+    <div class="cargo-modal-backdrop"></div>
+    <div class="cargo-modal-dialog" style="max-width: 900px;">
+      <div class="cargo-modal-header">
+        <h3 id="detailTitle">Chi tiết phiếu thu</h3>
+        <button type="button" class="cargo-modal-close" aria-label="Đóng">&times;</button>
+      </div>
+      <div class="cargo-modal-body">
+        <div class="row g-3 mb-3">
+          <div class="col-md-3">
+            <strong>Mã phiếu:</strong>
+            <div id="detail-id">-</div>
+          </div>
+          <div class="col-md-3">
+            <strong>Loại:</strong>
+            <div id="detail-type">-</div>
+          </div>
+          <div class="col-md-3">
+            <strong>Ngày tạo:</strong>
+            <div id="detail-date">-</div>
+          </div>
+          <div class="col-md-3">
+            <strong>Người tạo:</strong>
+            <div id="detail-creater">-</div>
+          </div>
+          <div class="col-md-3">
+            <strong>Số tiền:</strong>
+            <div id="detail-amount">-</div>
+          </div>
+          <div class="col-md-3">
+            <strong>Số đơn:</strong>
+            <div id="detail-count">-</div>
+          </div>
+          <div class="col-md-6">
+            <strong>Ghi chú:</strong>
+            <div id="detail-notes">-</div>
+          </div>
+        </div>
+        <hr />
+        <h5>Danh sách đơn hàng trong phiếu:</h5>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered" id="detail-cargo-table">
+            <thead>
+              <tr>
+                <th>Mã đơn</th>
+                <th>Hoàn/người gửi</th>
+                <th>Người nhận</th>
+                <th>Hàng</th>
+                <th>VP gửi</th>
+                <th>VP nhận</th>
+                <th>Tổng tiền</th>
+              </tr>
+            </thead>
+            <tbody id="detail-cargo-body"></tbody>
+          </table>
+          <div id="detail-cargo-empty" class="text-center text-muted">Không có đơn hàng.</div>
+        </div>
+      </div>
+      <div class="cargo-modal-footer">
+        <button type="button" class="btn btn-danger" id="detail-delete">Xóa phiếu</button>
+        <button type="button" class="btn btn-secondary" id="detail-close">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = '/api/cargo.php';
+    const token = localStorage.getItem('cms_token') || localStorage.getItem('api_token') || '';
+    if (!token) {
+      window.location.href = 'cms-login.html';
+    }
+
+    const state = {
+      meta: null,
+      rows: [],
+      page: 1,
+      limit: 30,
+      total: 0,
+      filters: {
+        q: '',
+        phieu_type: '',
+        creater_id: '',
+        date_from: '',
+        date_to: ''
+      },
+      detailReceipt: null
+    };
+
+    const elems = {
+      search: document.getElementById('filter-search'),
+      type: document.getElementById('filter-type'),
+      creater: document.getElementById('filter-creater'),
+      dateFrom: document.getElementById('filter-date-from'),
+      dateTo: document.getElementById('filter-date-to'),
+      limit: document.getElementById('filter-limit'),
+      filterBtn: document.getElementById('btn-filter'),
+      resetFilterBtn: document.getElementById('btn-reset-filter'),
+      refreshBtn: document.getElementById('btn-refresh'),
+      totalBadge: document.getElementById('summary-total'),
+      totalAmountBadge: document.getElementById('summary-total-amount'),
+      tableBody: document.getElementById('money-table-body'),
+      pagination: document.getElementById('pagination'),
+      emptyState: document.getElementById('money-empty'),
+      detailModal: document.getElementById('detail-modal'),
+      detailId: document.getElementById('detail-id'),
+      detailType: document.getElementById('detail-type'),
+      detailDate: document.getElementById('detail-date'),
+      detailCreater: document.getElementById('detail-creater'),
+      detailAmount: document.getElementById('detail-amount'),
+      detailCount: document.getElementById('detail-count'),
+      detailNotes: document.getElementById('detail-notes'),
+      detailCargoBody: document.getElementById('detail-cargo-body'),
+      detailCargoEmpty: document.getElementById('detail-cargo-empty'),
+      detailClose: document.getElementById('detail-close'),
+      detailDelete: document.getElementById('detail-delete'),
+      detailModalClose: document.querySelector('#detail-modal .cargo-modal-close')
+    };
+
+    function redirectToLogin() {
+      localStorage.removeItem('cms_token');
+      localStorage.removeItem('api_token');
+      window.location.href = 'cms-login.html';
+    }
+
+    function isAuthError(data, response) {
+      if (response && (response.status === 401 || response.status === 403)) return true;
+      const msg = data && data.message ? String(data.message) : '';
+      return data && data.success === false && /invalid|expired|missing.*authorization|missing.*auth|access denied/i.test(msg);
+    }
+
+    async function requestJson(url, opts = {}) {
+      const headers = opts.headers || {};
+      headers['Authorization'] = 'Bearer ' + token;
+      if (!opts.method || opts.method.toUpperCase() === 'GET') {
+        headers['Accept'] = 'application/json';
+      }
+      if (opts.body && !opts.headers?.['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+      }
+      const response = await fetch(url, Object.assign({ credentials: 'same-origin' }, opts, { headers }));
+      const text = await response.text();
+      let data;
+      try { data = JSON.parse(text); } catch (err) { data = { success: false, message: 'Invalid response', raw: text }; }
+      if (isAuthError(data, response)) {
+        redirectToLogin();
+        return data;
+      }
+      return data;
+    }
+
+    function formatCurrency(num) {
+      const n = Number(num);
+      if (!isFinite(n)) return '0';
+      return n.toLocaleString('vi-VN');
+    }
+
+    function getPhieuTypeLabel(type) {
+      if (type === 1 || type === '1') return 'Đã trả (CR)';
+      if (type === 2 || type === '2') return 'Còn lại (CC)';
+      return 'Chưa xác định';
+    }
+
+    function getPhieuTypeClass(type) {
+      if (type === 1 || type === '1') return 'phieu-type-cr';
+      if (type === 2 || type === '2') return 'phieu-type-cc';
+      return '';
+    }
+
+    function loadMeta() {
+      return requestJson(`${API_URL}?action=meta_money`);
+    }
+
+    function resetFilters() {
+      elems.search.value = '';
+      elems.type.value = '';
+      elems.creater.value = '';
+      elems.dateFrom.value = '';
+      elems.dateTo.value = '';
+      elems.limit.value = '100';
+      state.page = 1;
+      saveFiltersToStorage();
+      loadList(1);
+    }
+
+    function saveFiltersToStorage() {
+      const filterData = {
+        q: elems.search.value.trim(),
+        phieu_type: elems.type.value,
+        creater_id: elems.creater.value,
+        date_from: elems.dateFrom.value,
+        date_to: elems.dateTo.value,
+        limit: elems.limit.value,
+        page: state.page
+      };
+      localStorage.setItem('moneyListFilters', JSON.stringify(filterData));
+    }
+
+    function loadFiltersFromStorage() {
+      const raw = localStorage.getItem('moneyListFilters');
+      if (!raw) return;
+      try {
+        const saved = JSON.parse(raw);
+        if (saved.q !== undefined) elems.search.value = saved.q;
+        if (saved.phieu_type !== undefined) elems.type.value = saved.phieu_type;
+        if (saved.creater_id !== undefined) elems.creater.value = saved.creater_id;
+        if (saved.date_from !== undefined) elems.dateFrom.value = saved.date_from;
+        if (saved.date_to !== undefined) elems.dateTo.value = saved.date_to;
+        if (saved.limit !== undefined) elems.limit.value = saved.limit;
+        if (saved.page !== undefined) state.page = Number(saved.page) || 1;
+      } catch (err) {
+        console.warn('Lỗi đọc filter', err);
+      }
+    }
+
+    function renderSummary() {
+      elems.totalBadge.textContent = `Tổng: ${formatNumberDisplay(state.total)} phiếu`;
+      const sumAmount = state.rows.reduce((s, row) => s + (Number(row.tong_da_thu) || 0), 0);
+      elems.totalAmountBadge.textContent = `Tổng tiền: ${formatNumberDisplay(sumAmount)} đ`;
+    }
+
+    function buildRow(row) {
+      return `
+<tr data-receipt-id="${row.id}">
+<td><strong>${row.id}</strong></td>
+<td><strong>${row.branch_name}</strong></td>
+<td>${row.from_date_time ? formatDateTime(row.from_date_time) : '-'}</td>
+<td>${row.to_date_time ? formatDateTime(row.to_date_time) : '-'}</td>
+<td>${row.first_name || '-'}</td>
+<td><a href="cargo-money-2.html?branch_id=${row.branch_id}&from_date_time=${row.from_date_time}&to_date_time=${row.to_date_time}">${row.submit ? formatDateTime(row.submit) : '-'}</a></td>
+<td class="text-right">${formatNumberDisplay(row.tong_da_thu)} đ</td>
+<td class="text-right">${formatNumberDisplay(row.don_nhan || 0)}</td>
+<td class="text-right">${formatNumberDisplay(row.sum_sender_paid_vnd || 0)}</td>
+<td class="text-right">${formatNumberDisplay(row.don_giao || 0)}</td>
+<td class="text-right">${formatNumberDisplay(row.sum_receiver_paid_vnd || 0)}</td>
+<td class="text-right">${formatNumberDisplay(row.sum_thu_ho_vnd || 0)}</td>
+<td>-</td>
+</tr>
+      `;
+    }
+
+    elems.tableBody.addEventListener('click', event => {
+      const tr = event.target.closest('tr[data-receipt-id]');
+      if (!tr || !elems.tableBody.contains(tr)) return;
+      const receiptId = tr.dataset.receiptId;
+      if (receiptId) showDetailModal(Number(receiptId));
+    });
+
+    function renderTable() {
+      if (!state.rows.length) {
+        elems.tableBody.innerHTML = '';
+        elems.emptyState.style.display = 'block';
+        elems.pagination.innerHTML = '';
+        renderSummary();
+        return;
+      }
+      elems.emptyState.style.display = 'none';
+      elems.tableBody.innerHTML = state.rows.map(buildRow).join('');
+      renderPagination();
+      renderSummary();
+    }
+
+    function renderPagination() {
+      const totalPages = Math.max(1, Math.ceil((state.total || 0) / (state.limit || 1)));
+      const current = Number(state.page) || 1;
+      if (totalPages <= 1) {
+        elems.pagination.innerHTML = '';
+        return;
+      }
+      let start = Math.max(1, current - 3);
+      let end = Math.min(totalPages, start + 6);
+      if (end - start < 6) start = Math.max(1, end - 6);
+
+      const parts = [];
+      parts.push(`<button data-page="${Math.max(1, current - 1)}" ${current === 1 ? 'disabled' : ''}>‹</button>`);
+      if (start > 1) parts.push(`<button data-page="1">1</button>`);
+      if (start > 2) parts.push(`<span class="mx-2">…</span>`);
+      for (let p = start; p <= end; p++) {
+        parts.push(`<button data-page="${p}" class="${p === current ? 'active' : ''}">${p}</button>`);
+      }
+      if (end < totalPages - 1) parts.push(`<span class="mx-2">…</span>`);
+      if (end < totalPages) parts.push(`<button data-page="${totalPages}">${totalPages}</button>`);
+      parts.push(`<button data-page="${Math.min(totalPages, current + 1)}" ${current === totalPages ? 'disabled' : ''}>›</button>`);
+
+      elems.pagination.innerHTML = parts.join('');
+      Array.from(elems.pagination.querySelectorAll('button[data-page]')).forEach(btn => {
+        btn.addEventListener('click', () => {
+          const p = Number(btn.getAttribute('data-page')) || 1;
+          if (p === current) return;
+          loadList(p);
+        });
+      });
+    }
+
+    async function loadList(page = 1) {
+      state.page = page;
+      state.limit = Number(elems.limit.value) || 30;
+      state.filters.q = elems.search.value.trim();
+      state.filters.phieu_type = elems.type.value;
+      state.filters.creater_id = elems.creater.value;
+      state.filters.date_from = elems.dateFrom.value;
+      state.filters.date_to = elems.dateTo.value;
+
+      const params = new URLSearchParams();
+      params.set('action', 'list_money');
+      params.set('page', state.page);
+      params.set('limit', state.limit);
+      if (state.filters.q) params.set('q', state.filters.q);
+      if (state.filters.phieu_type) params.set('phieu_type', state.filters.phieu_type);
+      if (state.filters.creater_id) params.set('creater_id', state.filters.creater_id);
+      if (state.filters.date_from) params.set('date_from', state.filters.date_from);
+      if (state.filters.date_to) params.set('date_to', state.filters.date_to);
+
+      saveFiltersToStorage();
+      const data = await requestJson(`${API_URL}?${params.toString()}`);
+      if (!data || !data.success) {
+        alert(data?.message || 'Lỗi tải danh sách phiếu thu.');
+        return;
+      }
+      state.rows = data.data || [];
+      state.total = Number(data.total) || 0;
+      renderTable();
+    }
+
+    async function showDetailModal(receiptId) {
+      state.detailReceipt = state.rows.find(r => r.id === receiptId);
+      if (!state.detailReceipt) {
+        alert('Không tìm thấy phiếu thu.');
+        return;
+      }
+
+      const receipt = state.detailReceipt;
+      elems.detailId.textContent = receipt.id;
+      elems.detailType.innerHTML = `<span class="phieu-type-badge ${getPhieuTypeClass(receipt.phieu_type)}">${getPhieuTypeLabel(receipt.phieu_type)}</span>`;
+      elems.detailDate.textContent = receipt.submit ? new Date(receipt.submit).toLocaleString('vi-VN') : '-';
+      elems.detailCreater.textContent = receipt.first_name || '-';
+      elems.detailAmount.textContent = formatCurrency(receipt.vnd) + ' đ';
+      elems.detailCount.textContent = receipt.tong_don || 0;
+      elems.detailNotes.textContent = receipt.notes || '-';
+
+      // Load cargos for this receipt
+      const phieuField = receipt.phieu_type === 1 || receipt.phieu_type === '1' ? 'phieu_cr_da_thu' : 'phieu_cc_da_thu';
+      const params = new URLSearchParams();
+      params.set('action', 'list');
+      params.set('page', 1);
+      params.set('limit', 999);
+      params.set(phieuField, receipt.id);
+
+      const cargoData = await requestJson(`${API_URL}?${params.toString()}`);
+      if (!cargoData || !cargoData.success) {
+        elems.detailCargoBody.innerHTML = '';
+        elems.detailCargoEmpty.style.display = 'block';
+        return;
+      }
+
+      const cargos = cargoData.data || [];
+      if (!cargos.length) {
+        elems.detailCargoBody.innerHTML = '';
+        elems.detailCargoEmpty.style.display = 'block';
+        return;
+      }
+
+      elems.detailCargoEmpty.style.display = 'none';
+      const isCR = receipt.phieu_type === 1 || receipt.phieu_type === '1';
+      const amountField = isCR ? 'sender_paid_vnd' : 'receiver_paid_vnd';
+      elems.detailCargoBody.innerHTML = cargos.map(c => `
+        <tr>
+          <td><strong>${c.random_code || c.ticket_code || c.cargo_id}</strong></td>
+          <td>${c.pass_name || '-'}<br><small>${c.pass_mobile || ''}</small></td>
+          <td>${c.reveiver_name || '-'}<br><small>${c.receiver_mobile || ''}</small></td>
+          <td>${c.unit_name || '-'}</td>
+          <td>${c.onboard_branch || '-'}</td>
+          <td>${c.offboard_branch || '-'}</td>
+          <td class="text-right">${formatCurrency(c[amountField])} đ</td>
+        </tr>
+      `).join('');
+
+      elems.detailModal.classList.add('show');
+    }
+
+    function hideDetailModal() {
+      elems.detailModal.classList.remove('show');
+      state.detailReceipt = null;
+    }
+
+    // Event listeners
+    elems.filterBtn.addEventListener('click', () => loadList(1));
+    elems.search.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        loadList(1);
+      }
+    });
+    elems.resetFilterBtn.addEventListener('click', resetFilters);
+    elems.refreshBtn.addEventListener('click', () => location.reload());
+    elems.limit.addEventListener('change', () => loadList(1));
+    elems.detailClose.addEventListener('click', hideDetailModal);
+    elems.detailDelete.addEventListener('click', deleteReceipt);
+    elems.detailModalClose.addEventListener('click', hideDetailModal);
+    elems.detailModal.addEventListener('click', event => {
+      if (event.target === elems.detailModal) {
+        hideDetailModal();
+      }
+    });
+
+    async function deleteReceipt() {
+      if (!state.detailReceipt) return;
+      if (!confirm('Bạn có chắc chắn muốn xóa phiếu thu này?')) return;
+      const receiptId = state.detailReceipt.id;
+      const data = await requestJson(`${API_URL}?action=delete_receipt&id=${encodeURIComponent(receiptId)}`, { method: 'POST' });
+      if (!data) {
+        alert('Lỗi kết nối máy chủ');
+        return;
+      }
+      if (!data.success) {
+        alert(data.message || 'Xóa phiếu thất bại');
+        return;
+      }
+      alert('Đã xóa phiếu thu thành công');
+      hideDetailModal();
+      await loadList(state.page || 1);
+    }
+
+    (async function init() {
+      const meta = await loadMeta();
+      if (meta && meta.success) {
+        state.meta = meta;
+        const creaters = meta.options?.creaters || [];
+        elems.creater.innerHTML = '<option value="">-- Tất cả --</option>' + creaters.map(item => `<option value="${item.id}">${item.label}</option>`).join('');
+      }
+      loadFiltersFromStorage();
+      await loadList(state.page || 1);
+    })();
+  </script>
+  <script src="scroll-top.js"></script>
+</body>
+</html>

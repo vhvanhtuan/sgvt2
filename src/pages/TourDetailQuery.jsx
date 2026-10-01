@@ -1,0 +1,261 @@
+import React, { useEffect, useState } from 'react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import './TourDetail.css';
+
+import LightBox from '../components/LightBox';
+import '@fortawesome/fontawesome-free/css/all.min.css';
+import { formatNumber } from '../utils/formatNumber';
+import { buildGroupRoute, buildZoneRoute } from '../utils/routeHelpers';
+
+function getPathTourId(pathname) {
+  if (!pathname) return '';
+  const match = pathname.match(/-t-(\d+)\.html$/i);
+  return match ? match[1] : '';
+}
+
+function TourDetailQuery() {
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const id = getPathTourId(location.pathname) || searchParams.get('tour_id');
+  const [tour, setTour] = useState(null);
+  const [prices, setPrices] = useState([]);
+  const [deps, setDeps] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState('content');
+  const photoFolder = 'https://dulichreal.com/upload/images/';
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  useEffect(() => {
+    if (!id) {
+      setLoading(false);
+      setTour(null);
+      return;
+    }
+
+    setLoading(true);
+    Promise.all([
+      fetch(`/api/tours.php?id=${id}`).then(res => res.json()),
+      fetch(`/api/tours.php?action=prices&tour_id=${id}`).then(res => res.json()),
+      fetch(`/api/departures.php?tour_id=${id}`).then(res => res.json())
+    ]).then(([tourRes, pricesRes, depsRes]) => {
+      setTour(tourRes.data || null);
+      setPrices(pricesRes.data || []);
+      setDeps(depsRes.data || []);
+      setLoading(false);
+    });
+  }, [id]);
+
+
+  const placeImages = tour?.places?.map(place =>
+    place.place_photo_url
+      ? ((place.place_photo_url.startsWith('http')||place.place_photo_url.startsWith('/public/uploads/')) ? place.place_photo_url : photoFolder + place.place_photo_url)
+      : '/no-image.jpg'
+  ) || [];
+
+  const cleanRepeatedHtml = (value) => {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+
+    const normalized = raw.replace(/\s+/g, ' ').trim();
+    if (!normalized) return '';
+
+    const repeated = normalized.match(/^(.*?)(?:\s*\1)+$/s);
+    if (repeated && repeated[1]) {
+      return repeated[1].trim();
+    }
+
+    try {
+      const container = document.createElement('div');
+      container.innerHTML = raw;
+      const nodes = Array.from(container.childNodes).filter(node => {
+        if (node.nodeType === 3) return String(node.textContent || '').trim() !== '';
+        return node.nodeType === 1;
+      });
+
+      const deduped = [];
+      const sig = (text) => String(text || '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+      for (const node of nodes) {
+        const html = node.outerHTML || node.textContent || '';
+        const htmlSig = sig(html);
+        if (!htmlSig) continue;
+
+        const prev = deduped[deduped.length - 1];
+        const prevSig = prev ? sig(prev.outerHTML || prev.textContent || '') : '';
+        if (prevSig && prevSig === htmlSig) continue;
+
+        deduped.push(node);
+      }
+
+      if (deduped.length !== nodes.length) {
+        return deduped.map(node => node.outerHTML || node.textContent || '').join('');
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    return raw;
+  };
+
+  const renderTabContent = () => {
+    switch (tab) {
+      case 'intro':
+        return <div dangerouslySetInnerHTML={{ __html: cleanRepeatedHtml(tour.intro || tour.description || '') }} />;
+      case 'content':
+        return <div dangerouslySetInnerHTML={{ __html: cleanRepeatedHtml(tour.content || '') }} />;
+      case 'outtro':
+        return <div dangerouslySetInnerHTML={{ __html: cleanRepeatedHtml(tour.outtro || '') }} />;
+      case 'places':
+        return (
+          <div>
+            <h2>Hình ảnh các địa danh tour đi qua</h2>
+            <div className="tourdetail-places-photos" style={{display:'flex',flexWrap:'wrap',gap:16}}>
+              {tour.places && tour.places.length > 0 ? (
+                tour.places.map((place, idx) => {
+                  const imgUrl = place.place_photo_url ? ((place.place_photo_url.startsWith('http')||place.place_photo_url.startsWith('/public/uploads/')) ? place.place_photo_url : photoFolder + place.place_photo_url) : '/no-image.jpg';
+                  return (
+                    <div key={idx} style={{width:220,marginBottom:16,textAlign:'center'}}>
+                      <div style={{border:'1px solid #eee',borderRadius:8,overflow:'hidden',background:'#fafafa',cursor:'pointer'}} onClick={() => { setLightboxIndex(idx); setLightboxOpen(true); }}>
+                        <img
+                          src={imgUrl}
+                          alt={place.name}
+                          style={{width:'100%',height:140,objectFit:'cover',transition:'transform 0.2s'}}
+                        />
+                      </div>
+                      <div style={{marginTop:8,fontWeight:500}}>{place.name}</div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div>Chưa có dữ liệu hình ảnh địa danh cho tour này.</div>
+              )}
+            </div>
+            {lightboxOpen && (
+              <LightBox
+                images={placeImages}
+                currentIndex={lightboxIndex}
+                onClose={() => setLightboxOpen(false)}
+                onPrev={() => setLightboxIndex(idx => (idx - 1 + placeImages.length) % placeImages.length)}
+                onNext={idx => {
+                  if (typeof idx === 'number') setLightboxIndex(idx);
+                  else setLightboxIndex(i => (i + 1) % placeImages.length);
+                }}
+              />
+            )}
+          </div>
+        );
+      case 'deps':
+        return (
+          <div>
+            <div>
+              <h2>Giá tour</h2>
+              <table className="tourdetail-deps">
+                <thead>
+                  <tr>
+                    <th>Tuổi từ</th>
+                    <th>Đến</th>
+                    <th>Giá vé</th>
+                    <th>Ghi chú</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {prices.length === 0 && <tr><td colSpan={4}>Chưa có giá tour</td></tr>}
+                  {prices.map(price => (
+                    <tr key={price.pax_age_id}>
+                      <td>{price.age_gtoe <= 0 ? 'mới sinh' : price.age_gtoe}</td>
+                      <td>{price.age_ltoe > 12 ? 'trở lên' : price.age_ltoe}</td>
+                      <td>{formatNumber(price.tour_price) || ''} đ</td>
+                      <td>{price.notes || ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <h2>Giá tour và lịch khởi hành</h2>
+            <table className="tourdetail-deps">
+              <thead>
+                <tr>
+                  <th>Ngày khởi hành</th>
+                  <th>Ngày về</th>
+                  <th>Giá</th>
+                  <th>Ghi chú</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {deps.length === 0 && <tr><td colSpan={4}>Chưa có lịch khởi hành</td></tr>}
+                {deps.map(dep => (
+                  <tr key={dep.dep_id}>
+                    <td>{dep.dep_date_dmy}</td>
+                    <td>{dep.dep_end_dmy}</td>
+                    <td>{formatNumber(dep.price) || formatNumber(tour.market_price) || ''} đ</td>
+                    <td>{dep.dep_note || ''}</td>
+                    <td>
+                      <Link className="btn btn-primary btn-sm" to={`/booking?tour_id=${tour.tour_id || id}&dep_date=${dep.dep_date}`}>Đặt tour</Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      default:
+        return <div dangerouslySetInnerHTML={{ __html: cleanRepeatedHtml(tour.content || '') }} />;
+    }
+  };
+
+  if (loading) return <div className="tourdetail-loading">Đang tải chi tiết tour...</div>;
+  if (!tour) return <div className="tourdetail-error">Không tìm thấy tour.</div>;
+
+  return (
+    <div className="tourdetail">
+      <div className="tourdetail-header">
+        <h1>{tour.name}</h1>
+        <div className="tourdetail-meta">
+          <span>{tour.days || 0} ngày {tour.nights || 0} đêm</span>
+          <span>Giá: <b>{formatNumber(tour.market_price)} đ</b></span>
+        </div>
+        <div className="tourdetail-meta2 mt-2">
+            <span>
+              Nhóm tour: <b>
+                <Link to={buildGroupRoute({ group_id: tour.group_id, name: tour.group_name })} style={{color:'#1976d2',textDecoration:'underline'}}>{tour.group_name}</Link>
+              </b>
+            </span>
+            <span>
+              Khu vực: <b>
+                <Link to={buildZoneRoute({ zone_id: tour.zone_id, zone_name: tour.zone_name })} style={{color:'#1976d2',textDecoration:'underline'}}>{tour.zone_name}</Link>
+              </b>
+            </span>
+        </div>
+      </div>
+      <div className="tourdetail-main">
+        <div className="tourdetail-img">
+          <img
+            src={tour.avatar_url
+              ? ((tour.avatar_url.startsWith('http')||tour.avatar_url.startsWith('/public/uploads/'))
+                ? tour.avatar_url
+                : photoFolder + tour.avatar_url)
+              : '/no-image.jpg'}
+            alt={tour.name}
+          />
+        </div>
+        <div className="tourdetail-info">
+          <div className="tourdetail-tabs">
+            <div className={tab === 'intro' ? 'tourdetail-tab active' : 'tourdetail-tab'} onClick={() => setTab('intro')}>Giới thiệu</div>
+            <div className={tab === 'content' ? 'tourdetail-tab active' : 'tourdetail-tab'} onClick={() => setTab('content')}>Chương trình tour</div>
+            <div className={tab === 'outtro' ? 'tourdetail-tab active' : 'tourdetail-tab'} onClick={() => setTab('outtro')}>Điều khoản</div>
+            <div className={tab === 'places' ? 'tourdetail-tab active' : 'tourdetail-tab'} onClick={() => setTab('places')}>Hình ảnh</div>
+            <div className={tab === 'deps' ? 'tourdetail-tab active' : 'tourdetail-tab'} onClick={() => setTab('deps')}>Giá tour và lịch khởi hành</div>
+          </div>
+          <div className="tourdetail-tabpanel">
+            {renderTabContent()}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default TourDetailQuery;

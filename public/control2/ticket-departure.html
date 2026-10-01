@@ -1,0 +1,2616 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sơ đồ vé - Phơi</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="cms.css" />
+  <link rel="stylesheet" href="cargo.css" />
+  <link rel="stylesheet" href="scroll-top.css" />
+  <link rel="stylesheet" href="cms-chat.css" />
+  <link rel="stylesheet" href="wdg.css" />
+<link href="/html_logo.ico" rel="shortcut icon">
+  <style>
+    .heading-cell { font-weight: 600; color: #1f3f6c; background: #f8f9fa; }
+    .page-shell { max-width: 1280px; margin: 0 auto; padding: 20px; }
+    .page-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+    .page-title h1 { margin: 0; font-size: 24px; }
+    .status-pill { color: #0d6efd; font-weight: 600; }
+    .dept-selection-panel { background: #fff; border: 1px solid #d9dee6; border-radius: 10px; padding: 16px; margin-bottom: 18px; box-shadow: 0 1px 10px rgba(0,0,0,0.03); display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; align-items: center; }
+    .dept-selection-panel .field-group { display: flex; flex-direction: column; gap: 6px; }
+    .dept-selection-panel .field-group label { font-size: 13px; color: #44516b; }
+    .dept-selection-panel .field-group select,
+    .dept-selection-panel .field-group input { width: 100%; min-width: 120px; padding: 8px 10px; border: 1px solid #d9dee6; border-radius: 8px; background: #fff; }
+    .dept-selection-panel .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .dept-selection-panel .actions button,
+    .dept-selection-panel .actions a { border-radius: 8px; border: 1px solid #d9dee6; background: #fff; padding: 8px 12px; color: #1f3f6c; text-decoration: none; cursor: pointer; }
+    .dept-selection-panel .actions button:hover,
+    .dept-selection-panel .actions a:hover { background: #f8f9fa; }
+    .main-table { background: #fff; border: 1px solid #d9dee6; border-radius: 10px; box-shadow: 0 1px 10px rgba(0,0,0,0.03); overflow: auto; }
+    .dept-detail { width: 100%; border-collapse: collapse; }
+    .dept-detail td { padding: 12px 10px; border-bottom: 1px solid #e9eef3; vertical-align: top; }
+    .dept-detail .KT_th { width: 120px; font-weight: 700; color: #1f3f6c; background: #f8f9fa; }
+    .dept-detail .emphasis { font-weight: 600; color: #0d6efd; }
+    .seat-buttons-legend table { border-collapse: collapse; }
+    .seat-buttons-legend td { vertical-align: middle; padding: 6px 8px; font-size: 13px; color: #344054; }
+    .seat-buttons-legend div { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid #d9dee6; border-radius: 6px; background: #f8f9fa; font-weight: 700; }
+    .my-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 14px; }
+    .one-tab { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid #d9dee6; border-radius: 10px; background: #fff; color: #1f3f6c; cursor: pointer; }
+    .one-tab.active-handle { background: #0d6efd; color: #fff; border-color: #0d6efd; }
+    .placeholder-panel { padding: 24px; color: #556f88; font-size: 15px; text-align: center; min-height: 180px; }
+    .div-bus-map { background: #fff; border: 1px solid #d9dee6; border-radius: 10px; box-shadow: 0 1px 10px rgba(0,0,0,0.03); padding: 16px; margin-bottom: 18px; }
+    .div-bus-map .bus-name { font-size: 18px; font-weight: 700; color: #1f3f6c; margin-bottom: 14px; }
+    
+    /* Bus map styles from bus-css.txt */
+    .bus-type-3 .one-seat, .bus-type-5 .one-seat {
+        width: 24%;
+    }
+    .one-bus .one-seat {
+        width: 25%;
+        border: 1px solid #999999;
+        float: left;
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+        text-align: center;
+        overflow: hidden;
+    }
+    .large .one-seat {
+        height: 220px !important;
+        background: #FAFAFA;
+    }
+    .seat_number, .seat-buttons div, .seat-buttons-legend div {
+        color: black;
+        float: left;
+        width: 30px;
+        height: 30px;
+        line-height: 30px;
+        font-weight: 700;
+        background: white;
+        border-radius: 50%;
+        font-size: 150%;
+        border: solid 1px grey;
+        margin: 3px;
+        background: white;
+        cursor: pointer;
+    }
+    .seat-buttons {
+        width: 100%;
+        display: flex;
+        padding-top: 3px;
+    }
+    .bus-type-3 .driver, .bus-type-5 .driver {
+        width: 4%;
+    }
+    .one-seat.taken {
+        background: #ffffff;
+    }
+    .on-offboard {
+        font-size: 11px;
+        color: #666;
+        /* padding: 3px 2px; */
+        min-height: 30px;
+    }
+    .on-offboard div {
+        padding: 4px 10px;
+        white-space: nowrap;
+        /* overflow: hidden; */
+        text-overflow: ellipsis;
+    }
+    .more-info {
+        font-size: 10px;
+        padding: 3px 2px;
+        line-height: 1.2;
+    }
+    .branch_name {
+        font-weight: 600;
+        color: #1f3f6c;
+    }
+    .sum_vnd {
+        /* display: block; */
+        color: #c41e3a;
+        font-weight: 700;
+    }
+    .first_name {
+        font-weight: 500;
+        color: #333;
+        margin: 2px 0;
+    }
+    .pass_mobile {
+    color: #666;
+    font-weight: 700;
+    }    
+    @media (max-width: 900px) {
+      .dept-selection-panel { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+      .dept-selection-panel .actions { grid-column: span 6; }
+    }
+    @media (max-width: 640px) {
+      .dept-selection-panel { grid-template-columns: 1fr; }
+      .dept-selection-panel .actions { justify-content: stretch; }
+    }
+.large .one-seat div{
+  font-size: 110%;
+}
+.one-bus .one-seat {
+width: 25%;
+border: 1px solid #999999;
+float: left;
+-webkit-box-sizing: border-box;
+-moz-box-sizing: border-box;
+box-sizing: border-box;
+text-align: center;
+overflow: hidden;
+height: 100px;
+}
+.driver {
+font-weight: bold;
+font-size: 400%;
+background-color: #d9d9d9 !important;
+background-image: url(stripe_bg_2.gif) !important;
+}
+.bus-type-3 .one-seat, .bus-type-5 .one-seat  {
+width: 24%;
+}
+.bus-type-3 .driver, .bus-type-5 .driver {
+width: 4%;
+}
+.bus-type-4 .one-seat {
+width: 20%;
+}
+.small .driver {
+font-size: unset;
+}
+
+.bus-report .one-seat {
+padding: 2mm;
+}
+.bus-report .large .one-seat {
+height: 3.1cm !important;
+}
+.bus-report .rp_pass_mobile, .bus-report h2  {
+font-size: 14pt !important;
+font-weight: 700;
+}
+.bus-report .rp_seat_number {
+float: left;
+padding-right: 3.1mm;
+font-weight: 700;
+}
+.bus-report p, .bus-report h2 {
+padding: 5px 0px;
+margin: 0px;
+}
+.bus-report .bus-name{
+display: none;
+}
+.bus-report .taken div {
+text-align: left;
+margin-bottom: 1mm;
+font-size: 11pt;
+}
+.a-45-last-seat{
+}
+
+    /* Ticket modal styles */
+    .ticket-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; overflow-y: auto; }
+    .ticket-modal.show { display: flex; align-items: flex-start; justify-content: center; padding-top: 20px; }
+    .ticket-modal-content { background: #fff; border-radius: 10px; max-width: 1200px; width: 90%; box-shadow: 0 5px 30px rgba(0,0,0,0.3); display: grid; grid-template-columns: 400px 1fr; max-height: 90vh; overflow: hidden; }
+    .ticket-modal-seat-map { padding: 20px; border-right: 1px solid #ddd; background: #f9f9f9; overflow-y: auto; }
+    .ticket-modal-form { padding: 20px; overflow-y: auto; }
+    .ticket-modal-seat-map h3 { margin: 0 0 15px 0; font-size: 16px; color: #1f3f6c; }
+    .ticket-modal-form h2 { margin: 0 0 20px 0; font-size: 18px; color: #1f3f6c; }
+    .ticket-modal-bus { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+    .ticket-modal-seat { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border: 2px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; font-weight: 600; font-size: 12px; }
+    .ticket-modal-seat.empty { background: #e8f4e8; border-color: #90ee90; }
+    .ticket-modal-seat.taken { background: #ffecb3; border-color: #ffc107; cursor: not-allowed; }
+    .ticket-modal-seat.selected { background: #28a745; color: #fff; border-color: #28a745; }
+    .ticket-modal-seat-grid { display: grid; grid-template-columns: repeat(4, minmax(42px, 1fr)); gap: 7px; margin-top: 14px; }
+    .ticket-modal-seat-grid .ticket-modal-seat { width: auto; height: 42px; }
+    .ticket-modal-seat-status { margin-top: 12px; font-size: 13px; color: #44516b; }
+    .ticket-modal-seat-status strong { color: #198754; }
+    .ticket-modal-dept-nav { display: flex; gap: 8px; margin-top: 10px; }
+    .ticket-modal-dept-nav button { min-width: 42px; padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #1f3f6c; cursor: pointer; }
+    .ticket-modal-dept-nav button:hover { background: #e8f1ff; }
+    .form-section { margin-bottom: 5px; }
+    .form-section label { display: block; font-size: 13px; color: #44516b; font-weight: 600; margin-bottom: 6px; }
+    .segment-radio-group { display: flex; flex-wrap: wrap; gap: 8px; min-height: 34px; align-items: center; }
+    .segment-radio-item { display: inline-flex; align-items: center; gap: 5px; color: #0f2b54; font-weight: 600; }
+    .segment-radio-item input { width: auto; margin: 0; }
+    .segment-radio-empty { color: #94a3b8; font-size: 12px; font-weight: 500; }
+    .form-section label span.label-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; margin-left: 4px; }
+    .form-section label span.tag-blue { background: #0d6efd; color: #fff; }
+    .form-section label span.tag-green { background: #28a745; color: #fff; }
+    .form-section input, .form-section select, .form-section textarea { width: 100%; padding: 8px 10px; border: 1px solid #d9dee6; border-radius: 6px; font-size: 13px; font-family: inherit; box-sizing: border-box; }
+    .form-section textarea { resize: vertical; min-height: 60px; }
+    #mobile_list { margin: 10px 0 12px; max-height: 260px; overflow-y: auto; }
+    #mobile_list table { width: 100%; border-collapse: collapse; border-spacing: 0; }
+    #mobile_list th, #mobile_list td { border: 1px solid #d9dee6; padding: 8px 10px; text-align: left; font-size: 13px; }
+    #mobile_list tr.one_passenger { cursor: pointer; }
+    #mobile_list tr.one_passenger:hover { background: #f1f5ff; }
+    #mobile_list .placeholder-panel { padding: 12px; color: #556f88; font-size: 13px; }
+    .form-row { margin-bottom: 0px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-footer { padding: 16px 20px; border-top: 1px solid #ddd; background: #f8f9fa; display: flex; gap: 10px; justify-content: flex-end; }
+    .modal-footer button { padding: 8px 16px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+    .btn-primary { background: #0d6efd; color: #fff; }
+    .btn-primary:hover { background: #0b5ed7; }
+    .btn-secondary { background: #767676; color: #fff; }
+    .btn-secondary:hover { background: #5f5f5f; }
+    
+    @media (max-width: 1024px) {
+      .ticket-modal-content { grid-template-columns: 1fr; }
+      .ticket-modal-seat-map { border-right: none; border-bottom: 1px solid #ddd; max-height: 300px; }
+    }
+    .ticket-modal-content { overflow: auto;max-height: 90vh; }
+    .selected-seat {
+    border: red dashed 3px !important;
+    }
+    .moving-seat-info {
+    position: fixed;
+    top: 40vh;
+    left: 50px;
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 10001;
+    }
+    .moving-seat-info button {
+    margin-left: 10px;
+    }
+    .is_confirmed .button_x{
+      color: red;
+    }
+    .last-seat-45{width:20% !important;}
+    .ticket-notes{
+      color: red;
+    }
+.offboard_at, .onboard_at, .temp_onboard, .temp_offboard {
+    background: #13139f;
+    color: yellow;
+    font-weight: 700;
+    /* padding: 2px 5px !important; */
+    /* margin-left: 2px; */
+    text-align: right;
+}
+.temp_onboard, .temp_offboard {
+    background: #067c20 !important;
+}
+.large .more-info div {
+    float: left;
+    width: 100%;
+    text-align: left;
+}
+  </style>
+</head>
+<body>
+  <div id="cms-header"></div>
+  <script src="header-loader.js"></script>
+  <div class="page-shell">
+    <div class="page-title">
+      <div>
+        <h1>Sơ đồ vé / Phơi</h1>
+        <div class="status-pill">Chọn phơi và hiển thị thông tin chuyến</div>
+      </div>
+      <div class="toolbar">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <label for="current-branch">VP làm việc</label>
+          <select id="current-branch">
+            <option value="">-- chọn VP --</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="dept-selection-panel">
+      <div class="field-group" style="grid-column: span 1;">
+        <label for="route_id">Tuyến xe</label>
+        <select id="route_id" name="route_id">
+          <option value="">-- chọn tuyến --</option>
+        </select>
+      </div>
+      <div class="" style="grid-column: span 3;">
+        <label for="dept_date">Ngày khởi hành</label>
+      <button id="prev_date" type="button">&lt;</button>
+        <input id="dept_date" class="dept_date" type="date" name="dept_date" placeholder="yyyy-mm-dd" />
+      <button title="Âm lịch" id="load_lunar" type="button">...</button><span id="lunar_calendar_span" style="
+    position: absolute;
+"></span>
+      <button id="next_date" type="button">&gt;</button>
+      </div>
+      <div class="" style="grid-column: span 2;">
+        <label for="dept_id">Phơi</label>
+      <button id="prev_dept" type="button">&lt;</button>
+        <select id="dept_id" name="dept_id">
+          <option value="">-- chọn phơi --</option>
+        </select>
+      <button id="next_dept" type="button">&gt;</button>
+      </div>
+      <div class="actions" style="grid-column: span 6;">
+        <button id="edit_depart" type="button">Sửa chuyến</button>
+        <button id="add_depart" type="button">Thêm chuyến</button>
+        <button id="bus_map_rp_url" class="my-button" type="button" onclick="printBusMap()"><i class="fa fa-print"></i> In sơ đồ xe</button>
+        <button class="my-button" type="button" onclick="printListReport('ds_khach')"><i class="fa fa-print"></i> In DS khách</button>
+        <button class="my-button" type="button" onclick="printListReport('don_tra')"><i class="fa fa-print"></i> In Đón trả</button>
+        <button class="my-button" type="button" onclick="printListReport('trung_chuyen')"><i class="fa fa-print"></i> In Trung chuyển</button>
+      </div>
+    </div>
+
+    <div id="dept_info">
+      <div class="main-table">
+<table cellpadding="2" cellspacing="0" class="KT_tngtable dept-detail">
+          <tbody>
+            <tr>
+              <td class="heading-cell">Tuyến</td>
+              <td class="emphasis"><span id="dept_route_label"></span></td>
+              <td class="heading-cell">Giá vé</td>
+              <td><span id="dept_ticket_price"></span></td>
+              <td class="heading-cell">Loại</td>
+              <td><span id="dept_vehicle_type"></span></td>
+              <td class="heading-cell">SĐT tài</td>
+              <td><span id="dept_driver_phone"></span></td>
+              <td class="heading-cell">Vé</td>
+              <td><span id="dept_seat_summary"></span></td>
+            </tr>
+            <tr>
+              <td class="heading-cell">Ngày KH</td>
+              <td class="emphasis"><span id="dept_date_label"></span></td>
+              <td class="heading-cell">Ghi chú</td>
+              <td class="emphasis"><span id="dept_note"></span></td>
+              <td class="heading-cell">Ghi chú xe</td>
+              <td><span id="dept_vehicle_note"></span></td>
+              <td class="heading-cell">Phụ</td>
+              <td><span id="dept_helper"></span></td>
+              <td class="heading-cell">Đón, TC</td>
+              <td><span id="dept_don_tc"></span></td>
+            </tr>
+            <tr>
+              <td class="heading-cell">Giờ</td>
+              <td class="emphasis"><span id="dept_time_label"></span></td>
+              <td class="heading-cell">BKS</td>
+              <td><span id="dept_plate"></span></td>
+              <td class="heading-cell">Tài</td>
+              <td><span id="dept_driver_name"></span></td>
+              <td class="heading-cell">SĐT phụ</td>
+              <td><span id="dept_helper_phone"></span></td>
+              <td class="heading-cell">Bán</td>
+              <td><span id="dept_sales_breakdown"></span></td>
+            </tr>
+            <tr>
+              <td colspan="10">
+                <div class="seat-buttons-legend">
+                  <table>
+                    <tbody>
+                      <tr>
+                        <td><div title="Số ghế">1</div></td>
+                        <td>Xem lịch sử</td>
+                        <td><div title="Sửa vé">B</div></td>
+                        <td>Bán vé</td>
+                        <td><div title="Sửa vé">U</div></td>
+                        <td>Sửa vé</td>
+                        <td><div title="Di chuyển ghế">M</div></td>
+                        <td>Di chuyển ghế</td>
+                        <td><div title="Mua thêm vé">C</div></td>
+                        <td>Mua thêm vé</td>
+                        <td><div title="Xác nhận vé này">X</div></td>
+                        <td>Xác nhận</td>
+                        <td><button id="dept_history" class="view-log-2" data-ticket_id="" type="button">Lịch sử phơi</button></td>
+                        <td><button class="dept_status_id_button" type="button" data-action="da_xuat_ben">Rời bến</button></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+            </div>
+    </div>
+<div id="moving_status" style="  position: absolute;  top: 30%; "></div>
+<div id="history_info" style="position: fixed;bottom: 10px;"></div>
+<div class="tabs">
+      <span id="handle_div_bus_map" data-tab_id="div_bus_map" class="one-tab active-handle">Sơ đồ xe</span>
+      <span id="handle_ticket_list" data-tab_id="ticket_list" class="one-tab">DS khách</span>
+      <span id="handle_div_don_tra" data-tab_id="div_don_tra" class="one-tab">Đón trả</span>
+      <span id="handle_div_trung_chuyen" data-tab_id="div_trung_chuyen" class="one-tab">Trung chuyển</span>
+      <span id="handle_div_hang_hoa" data-tab_id="div_hang_hoa" class="one-tab" style="display:block"><i class="fa fa-arrow-up" aria-hidden="true"></i> Hàng hóa <input class="scan_code" placeholder="nhập barcode" style="text-align:center" name="scan_code" type="text" id="scan_code" size="14" autocomplete="off"></span>
+      <span id="handle_div_message" data-tab_id="div_message" class="one-tab">Tin nhắn</span>
+      <span id="pax_search" data-tab_id="div_pax_search" class="one-tab">Tìm SĐT <input id="pax_search_text" placeholder=">=4 số: Enter" class="a-center" type="text" size="11" maxlength="15" autocomplete="off"></span>
+    </div>
+
+    <div id="ticket_list" style="display: none;">
+      <div class="main-table">
+        <div class="placeholder-panel">Danh sách khách sẽ render ở đây khi có dữ liệu.</div>
+      </div>
+    </div>
+
+    <div class="div-bus-map" id="div_bus_map" style="display: block;">
+      <div class="bus-name"></div>
+      <div class="placeholder-panel">Sơ đồ xe sẽ render ở đây khi có dữ liệu.</div>
+    </div>
+
+    <div id="div_don_tra" style="display: none;">
+      <div class="main-table">
+        <div class="placeholder-panel">Nội dung Đón trả sẽ hiển thị ở đây.</div>
+      </div>
+    </div>
+
+    <div id="div_trung_chuyen" style="display: none;">
+      <div class="main-table">
+        <div class="placeholder-panel">Nội dung Trung chuyển sẽ hiển thị ở đây.</div>
+      </div>
+    </div>
+
+    <div id="div_hang_hoa" style="display: none;">
+      <div class="main-table">
+        <div class="placeholder-panel">Nội dung Hàng hóa sẽ hiển thị ở đây.</div>
+      </div>
+    </div>
+
+    <div id="div_message" style="display: none;">
+      <div class="main-table">
+        <div class="placeholder-panel">Nội dung Tin nhắn sẽ hiển thị ở đây.</div>
+      </div>
+    </div>
+
+    <div id="div_pax_search" style="display: none;">
+      <div class="main-table">
+        <div class="placeholder-panel">Nội dung Tìm SĐT sẽ hiển thị ở đây.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="ticket_modal" class="ticket-modal" role="dialog" aria-modal="true">
+    <div class="ticket-modal-content">
+      <div class="ticket-modal-seat-map">
+        <h3>Sơ đồ vé</h3>
+        <div><strong id="ticket_modal_route_label"></strong></div>
+        <div><small id="ticket_modal_bus_plate"></small></div>
+        <div class="ticket-modal-seat-status">Ghế chọn: <strong id="ticket_modal_seat_number"></strong></div>
+        <div class="ticket-modal-dept-nav" aria-label="Chuyển phơi">
+          <button type="button" id="ticket_modal_prev_dept" title="Phơi trước">&lt;</button>
+          <button type="button" id="ticket_modal_next_dept" title="Phơi sau">&gt;</button>
+        </div>
+        <div id="ticket_modal_seat_grid" class="ticket-modal-seat-grid" aria-label="Sơ đồ ghế"></div>
+        <div class="ticket-modal-seat-status">Màu vàng: đã mua · Màu xanh: đang chọn</div>
+      </div>
+      <div class="ticket-modal-form">
+        <h2>Thêm vé</h2>
+        <form id="ticket_modal_form">
+          <div class="form-row">
+            <div class="form-section"><label>SĐT khách</label><input maxlength="10" type="text" name="pass_mobile" autocomplete="off" /></div>
+            <div class="form-section"><label>Tên khách</label><input type="text" name="pass_name" autocomplete="off" /></div>
+          </div>
+          <div id="mobile_list"></div>
+          <div class="form-row">
+            <div class="form-section"><label>Lên tại</label><input type="text" name="onboard_at" autocomplete="off" /></div>
+            <div class="form-section"><label>TC lên</label><input type="text" name="temp_onboard" autocomplete="off" /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-section"><label>Xuống tại</label><input type="text" name="offboard_at" autocomplete="off" /></div>
+            <div class="form-section"><label>TC xuống</label><input type="text" name="temp_offboard" autocomplete="off" /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-section"><label>Tiền vé</label><input type="text" name="ticket_vnd" value="0" inputmode="numeric" autocomplete="off" /></div>
+            <div class="form-section"><label>Tiền TC</label><input type="text" name="vnd_trung_chuyen" value="0" inputmode="numeric" autocomplete="off" /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-section"><label>Phụ thu</label><input type="text" name="extra_vnd" value="0" inputmode="numeric" autocomplete="off" /></div>
+            <div class="form-section"><label>Giảm</label><input type="text" name="discount_vnd" value="0" inputmode="numeric" autocomplete="off" /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-section"><label>Tổng trả</label><input type="text" name="sum_vnd" value="0" inputmode="numeric" autocomplete="off" readonly /></div>
+            <div class="form-section"><label>PTTT</label><select name="payment_method"><option value="1">thu tại VP</option><option value="2">tài xế thu</option><option value="3">không thu</option></select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-section"><label>Chặng từ</label><div class="segment-radio-group" data-segment-group="branch_id_from"></div></div>
+            <div class="form-section"><label>Chặng đến</label><div class="segment-radio-group" data-segment-group="branch_id_to"></div></div>
+          </div>
+          <div class="form-row">
+            <div class="form-section"><label>Ghi chú TT</label><input type="text" name="payment_notes" autocomplete="off" /></div>
+            <div class="form-section"><label>Mã</label><input type="text" id="ticket_modal_random_code" name="random_code" readonly autocomplete="off" /></div>
+          </div>
+          <div class="form-section"><label>Ghi chú</label><textarea name="notes"></textarea></div>
+          <div class="form-section"><label>Ghi chú HỦY VÉ</label><input type="text" name="cancel_notes" autocomplete="off" /></div>
+          <div class="modal-footer">
+            <button type="submit" id="button_insert" class="btn-primary">Thêm/Sửa</button>
+            <button type="button" id="button_delete" class="cms-btn danger">Hủy vé</button>
+            <span>
+              <button type="submit" id="button_update_group" class="btn-warning">Sửa nhóm vé</button>
+              <button type="button" id="button_delete_group" class="cms-btn danger">Hủy nhóm vé</button>
+            </span>
+            <button type="button" class="btn-secondary" id="ticket_modal_close">Close</button>
+            <input type="hidden" name="ticket_id" value="" />
+            <input type="hidden" name="branch_id" value="" />
+            <input type="hidden" name="dept_id" value="" />
+          <input type="hidden" name="seat_number" value="" />
+
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="departure-editor.js"></script>
+  <script>
+    const API_URL = '/api/cargo.php';
+    const elems = {
+      route: document.getElementById('route_id'),
+      deptDate: document.getElementById('dept_date'),
+      deptId: document.getElementById('dept_id'),
+      ticketList: document.getElementById('ticket_list'),
+      divBusMap: document.getElementById('div_bus_map'),
+      divDonTra: document.getElementById('div_don_tra'),
+      divTrungChuyen: document.getElementById('div_trung_chuyen'),
+      prevDate: document.getElementById('prev_date'),
+      nextDate: document.getElementById('next_date'),
+      load_lunar: document.getElementById('load_lunar'),
+      prevDept: document.getElementById('prev_dept'),
+      moving_status: document.getElementById('moving_status'),
+      history_info: document.getElementById('history_info'),
+      nextDept: document.getElementById('next_dept'),
+      button_insert: document.getElementById('button_insert'),
+      button_delete: document.getElementById('button_delete'),
+      button_update_group: document.getElementById('button_update_group'),
+      seat_number: ('.seat_number'),
+      button_delete_group: document.getElementById('button_delete_group'),
+      currentBranch: document.getElementById('current-branch'),
+      lunar_calendar_span: document.getElementById('lunar_calendar_span'),
+      dept_history: document.getElementById('dept_history')
+    };
+    // current departure object (populated by loadDeptInfo)
+    window.currentDept = null;
+    window.currentDepartureStops = { from_stops: {}, to_stops: {} };
+
+    // If URL contains route_id, dept_date, dept_id (or dept_time), store them
+    // in localStorage and reload the page without query parameters.
+    (function storeUrlParamsFromSearch() {
+      try {
+        const params = new URLSearchParams(window.location.search || '');
+        if (!params || !params.toString()) return;
+        const mapping = {
+          route_id: 'td_route_id',
+          dept_date: 'td_dept_date',
+          dept_id: 'td_dept_id'
+        };
+        let found = false;
+        for (const key of Object.keys(mapping)) {
+          if (params.has(key)) {
+            try { localStorage.setItem(mapping[key], String(params.get(key) || '')); } catch (e) {}
+            found = true;
+          }
+        }
+        if (found) {
+          // Reload to the same path without query string to avoid loops
+          const cleanUrl = window.location.pathname + (window.location.hash || '');
+          // Use replace so history isn't polluted with intermediate URL
+          if (cleanUrl && cleanUrl !== window.location.href) {
+            window.location.replace(cleanUrl);
+          } else {
+            window.location.reload();
+          }
+        }
+      } catch (err) { /* ignore */ }
+    })();
+
+    function html_toggle() {
+      const html = document.documentElement;
+      if (html.style.overflow === 'hidden') {
+        html.style.overflow = '';
+      } else {
+        html.style.overflow = 'hidden';
+      }
+    }
+
+    function requestJson_1(url) {
+      return fetch(url, { cache: 'no-store' })
+        .then(response => response.json())
+        .catch(() => null);
+    }
+
+    function formatCurrency(value) {
+      if (value === null || value === undefined || value === '') return '';
+      const num = Number(value);
+      if (Number.isNaN(num)) return value;
+      return num.toLocaleString('vi-VN');
+    }
+
+    function parseMoneyValue(value) {
+      const digits = String(value ?? '').replace(/[^0-9-]/g, '');
+      if (!digits || digits === '-') return 0;
+      const num = Number(digits);
+      return Number.isFinite(num) ? num : 0;
+    }
+
+    function formatMoneyValue(value) {
+      const num = parseMoneyValue(value);
+      return num ? num.toLocaleString('en-US') : '0';
+    }
+
+    function setMoneyFieldValue(form, fieldName, value) {
+      const input = form ? form.querySelector(`[name="${fieldName}"]`) : null;
+      if (!input) return;
+      input.value = formatMoneyValue(value);
+    }
+
+    function normalizeStops(rawStops) {
+      const stops = rawStops && typeof rawStops === 'object' ? rawStops : {};
+      return {
+        from_stops: stops.from_stops && typeof stops.from_stops === 'object' ? stops.from_stops : {},
+        to_stops: stops.to_stops && typeof stops.to_stops === 'object' ? stops.to_stops : {}
+      };
+    }
+
+    function getSelectedSegmentValue(form, fieldName) {
+      if (!form) return '';
+      const checked = form.querySelector(`input[name="${fieldName}"]:checked`);
+      return checked ? String(checked.value || '') : '';
+    }
+
+    function resolveDefaultSegmentSelection(entries, selectedValue) {
+      const currentValue = selectedValue !== null && selectedValue !== undefined ? String(selectedValue) : '';
+      if (currentValue) return currentValue;
+      if (!Array.isArray(entries) || !entries.length) return '';
+      if (entries.length === 1) return String(entries[0][0] || '');
+      const workingBranchId = String(localStorage.getItem('current_branch_id') || '');
+      if (workingBranchId && entries.some(([id]) => String(id) === workingBranchId)) {
+        return workingBranchId;
+      }
+      return '';
+    }
+
+    function buildSegmentRadioItems(fieldName, entries, selectedValue) {
+      if (!Array.isArray(entries) || !entries.length) {
+        return '<span class="segment-radio-empty">Không có dữ liệu chặng</span>';
+      }
+      const currentValue = resolveDefaultSegmentSelection(entries, selectedValue);
+      return entries.map(([id, label], index) => {
+        const value = String(id);
+        const safeId = `${fieldName}_${index}_${value}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const checked = currentValue && currentValue === value ? ' checked' : '';
+        return `<label class="segment-radio-item" for="${safeId}"><input type="radio" id="${safeId}" name="${fieldName}" value="${escapeHtml(value)}"${checked}><span>${escapeHtml(label)}</span></label>`;
+      }).join('');
+    }
+
+    function renderSegmentOptions(form, selectedFrom = '', selectedTo = '') {
+      if (!form) return;
+      const fromWrap = form.querySelector('[data-segment-group="branch_id_from"]');
+      const toWrap = form.querySelector('[data-segment-group="branch_id_to"]');
+      if (!fromWrap || !toWrap) return;
+      const stops = normalizeStops(window.currentDepartureStops);
+      const fromEntries = Object.entries(stops.from_stops);
+      const toEntries = Object.entries(stops.to_stops);
+      fromWrap.innerHTML = buildSegmentRadioItems('branch_id_from', fromEntries, selectedFrom);
+      toWrap.innerHTML = buildSegmentRadioItems('branch_id_to', toEntries, selectedTo);
+    }
+
+    function clearDepartures() {
+      elems.deptId.innerHTML = '<option value="">-- chọn phơi --</option>';
+      elems.deptId.value = '';
+      clearTicketSections();
+    }
+
+    function clearTicketSections() {
+      window.currentDeptTickets = [];
+      elems.ticketList.innerHTML = '<div class="main-table"><div class="placeholder-panel">Danh sách khách sẽ render ở đây khi có dữ liệu.</div></div>';
+      elems.divDonTra.innerHTML = '<div class="main-table"><div class="placeholder-panel">Nội dung Đón trả sẽ hiển thị ở đây.</div></div>';
+      elems.divTrungChuyen.innerHTML = '<div class="main-table"><div class="placeholder-panel">Nội dung Trung chuyển sẽ hiển thị ở đây.</div></div>';
+      elems.divBusMap.innerHTML = '<div class="main-table"><div class="placeholder-panel">Sơ đồ xe sẽ render ở đây khi có dữ liệu.</div></div>';
+    }
+
+form_action = 'insert_ticket';
+
+async function get_one_ticket(ticket_id) {
+const data = await requestJson(`${API_URL}?action=get_tickets&ticket_id=${ticket_id}`);
+if (!data || !data.success) {
+      alert(data?.message || 'Không tải được danh sách vé.');
+      return;
+}
+return data.data && data.data.length > 0 ? data.data[0] : null;
+}
+
+    let ticketModalSelectedSeats = new Set();
+
+    function renderTicketModalSeatMap(deptId, selectedSeat) {
+      const grid = document.getElementById('ticket_modal_seat_grid');
+      if (!grid) return;
+      const layout = window.busMapLayoutData;
+      const rows = Array.isArray(window.currentDeptTickets) ? window.currentDeptTickets : [];
+      const taken = new Set(rows.map(row => String(row.seat_number || '').trim()).filter(Boolean));
+      const seats = layout && Array.isArray(layout.seats)
+        ? layout.seats.map(extractSeatNumberFromLayoutSeat).filter(Boolean)
+        : Array.from({ length: Number(window.currentDept?.seat_count) || 45 }, (_, index) => String(index + 1));
+      const uniqueSeats = [...new Set(seats)];
+
+      grid.innerHTML = uniqueSeats.map(seat => {
+        const isTaken = taken.has(String(seat));
+        const isSelected = ticketModalSelectedSeats.has(String(seat));
+        return `<button type="button" class="ticket-modal-seat ${isTaken ? 'taken' : 'empty'} ${isSelected ? 'selected' : ''}"
+          data-ticket-modal-seat="${escapeHtml(seat)}" data-dept-id="${escapeHtml(deptId)}"
+          ${isTaken ? 'disabled title="Ghế đã mua"' : 'title="Chọn ghế ' + escapeHtml(seat) + '"'}>${escapeHtml(seat)}</button>`;
+      }).join('');
+      updateTicketModalSelectedSeats();
+    }
+
+    function updateTicketModalSelectedSeats() {
+      const label = document.getElementById('ticket_modal_seat_number');
+      const hidden = document.querySelector('#ticket_modal_form [name="seat_number"]');
+      const seats = [...ticketModalSelectedSeats];
+      if (label) label.textContent = seats.join(', ');
+      if (hidden) hidden.value = seats.join(',');
+      document.querySelectorAll('[data-ticket-modal-seat]').forEach(button => {
+        button.classList.toggle('selected', ticketModalSelectedSeats.has(String(button.dataset.ticketModalSeat)));
+      });
+    }
+
+    async function navigateTicketModalDeparture(direction) {
+      const modal = document.getElementById('ticket_modal');
+      const form = document.getElementById('ticket_modal_form');
+      const select = elems.deptId;
+      if (!modal || !form || !select || !modal.classList.contains('show')) return;
+      const currentIndex = select.selectedIndex;
+      const nextIndex = currentIndex + direction;
+      if (currentIndex < 1 || nextIndex < 1 || nextIndex >= select.options.length) return;
+
+      const nextDeptId = select.options[nextIndex].value;
+      if (!nextDeptId) return;
+      select.selectedIndex = nextIndex;
+      try { localStorage.setItem('td_dept_id', String(nextDeptId)); } catch (e) {}
+
+      // Keep the entered customer/payment data, but make the modal a new booking
+      // for the selected departure and refresh its seat occupancy map.
+      form.querySelector('[name="ticket_id"]').value = '';
+      form.querySelector('[name="dept_id"]').value = nextDeptId;
+      form_action = 'insert_ticket';
+      ticketModalSelectedSeats = new Set();
+      await loadDeptInfo(nextDeptId);
+      renderTicketModalSeatMap(nextDeptId, '');
+      const dept = window.currentDept || {};
+      document.getElementById('ticket_modal_route_label').textContent = `${dept.route_abbr || ''} ${dept.dept_date || ''} ${(dept.dept_time || '').slice(0, 5)}`.trim();
+      document.getElementById('ticket_modal_bus_plate').textContent = dept.bus_plate || '';
+      updateTicketModalSelectedSeats();
+    }
+
+    function initTicketModalSeatMap() {
+      const grid = document.getElementById('ticket_modal_seat_grid');
+      if (!grid || grid.dataset.bound) return;
+      grid.addEventListener('click', event => {
+        const button = event.target.closest('[data-ticket-modal-seat]:not(:disabled)');
+        if (!button) return;
+        const seat = String(button.dataset.ticketModalSeat);
+        if (ticketModalSelectedSeats.has(seat)) ticketModalSelectedSeats.delete(seat);
+        else ticketModalSelectedSeats.add(seat);
+        updateTicketModalSelectedSeats();
+      });
+      grid.dataset.bound = '1';
+    }
+
+    async function openTicketModal(deptId, seatNumber, ticket_id) {
+      if(on_moving_seats) return;
+      html_toggle();
+      const modal = document.getElementById('ticket_modal');
+      const form = document.getElementById('ticket_modal_form');
+      if (!modal || !form) return;
+      form.reset();
+      hideMobileList();
+      ticketModalSelectedSeats = new Set();
+      renderSegmentOptions(form);
+      // alert('do_copying_seats = ' + do_copying_seats + ', source_ticket_id = ' + Object.values(copying_seats).map(s => s.ticket_id).join(', '));
+      initTicketModalSeatMap();
+      initTicketModalSearch();
+      if(do_copying_seats) {
+        source_ticket_id = Object.values(copying_seats).map(s => s.ticket_id).join(', ');
+        temp_console_log('Copying seats from ticket_id = ' + source_ticket_id + ' to new seats: ' + seatNumber);
+          const data = await get_one_ticket(source_ticket_id);
+          if (!data) {
+            alert('Không tìm thấy dữ liệu vé.');
+            return;
+          }
+        form_action = 'copy_ticket&ticket_id=' + source_ticket_id;
+        form.querySelector('[name="ticket_id"]').value = ticket_id;
+        form.querySelector('[name="pass_mobile"]').value = data.pass_mobile || '';
+        form.querySelector('[name="pass_name"]').value = data.pass_name || '';
+        form.querySelector('[name="onboard_at"]').value = data.onboard_at || '';
+        form.querySelector('[name="temp_onboard"]').value = data.temp_onboard || '';
+        form.querySelector('[name="offboard_at"]').value = data.offboard_at || '';
+        form.querySelector('[name="temp_offboard"]').value = data.temp_offboard || '';
+        setMoneyFieldValue(form, 'ticket_vnd', data.ticket_vnd || 0);
+        form.querySelector('[name="random_code"]').value = data.random_code || '';
+        setMoneyFieldValue(form, 'vnd_trung_chuyen', data.vnd_trung_chuyen || 0);
+        setMoneyFieldValue(form, 'extra_vnd', data.extra_vnd || 0);
+        setMoneyFieldValue(form, 'discount_vnd', data.discount_vnd || 0);
+        setMoneyFieldValue(form, 'sum_vnd', data.sum_vnd || 0);
+        form.querySelector('[name="payment_method"]').value = data.payment_method || 1;
+        form.querySelector('[name="payment_notes"]').value = data.payment_notes || '';
+        form.querySelector('[name="notes"]').value = data.notes || '';
+        form.querySelector('[name="dept_id"]').value = data.dept_id || '';
+        form.querySelector('[name="seat_number"]').value = seatNumber;
+        form.querySelector('[name="branch_id"]').value = localStorage.getItem('current_branch_id');
+        renderSegmentOptions(form, data.branch_id_from, data.branch_id_to);
+        ticketModalSelectedSeats.add(String(seatNumber));
+
+      } else {
+      if(ticket_id) {
+        const data = await get_one_ticket(ticket_id);
+        if (!data) {
+          alert('Không tìm thấy dữ liệu vé.');
+          return;
+        }
+        form_action = 'update_ticket&ticket_id=' + ticket_id;
+        form.querySelector('[name="ticket_id"]').value = ticket_id;
+        form.querySelector('[name="pass_mobile"]').value = data.pass_mobile || '';
+        form.querySelector('[name="pass_name"]').value = data.pass_name || '';
+        form.querySelector('[name="onboard_at"]').value = data.onboard_at || '';
+        form.querySelector('[name="temp_onboard"]').value = data.temp_onboard || '';
+        form.querySelector('[name="offboard_at"]').value = data.offboard_at || '';
+        form.querySelector('[name="temp_offboard"]').value = data.temp_offboard || '';
+        setMoneyFieldValue(form, 'ticket_vnd', data.ticket_vnd || 0);
+        form.querySelector('[name="random_code"]').value = data.random_code || '';
+        setMoneyFieldValue(form, 'vnd_trung_chuyen', data.vnd_trung_chuyen || 0);
+        setMoneyFieldValue(form, 'extra_vnd', data.extra_vnd || 0);
+        setMoneyFieldValue(form, 'discount_vnd', data.discount_vnd || 0);
+        setMoneyFieldValue(form, 'sum_vnd', data.sum_vnd || 0);
+        form.querySelector('[name="payment_method"]').value = data.payment_method || 1;
+        form.querySelector('[name="payment_notes"]').value = data.payment_notes || '';
+        form.querySelector('[name="notes"]').value = data.notes || '';
+        form.querySelector('[name="dept_id"]').value = data.dept_id || '';
+        form.querySelector('[name="seat_number"]').value = data.seat_number;
+        renderSegmentOptions(form, data.branch_id_from, data.branch_id_to);
+        ticketModalSelectedSeats.add(String(data.seat_number));
+      } else {
+        form_action = 'insert_ticket';
+        form.querySelector('[name="ticket_id"]').value = '';
+        form.querySelector('[name="dept_id"]').value = deptId;
+        form.querySelector('[name="seat_number"]').value = seatNumber;
+        setMoneyFieldValue(form, 'ticket_vnd', window.ticket_vnd || 0);
+        form.querySelector('[name="payment_method"]').value = 2;
+        setMoneyFieldValue(form, 'sum_vnd', window.ticket_vnd || 0);
+        form.querySelector('[name="branch_id"]').value = localStorage.getItem('current_branch_id');
+        renderSegmentOptions(form);
+        if (seatNumber) ticketModalSelectedSeats.add(String(seatNumber));
+      }
+      }
+
+      const dept = window.currentDept || {};
+      document.getElementById('ticket_modal_route_label').textContent = `${dept.route_abbr || ''} ${dept.dept_date || ''} ${(dept.dept_time || '').slice(0, 5)}`.trim();
+      document.getElementById('ticket_modal_bus_plate').textContent = dept.bus_plate || '';
+      renderTicketModalSeatMap(form.querySelector('[name="dept_id"]').value, seatNumber);
+      // form.querySelector('#ticket_modal_random_code').value = '';
+      modal.classList.add('show');
+    }
+
+    function closeTicketModal() {
+      const modal = document.getElementById('ticket_modal');
+      if (!modal) return;
+      if(do_copying_seats) cancelCopyingTicket();
+      modal.classList.remove('show');
+      html_toggle();
+    }
+
+    function getTicketModalRouteLabel(routeId) {
+      const current = window.currentDept || {};
+      if (current.route_id && String(current.route_id) === String(routeId)) {
+        return current.route_abbr || String(routeId || '');
+      }
+      return String(routeId || '');
+    }
+
+    function hideMobileList() {
+      const container = document.getElementById('mobile_list');
+      if (!container) return;
+      container.innerHTML = '';
+    }
+
+    function fillTicketModalFromPassenger(passenger) {
+      const form = document.getElementById('ticket_modal_form');
+      if (!form || !passenger) return;
+      form.querySelector('[name="pass_mobile"]').value = passenger.pass_mobile || '';
+      form.querySelector('[name="pass_name"]').value = passenger.pass_name || '';
+      form.querySelector('[name="onboard_at"]').value = passenger.onboard_at || '';
+      form.querySelector('[name="temp_onboard"]').value = passenger.temp_onboard || '';
+      form.querySelector('[name="offboard_at"]').value = passenger.offboard_at || '';
+      form.querySelector('[name="temp_offboard"]').value = passenger.temp_offboard || '';
+      hideMobileList();
+    }
+
+    let mobileSearchTypingTimer = null;
+    let mobileSearchRequestId = 0;
+    let get_search=1;
+    async function searchPassengerByMobile(mobile) {
+      if(!get_search) return;
+      get_search=0;
+      const query = String(mobile || '').trim();
+      const container = document.getElementById('mobile_list');
+      if (!container) return;
+      if (!query) {
+        container.innerHTML = '';
+        return;
+      }
+      mobileSearchRequestId += 1;
+      const requestId = mobileSearchRequestId;
+      container.innerHTML = '<div class="placeholder-panel">Đang tìm kiếm...</div>';
+      const params = new URLSearchParams();
+      params.set('action', 'get_passenger_list');
+      params.set('mobile', query);
+      const response = await requestJson(`${API_URL}?${params.toString()}`);
+      if (requestId !== mobileSearchRequestId) return;
+      if (!response || !response.success || !Array.isArray(response.data) || response.data.length === 0) {
+        container.innerHTML = '<div class="placeholder-panel">Không tìm thấy khách.</div>';
+        return;
+      }
+      const rows = response.data;
+      const data_mobile = response.mobile;
+      const html = [`<table cellspacing="0" width="100%" border="1"><tbody><tr class="KT_row_order"><th>SĐT</th><th>Tên khách</th><th>Tuyến</th><th>Lên tại</th><th>Xuống tại</th><th>TT lên</th><th>TT xuống</th></tr>`];
+      for (const row of rows) {
+        html.push(
+          `<tr class="one_passenger route_id-${escapeHtml(row.route_id)}${String(row.route_id) === String(window.currentDept?.route_id) ? ' for-this-route_id' : ''}" data-pass_mobile="${escapeHtml(row.pass_mobile || '')}" data-pass_name="${escapeHtml(row.pass_name || '')}" data-onboard_at="${escapeHtml(row.onboard_at || '')}" data-offboard_at="${escapeHtml(row.offboard_at || '')}" data-temp_onboard="${escapeHtml(row.temp_onboard || '')}" data-temp_offboard="${escapeHtml(row.temp_offboard || '')}">` +
+          `<td>${escapeHtml(row.pass_mobile || '')}</td>` +
+          `<td>${escapeHtml(row.pass_name || '')}</td>` +
+          `<td>${row.route_id==1?'SG-CB':'CB-SG'}</td>` +
+          `<td>${escapeHtml(row.onboard_at || '')}</td>` +
+          `<td>${escapeHtml(row.offboard_at || '')}</td>` +
+          `<td>${escapeHtml(row.temp_onboard || '')}</td>` +
+          `<td>${escapeHtml(row.temp_offboard || '')}</td>` +
+          `</tr>`
+        );
+      }
+      html.push('<tr><td colspan="7" align="center"><button id="close_pax_list" type="button">không chọn</button></td></tr>');
+      html.push('</tbody></table>');
+      container.innerHTML = html.join('');
+      //if(data_mobile!=mobile) 
+
+      const form = document.getElementById('ticket_modal_form');
+      const passMobileInput = form.querySelector('[name="pass_mobile"]');
+      // await filterTicketModalPassengerRows(passMobileInput.value);
+    }
+
+    async function filterTicketModalPassengerRows(value) {
+      const container = document.getElementById('mobile_list');
+      if (!container) return;
+      const query = String(value || '').trim();
+      container.querySelectorAll('tr.one_passenger').forEach(row => {
+        const mobile = String(row.dataset.pass_mobile || '');
+        row.style.display = mobile.startsWith(query) ? '' : 'none';
+      });
+    }
+
+    function initTicketModalSearch() {
+      const form = document.getElementById('ticket_modal_form');
+      const container = document.getElementById('mobile_list');
+      if (!form || !container || form.dataset.mobileSearchInit) return;
+      const passMobileInput = form.querySelector('[name="pass_mobile"]');
+      if (passMobileInput) {
+        passMobileInput.addEventListener('input', () => {
+          clearTimeout(mobileSearchTypingTimer);
+          const value = String(passMobileInput.value || '').trim();
+          if (value.length >= 6) {
+            container.querySelectorAll('tr.one_passenger').forEach(row => {
+              row.style.display = '';
+            });
+            // filterTicketModalPassengerRows(value);
+            mobileSearchTypingTimer = setTimeout(() => {
+              searchPassengerByMobile(value).then(() => filterTicketModalPassengerRows(passMobileInput.value));
+            }, 200);
+          } else {
+            container.innerHTML = '';
+            get_search=1;
+          }
+        });
+      }
+      container.addEventListener('click', (event) => {
+        const button = event.target.closest('#close_pax_list');
+        if (button) {
+          event.preventDefault();
+          hideMobileList();
+          return;
+        }
+        const row = event.target.closest('tr.one_passenger');
+        if (!row) return;
+        fillTicketModalFromPassenger({
+          pass_mobile: row.dataset.pass_mobile,
+          pass_name: row.dataset.pass_name,
+          onboard_at: row.dataset.onboard_at,
+          temp_onboard: row.dataset.temp_onboard,
+          offboard_at: row.dataset.offboard_at,
+          temp_offboard: row.dataset.temp_offboard
+        });
+      });
+      form.dataset.mobileSearchInit = '1';
+    }
+
+    function updateTicketModalSum() {
+      const form = document.getElementById('ticket_modal_form');
+      if (!form) return;
+      const ticketInput = form.querySelector('[name="ticket_vnd"]');
+      if (ticketInput) {
+        ticketInput.value = formatMoneyValue(ticketInput.value);
+      }
+      const trchInput = form.querySelector('[name="vnd_trung_chuyen"]');
+      if (trchInput) {
+        trchInput.value = formatMoneyValue(trchInput.value);
+      }
+      const extraInput = form.querySelector('[name="extra_vnd"]');
+      if (extraInput) {
+        extraInput.value = formatMoneyValue(extraInput.value);
+      }
+      const discountInput = form.querySelector('[name="discount_vnd"]');
+      if (discountInput) {
+        discountInput.value = formatMoneyValue(discountInput.value);
+      }
+
+      const ticketVnd = parseMoneyValue(ticketInput ? ticketInput.value : 0);
+      const extraVnd = parseMoneyValue(extraInput ? extraInput.value : 0);
+      const discountVnd = parseMoneyValue(discountInput ? discountInput.value : 0);
+      const vndTrungChuyen = parseMoneyValue(trchInput ? trchInput.value : 0);
+      const sum = ticketVnd + vndTrungChuyen - discountVnd;
+      const sumInput = form.querySelector('[name="sum_vnd"]');
+      if (sumInput) {
+        sumInput.value = formatMoneyValue(sum > 0 ? sum : 0);
+      }
+    }
+
+    async function submitTicketModal(event) {
+      event.preventDefault();
+      const form = document.getElementById('ticket_modal_form');
+      if (!form) return;
+      temp_console_log('submitTicketModal called');
+      const selectedSeats = [...ticketModalSelectedSeats];
+      if (!selectedSeats.length) {
+        alert('Vui lòng chọn ít nhất một ghế.');
+        return;
+      }
+      const commonData = {
+        dept_id: form.querySelector('[name="dept_id"]').value,
+        pass_mobile: form.querySelector('[name="pass_mobile"]').value,
+        pass_name: form.querySelector('[name="pass_name"]').value,
+        onboard_at: form.querySelector('[name="onboard_at"]').value,
+        temp_onboard: form.querySelector('[name="temp_onboard"]').value,
+        offboard_at: form.querySelector('[name="offboard_at"]').value,
+        temp_offboard: form.querySelector('[name="temp_offboard"]').value,
+        ticket_vnd: parseMoneyValue(form.querySelector('[name="ticket_vnd"]').value),
+        vnd_trung_chuyen: parseMoneyValue(form.querySelector('[name="vnd_trung_chuyen"]').value),
+        extra_vnd: parseMoneyValue(form.querySelector('[name="extra_vnd"]').value),
+        discount_vnd: parseMoneyValue(form.querySelector('[name="discount_vnd"]').value),
+        sum_vnd: parseMoneyValue(form.querySelector('[name="sum_vnd"]').value),
+        branch_id_from: getSelectedSegmentValue(form, 'branch_id_from'),
+        branch_id_to: getSelectedSegmentValue(form, 'branch_id_to'),
+        payment_method: form.querySelector('[name="payment_method"]').value,
+        payment_notes: form.querySelector('[name="payment_notes"]').value,
+        random_code: form.querySelector('[name="random_code"]').value,
+        notes: form.querySelector('[name="notes"]').value,
+        cancel_notes: form.querySelector('[name="cancel_notes"]').value,
+        branch_id: form.querySelector('[name="branch_id"]').value
+      };
+      const ticketId = form.querySelector('[name="ticket_id"]').value;
+      const seatsToSave = ticketId ? [selectedSeats[0]] : selectedSeats;
+      let primTicketId = null;
+      for (let index = 0; index < seatsToSave.length; index += 1) {
+        const seat = seatsToSave[index];
+        const data = Object.assign({}, commonData, {
+          seat_number: seat,
+          ticket_id: ticketId || null
+        });
+        if (!ticketId && seatsToSave.length > 1) {
+          if (index === 0) {
+            // The API sets prim_ticket_id to this newly-created ticket ID.
+            data.group_root = true;
+          } else {
+            data.prim_ticket_id = primTicketId;
+          }
+        }
+        const result = await requestJson(`${API_URL}?action=${form_action}&group_update=${group_update}`, {
+          method: 'POST',
+          body: JSON.stringify(data)
+        });
+        if (!result || !result.success) {
+          alert(result?.message || `Lỗi thêm vé ghế ${seat}`);
+          return;
+        }
+        if (!ticketId && seatsToSave.length > 1 && index === 0) {
+          primTicketId = result.insert_id;
+        }
+      }
+      closeTicketModal();
+      // await loadDepartures();
+      await loadDeptInfo(commonData.dept_id);
+      // init();
+    }
+
+    function initTicketModal() {
+      let modal = document.getElementById('ticket_modal');
+      if (!modal) {
+        const modalHtml = `
+          <div id="ticket_modal" class="ticket-modal" role="dialog" aria-modal="true">
+            <div class="ticket-modal-content">
+              <div class="ticket-modal-seat-map">
+                <h3>Sơ đồ vé</h3>
+                <div><strong id="ticket_modal_route_label"></strong></div>
+                <div><small id="ticket_modal_bus_plate"></small></div>
+                <div class="ticket-modal-seat-status">Ghế chọn: <strong id="ticket_modal_seat_number"></strong></div>
+                <div class="ticket-modal-dept-nav" aria-label="Chuyển phơi">
+                  <button type="button" id="ticket_modal_prev_dept" title="Phơi trước">&lt;</button>
+                  <button type="button" id="ticket_modal_next_dept" title="Phơi sau">&gt;</button>
+                </div>
+                <div id="ticket_modal_seat_grid" class="ticket-modal-seat-grid" aria-label="Sơ đồ ghế"></div>
+                <div class="ticket-modal-seat-status">Màu vàng: đã mua · Màu xanh: đang chọn</div>
+              </div>
+              <div class="ticket-modal-form">
+                <h2>Thêm vé</h2>
+                <form id="ticket_modal_form">
+                  <input type="hidden" name="dept_id" value="" />
+                  <input type="hidden" name="seat_number" value="" />
+                  <div class="form-row">
+                    <div class="form-section"><label>SĐT khách</label><input type="text" name="pass_mobile" autocomplete="off" /></div>
+                    <div class="form-section"><label>Tên khách</label><input type="text" name="pass_name" autocomplete="off" /></div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-section"><label>Lên tại</label><input type="text" name="onboard_at" autocomplete="off" /></div>
+                    <div class="form-section"><label>TC lên</label><input type="text" name="temp_onboard" autocomplete="off" /></div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-section"><label>Xuống tại</label><input type="text" name="offboard_at" autocomplete="off" /></div>
+                    <div class="form-section"><label>TC xuống</label><input type="text" name="temp_offboard" autocomplete="off" /></div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-section"><label>Tiền vé</label><input type="text" name="ticket_vnd" value="0" inputmode="numeric" autocomplete="off" /></div>
+                    <div class="form-section"><label>Tiền TC</label><input type="text" name="vnd_trung_chuyen" value="0" inputmode="numeric" autocomplete="off" /></div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-section"><label>Phụ thu</label><input type="text" name="extra_vnd" value="0" inputmode="numeric" autocomplete="off" /></div>
+                    <div class="form-section"><label>Giảm</label><input type="text" name="discount_vnd" value="0" inputmode="numeric" autocomplete="off" /></div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-section"><label>Tổng trả</label><input type="text" name="sum_vnd" value="0" inputmode="numeric" autocomplete="off" readonly /></div>
+                    <div class="form-section"><label>PTTT</label><select name="payment_method"><option value="1">thu tại VP</option><option value="2">tài xế thu</option><option value="3">không thu</option></select></div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-section"><label>Chặng từ</label><div class="segment-radio-group" data-segment-group="branch_id_from"></div></div>
+                    <div class="form-section"><label>Chặng đến</label><div class="segment-radio-group" data-segment-group="branch_id_to"></div></div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-section"><label>Ghi chú TT</label><input type="text" name="payment_notes" autocomplete="off" /></div>
+                    <div class="form-section"><label>Mã</label><input type="text" id="ticket_modal_random_code" name="random_code" readonly autocomplete="off" /></div>
+                  </div>
+                  <div class="form-section"><label>Ghi chú</label><textarea name="notes"></textarea></div>
+                  <div class="form-section"><label>Ghi chú HỦY VÉ</label><input type="text" name="cancel_notes" autocomplete="off" /></div>
+                  <div class="modal-footer">
+                    <button type="submit" class="btn-primary">${form_action=='insert_ticket' ? 'Thêm' : 'Cập nhật'}</button>
+                    <button type="button" class="btn-secondary" id="ticket_modal_close">Close</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        `;
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = modalHtml;
+        document.body.appendChild(wrapper.firstElementChild);
+        modal = document.getElementById('ticket_modal');
+      }
+      const form = document.getElementById('ticket_modal_form');
+      if (!form || !modal) return;
+      if (modal.dataset.ticketModalInit) {
+        return;
+      }
+      modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+          event.stopPropagation(); //closeTicketModal();
+        }
+      });
+      form.addEventListener('submit', submitTicketModal);
+      form.addEventListener('input', updateTicketModalSum);
+      const closeButton = document.getElementById('ticket_modal_close');
+      if (closeButton) {
+        closeButton.addEventListener('click', closeTicketModal);
+      }
+      const prevDeptButton = document.getElementById('ticket_modal_prev_dept');
+      const nextDeptButton = document.getElementById('ticket_modal_next_dept');
+      if (prevDeptButton) prevDeptButton.addEventListener('click', () => navigateTicketModalDeparture(-1));
+      if (nextDeptButton) nextDeptButton.addEventListener('click', () => navigateTicketModalDeparture(1));
+      modal.dataset.ticketModalInit = '1';
+    }
+
+      // button_insert: document.getElementById('button_insert'),
+      // button_delete: document.getElementById('button_delete'),
+      // button_update_group: document.getElementById('button_update'),
+      // button_delete_group: document.getElementById('button_delete_group'),
+
+elems.history_info.addEventListener('click', async (event) => {
+  history_info.innerHTML='';
+});
+
+button_update_group.addEventListener('click', async (event) => {
+  group_update=1;
+});
+
+button_insert.addEventListener('click', async (event) => {
+  group_update=0;
+});
+
+button_delete_group.addEventListener('click', async (event) => {
+      event.preventDefault();
+      const form = document.getElementById('ticket_modal_form');
+      if (!form) return;
+      const ticket_id = form.querySelector('[name="ticket_id"]').value;
+            const data = {
+        ticket_id: form.querySelector('[name="ticket_id"]').value,
+        cancel_notes: form.querySelector('[name="cancel_notes"]').value
+            }
+      if (!ticket_id) {
+        alert('Không có ticket_id để xóa.');
+        return;
+      }
+      if (!confirm('Bạn có chắc muốn xóa nhóm vé này?')) {
+        return;
+      }
+      const result = await requestJson(`${API_URL}?action=delete_group&ticket_id=${ticket_id}`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+      if (!result || !result.success) {
+        alert(result?.message || 'Lỗi xóa nhóm vé');
+        return;
+      }
+      closeTicketModal();
+      await loadDeptInfo(form.querySelector('[name="dept_id"]').value);
+    });
+
+button_delete.addEventListener('click', async (event) => {
+      event.preventDefault();
+      const form = document.getElementById('ticket_modal_form');
+      if (!form) return;
+      const ticket_id = form.querySelector('[name="ticket_id"]').value;
+            const data = {
+        ticket_id: form.querySelector('[name="ticket_id"]').value,
+        cancel_notes: form.querySelector('[name="cancel_notes"]').value
+            }
+      if (!ticket_id) {
+        alert('Không có ticket_id để xóa.');
+        return;
+      }
+      if (!confirm('Bạn có chắc muốn xóa vé này?')) {
+        return;
+      }
+      const result = await requestJson(`${API_URL}?action=delete_ticket&ticket_id=${ticket_id}`, {
+        method: 'POST',
+                body: JSON.stringify(data)
+      });
+      if (!result || !result.success) {
+        alert(result?.message || 'Lỗi xóa vé');
+        return;
+      }
+      closeTicketModal();
+      await loadDeptInfo(form.querySelector('[name="dept_id"]').value);
+    });
+
+moving_seats = {};
+new_moving_seats={};
+do_moving_seats=0;
+on_moving_seats = 0;
+do_copying_seats=0;
+copying_seats = {};
+
+    function startCopyingTicket(ticket_id, seatNumber, deptId) {
+      if(on_moving_seats) return;
+      do_copying_seats=1;
+      copying_seats[0] = { ticket_id, seatNumber, deptId };
+      drawCopyingTicket();
+    }
+
+    function startMovingSeat(ticket_id, seatNumber, deptId) {
+      on_moving_seats=1;
+      if(moving_seats.hasOwnProperty(ticket_id)) {
+        delete moving_seats[ticket_id];
+        document.querySelector('#ticket_id_' + ticket_id).classList.remove('selected-seat');
+      } else {
+        moving_seats[ticket_id] = { ticket_id, seatNumber, deptId };
+        document.querySelector('#ticket_id_' + ticket_id).classList.add('selected-seat');
+      }
+      drawMovingSeats();
+    }
+
+    async function doSwitchingSeats(){
+        temp_console_log('doSwitchingSeats');
+        const result = await requestJson(`${API_URL}?action=switch_seats`, {
+        method: 'POST',
+        body: JSON.stringify(moving_seats)
+      });
+      if(!result.success) {
+        alert(result.message);
+        return;
+      }
+      loadDeptInfo(window.currentDept.dept_id);
+      cancelMovingSeat();
+    }
+
+    async function doMovingToNewSeat(){
+        temp_console_log('doMovingToNewSeat called with new_moving_seats', new_moving_seats);
+        const result = await requestJson(`${API_URL}?action=moving_seats`, {
+        method: 'POST',
+        body: JSON.stringify(new_moving_seats)
+      });
+        loadDeptInfo(window.currentDept.dept_id);
+    }
+
+    function doMovingSeatTo(seatNumber, deptId) {
+      last_seat = moving_seats[Object.keys(moving_seats)[0]];
+      new_moving_seats[last_seat.ticket_id] = { ticket_id: last_seat.ticket_id, oldSeatNumber: last_seat.seatNumber, oldDeptId: last_seat.deptId, seatNumber, deptId };
+      addMovingSeat(last_seat.ticket_id, last_seat.seatNumber, last_seat.deptId);
+      if(Object.keys(moving_seats).length === 0) {
+        doMovingToNewSeat();
+        do_moving_seats=on_moving_seats = 0;
+      }
+    }
+    
+    addEventListener('click', (event) => {
+      if (event.target.classList.contains('one-seat')) {
+        const seatNumber = event.target.dataset.seat || '';
+        const deptId = window.currentDept.dept_id || '';
+        const this_ticketId = event.target.dataset.ticket_id || '';
+        if(!this_ticketId && moving_seats && Object.keys(moving_seats).length > 0) {
+          doMovingSeatTo(seatNumber, deptId);
+          return;
+        }
+      }
+      });
+
+    function addMovingSeat(ticket_id, seatNumber, deptId) {
+        if(!moving_seats.hasOwnProperty(ticket_id)) {
+          moving_seats[ticket_id] = { ticket_id, seatNumber, deptId };
+          if(document.querySelector('#ticket_id_' + ticket_id)) {
+            document.querySelector('#ticket_id_' + ticket_id).classList.add('selected-seat');
+          }
+        } else {
+          delete moving_seats[ticket_id];
+          if(document.querySelector('#ticket_id_' + ticket_id)) {
+            document.querySelector('#ticket_id_' + ticket_id).classList.remove('selected-seat');
+          }
+        }
+        drawMovingSeats();
+      }
+    function cancelMovingSeat() {
+        do_moving_seats=on_moving_seats = 0;
+        moving_seats = {};
+        new_moving_seats={};
+        document.querySelectorAll('.selected-seat').forEach(seat => {
+        seat.classList.remove('selected-seat');
+        });
+        drawMovingSeats();
+        temp_console_log('cancelMovingSeat called, moving_seats and new_moving_seats cleared');
+    }
+
+    function cancelCopyingTicket() {
+        do_copying_seats=0;
+        copying_seats = {};
+        drawCopyingTicket();
+    }
+
+elems.moving_status.addEventListener('click', (event) => {
+  if (event.target.id === 'cancel_moving_seat') {
+    cancelMovingSeat();
+  }
+  if (event.target.id === 'cancel_coping_seat') {
+    cancelCopyingTicket();
+  }
+  if (event.target.id === 'do_moving_seat') {
+    temp_console_log('do_moving_seat');
+    doSwitchingSeats();
+  }
+});
+
+    function drawCopyingTicket() {
+      if(!copying_seats || Object.keys(copying_seats).length === 0) {
+        elems.moving_status.innerHTML = '';
+      } else {
+        let html = '<div class="moving-seat-info">Ghế gốc: ' + Object.values(copying_seats).map(s => s.seatNumber).join(', ');
+        html += '<button type="button" id="cancel_coping_seat">Hủy</button></div>';
+        elems.moving_status.innerHTML = html;
+      }
+    }
+
+    function drawMovingSeats() {
+      temp_console_log('drawMovingSeats called, moving_seats:', moving_seats, 'new_moving_seats:', new_moving_seats);
+      if(!moving_seats || Object.keys(moving_seats).length === 0) {
+        elems.moving_status.innerHTML = '';
+      } else {
+        let html = '<div class="moving-seat-info">Ghế đang di chuyển: <strong>' + Object.values(moving_seats).map(s => s.seatNumber).join(', ');
+          html += '</strong><hr>';
+        // html += Object.values(moving_seats).map(s => s.seatNumber).join(', ');
+        //   html += '<br>';
+        // html += Object.values(new_moving_seats).map(s => s.seatNumber).join(', ');
+        //   html += '<br>';
+        html += '<button type="button" id="do_moving_seat">Đổi chỗ</button>';
+        html += '<button type="button" id="cancel_moving_seat">Hủy</button></div>';
+        elems.moving_status.innerHTML = html;
+      }
+    }
+
+  async function startMarkingTicket(ticket_id, seatNumber, deptId) {
+  if (!ticket_id || !seatNumber || !deptId) return;
+  temp_console_log(
+    'startMarkingTicket called with ticket_id=' + ticket_id +
+    ', seatNumber=' + seatNumber +
+    ', deptId=' + deptId
+  );
+  
+  const this_ticket = document.getElementById(`ticket_id_${ticket_id}`);
+  if (this_ticket) {
+    this_ticket.classList.add('is_confirmed');
+  } else {
+    console.error(`Element with id ticket_id_${ticket_id} not found`);
+  }
+  await requestJson(`${API_URL}?action=mark_ticket`, {
+    method: 'POST',
+    body: JSON.stringify({ ticket_id })
+  });
+}
+
+    function addBusMapClickHandlers() {
+      if (!elems.divBusMap) return;
+      elems.divBusMap.addEventListener('click', (event) => {
+        const viewLogSeat = event.target.closest('.view-log');
+        if (viewLogSeat) {
+          const ticket_id = viewLogSeat.dataset.ticket_id;
+          getHistory(ticket_id);
+          return;
+        }
+        const button = event.target.closest('.seat-buttons > div');
+        const seat_number = event.target.closest('.seat_number');
+        if (!button) return;
+        const action = String(button.textContent || '').trim();
+        const seatNumber = button.dataset.seat_number || button.closest('[data-seat]')?.dataset.seat || '';
+        const deptId = button.dataset.dept_id || elems.deptId.value;
+        const ticket_id = button.dataset.ticket_id || '';
+        if (action === 'X' && ticket_id) {
+          startMarkingTicket(ticket_id, seatNumber, deptId);
+        }
+        if (action === 'C' && ticket_id) {
+          startCopyingTicket(ticket_id, seatNumber, deptId);
+        }
+        if (action === 'B' && seatNumber && deptId) {
+          openTicketModal(deptId, seatNumber);
+        }
+        if (action === 'M' && seatNumber && deptId && ticket_id) {
+          startMovingSeat(ticket_id, seatNumber, deptId);
+        }
+        if (action === 'U' && seatNumber && deptId && ticket_id) {
+          openTicketModal(deptId, seatNumber, ticket_id);
+        }
+      });
+    }
+
+    function redirectToLogin() {
+      localStorage.removeItem('cms_token');
+      localStorage.removeItem('api_token');
+      window.location.href = 'cms-login.html';
+    }
+
+    function isAuthError(data, response) {
+      if (response && (response.status === 401 || response.status === 403)) return true;
+      const msg = data && data.message ? String(data.message) : '';
+      return data && data.success === false && /invalid|expired|missing.*authorization|missing.*auth|access denied/i.test(msg);
+    }
+
+    async function requestJson(url, opts = {}) {
+      const headers = opts.headers ? Object.assign({}, opts.headers) : {};
+      const authToken = typeof token !== 'undefined' ? token : (localStorage.getItem('cms_token') || localStorage.getItem('api_token') || '');
+      if (authToken) {
+        headers['Authorization'] = 'Bearer ' + authToken;
+      }
+      if (!opts.method || opts.method.toUpperCase() === 'GET') {
+        headers['Accept'] = 'application/json';
+      }
+      if (opts.body && !headers['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+      }
+      const response = await fetch(url, Object.assign({ credentials: 'same-origin' }, opts, { headers }));
+      const text = await response.text();
+      let data;
+      try { data = JSON.parse(text); } catch (err) { data = { success: false, message: 'Invalid response', raw: text }; }
+      if (isAuthError(data, response)) {
+        redirectToLogin();
+        return data;
+      }
+      return data;
+    }
+
+    async function loadRoutes() {
+      const data = await requestJson(`${API_URL}?action=get_routes`);
+      if (!data || !data.success) {
+        return;
+      }
+      const options = ['<option value="">-- chọn tuyến --</option>'];
+      for (const item of data.data || []) {
+        const label = item.abbr || item.route_name || item.label || item.route_id;
+        options.push(`<option value="${item.route_id}">${label}</option>`);
+      }
+      elems.route.innerHTML = options.join('');
+    }
+
+    async function loadWorkingBranches() {
+      if (!elems.currentBranch) return;
+      const data = await requestJson(`${API_URL}?action=meta`);
+      if (!data || !data.success) return;
+      const branches = data.options && Array.isArray(data.options.branch_work)
+        ? data.options.branch_work
+        : [];
+      elems.currentBranch.innerHTML = '<option value="">-- chọn VP --</option>' + branches
+        .map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.label)}</option>`)
+        .join('');
+      const savedBranchId = localStorage.getItem('current_branch_id') || '';
+      if (savedBranchId) elems.currentBranch.value = savedBranchId;
+    }
+
+    function getSelectedDate() {
+      return elems.deptDate.value ? elems.deptDate.value : '';
+    }
+    async function loadDepartures() {
+      const routeId = elems.route.value;
+      const deptDate = getSelectedDate();
+      clearDepartures();
+      window.currentDepartureStops = { from_stops: {}, to_stops: {} };
+      if (!routeId || !deptDate) {
+        return;
+      }
+      const params = new URLSearchParams();
+      params.set('action', 'get_departures');
+      params.set('route_id', routeId);
+      params.set('dept_date', deptDate);
+      const data = await requestJson(`${API_URL}?${params.toString()}`);
+      if (!data || !data.success) {
+        return;
+      }
+      window.currentDepartureStops = normalizeStops(data.stops);
+      const modalForm = document.getElementById('ticket_modal_form');
+      if (modalForm) {
+        const selectedFrom = getSelectedSegmentValue(modalForm, 'branch_id_from');
+        const selectedTo = getSelectedSegmentValue(modalForm, 'branch_id_to');
+        renderSegmentOptions(modalForm, selectedFrom, selectedTo);
+      }
+      const rows = data.data || [];
+      const options = ['<option value="">-- chọn phơi --</option>'];
+      for (const row of rows) {
+        const time = (row.dept_time || '').slice(0, 5);
+        const seats = row.seat_left !== undefined ? row.seat_left : '';
+        options.push(`<option value="${row.dept_id}">${time}${seats !== '' ? ' / Ghế trống: ' + seats : ''}</option>`);
+      }
+      elems.deptId.innerHTML = options.join('');
+    }
+
+    async function checkTicketsChanged() {
+      try {
+        const deptId = window.currentDept && window.currentDept.dept_id ? window.currentDept.dept_id : (elems.deptId ? elems.deptId.value : '');
+        if (!deptId) return;
+        // ask server for current tickets hash only
+        const params = new URLSearchParams();
+        params.set('action', 'get_tickets');
+        params.set('dept_id', deptId);
+        params.set('get_hash', '1');
+        const data = await requestJson(`${API_URL}?${params.toString()}`);
+        // robust extraction of hash from possible response shapes
+        let serverHash = null;
+        serverHash = data?data.data_hash:null;
+        const key = 'td_tickets_hash_' + deptId;
+        const localHash = localStorage.getItem(key) || null;
+        if (serverHash && serverHash !== localHash) {
+          temp_console_log('tickets hash changed, reloading deptInfo for '+deptId);
+          await loadDeptInfo(deptId);
+        }
+      } catch (err) {
+        console.error('checkTicketsChanged error', err);
+      }
+    }
+
+    async function getDeptHistory(dept_id) {
+      const params = new URLSearchParams();
+      params.set('action', 'get_dept_history');
+      params.set('table_name', 'vexe_departures');
+      params.set('main_id', dept_id);
+      const data = await requestJson(`${API_URL}?${params.toString()}`);
+      if(1||data.counts>1) drawDeptHistory(data, data.seat_number);
+      else document.getElementById('history_info').innerHTML='';
+    }
+
+
+    function drawDeptHistory(rows, dept_id){
+      const container = document.getElementById('history_info');
+      if (!container) return;
+
+      const items = Array.isArray(rows?.data) ? rows.data : Array.isArray(rows) ? rows : [];
+      if (0&&!items.length) {
+        container.innerHTML = '<div class="main-table"><div class="placeholder-panel">Không có lịch sử.</div></div>';
+        return;
+      }
+      const html1=`<div class="history_info"><div class="history-entry this-seat-number">Phơi [${dept_id}]</div>`;
+      const html = items.map((item) => {
+        const logData = item && item.log_data ? item.log_data : item;
+        const dateTime = item && item.date_time ? item.date_time : '';
+        return `
+          <div class="history-entry">
+            <div class="history-date-time" style="font-weight:700; margin-bottom:6px;">${escapeHtml(dateTime)}</div>
+            <div class="history-log-data">
+              ${((logData))}
+            </div>
+          </div>
+        `;
+      }).join('');
+      container.innerHTML = html1+html+`</div>`;
+    }
+
+    function drawHistory(rows, seat_number){
+      const container = document.getElementById('history_info');
+      if (!container) return;
+
+      const items = Array.isArray(rows?.data) ? rows.data : Array.isArray(rows) ? rows : [];
+      if (0&&!items.length) {
+        container.innerHTML = '<div class="main-table"><div class="placeholder-panel">Không có lịch sử.</div></div>';
+        return;
+      }
+      const html1=`<div class="history_info"><div class="history-entry this-seat-number">Ghế số [${seat_number}]</div>`;
+      const html = items.map((item) => {
+        const logData = item && item.log_data ? item.log_data : item;
+        const dateTime = item && item.date_time ? item.date_time : '';
+        return `
+          <div class="history-entry">
+            <div class="history-date-time" style="font-weight:700; margin-bottom:6px;">${escapeHtml(dateTime)}</div>
+            <div class="history-log-data">
+              ${((logData))}
+            </div>
+          </div>
+        `;
+      }).join('');
+      container.innerHTML = html1+html+`</div>`;
+    }
+
+    async function getHistory(ticket_id) {
+      const params = new URLSearchParams();
+      params.set('action', 'get_history');
+      params.set('table_name', 'vexe_tickets');
+      params.set('main_id', ticket_id);
+      const data = await requestJson(`${API_URL}?${params.toString()}`);
+      if(1||data.counts>1) drawHistory(data, data.seat_number);
+      else document.getElementById('history_info').innerHTML='';
+    }
+
+        function buildTable1(title, columns, rows) {
+      if (!rows.length) {
+        return `<div class="main-table"><div class="placeholder-panel">Không có dữ liệu.</div></div>`;
+      }
+      const header = columns.map(col => `<th>${typeof col === 'string' ? col : col.label}</th>`).join('');
+      const body = rows.map(row => {
+      return `<tr ${row["group_seat_class"] ? `class="${row["group_seat_class"]}"` : ''}>
+      ${columns.map(col => {
+        const key = typeof col === 'string' ? col : col.key;
+      return `<td>${row[key] !== undefined && row[key] !== null ? row[key] : ''}</td>`;
+        }).join('')}</tr>`;
+      }).join('');
+      return `<div class="main-table"><table class="table table-bordered" style="width:100%; min-width:720px; border-collapse:collapse;"><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table></div>`;
+    }
+
+    async function loadTickets(deptId) {
+      if (!deptId) {
+        clearTicketSections();
+        return;
+      }
+      const params = new URLSearchParams();
+      params.set('action', 'get_tickets');
+      params.set('dept_id', deptId);
+      const data = await requestJson(`${API_URL}?${params.toString()}`);
+      if (!data || !data.success) {
+        clearTicketSections();
+        return;
+      }
+      // store returned tickets hash (if any) into localStorage for change detection
+      try {
+        const serverHash = data.data_hash || null;
+        if (serverHash) {
+          try { localStorage.setItem('td_tickets_hash_' + deptId, String(serverHash)); } catch (e) { /* ignore */ }
+        }
+      } catch (err) { /* ignore */ }
+      const rows = data.data || [];
+      window.currentDeptTickets = rows;
+      renderTicketList(rows);
+      renderDonTra(rows);
+      renderTrungChuyen(rows);
+      // render bus map from tickets + currentDept (if available)
+      try { renderBusMap(rows, deptId, window.busMapLayoutData); } catch (err) { console.error('renderBusMap error', err); }
+      if (!rows.length) {
+        // elems.divBusMap.querySelector('.placeholder-panel').textContent = 'Không có vé cho chuyến này.';
+      } else {
+        // elems.divBusMap.querySelector('.placeholder-panel').textContent = 'Sơ đồ xe sẽ render ở đây khi có dữ liệu.';
+      }
+    }
+
+    function clearDeptInfo() {
+      const keys = [
+        'dept_route_label', 'dept_ticket_price', 'dept_vehicle_type', 'dept_driver_phone', 'dept_seat_summary',
+        'dept_date_label', 'dept_note', 'dept_vehicle_note', 'dept_helper', 'dept_boarding_breakdown',
+        'dept_time_label', 'dept_plate', 'dept_driver_name', 'dept_helper_phone', 'dept_sales_breakdown', 'dept_don_tc'
+      ];
+      keys.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '';
+      });
+    }
+
+    function renderDeptInfo(dept) {
+      if (!dept) {
+        clearDeptInfo();
+        return;
+      }
+      const seatSummary = dept.seat_left !== undefined && dept.seat_count !== undefined
+        ? `đặt ${dept.ticket_count} / trống ${dept.seat_left}`
+        : dept.seat_left !== undefined ? String(dept.seat_left) : '';
+      const price = dept.ticket_vnd !== undefined && dept.ticket_vnd !== null ? formatCurrency(dept.ticket_vnd) : '';
+      const dateLabel = dept.dept_date || '';
+      const timeLabel = dept.dept_time ? (dept.dept_time || '').slice(0, 5) : '';
+      const driverName = dept.driver || '';
+      const driverPhone = dept.driver_mobile || '';
+      const helper = dept.sub_driver || '';
+      const helperPhone = dept.sub_driver_mobile || '';
+      const vehicleType = dept.bus_type_name || '';
+      const plate = dept.bus_plate || '';
+      const note = dept.dept_notes || '';
+      const vehicleNote = dept.bus_notes || '';
+      const boardingBreakdown = '';
+      const salesBreakdown = '';
+      const routeLabel = dept.route_abbr || '';
+
+      const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+      };
+      setText('dept_route_label', routeLabel);
+      setText('dept_ticket_price', price);
+      setText('dept_vehicle_type', vehicleType);
+      setText('dept_driver_phone', driverPhone);
+      setText('dept_seat_summary', seatSummary);
+      setText('dept_date_label', dateLabel);
+      setText('dept_note', note);
+      setText('dept_vehicle_note', vehicleNote);
+      setText('dept_helper', helper);
+      setText('dept_boarding_breakdown', boardingBreakdown);
+      setText('dept_time_label', timeLabel);
+      setText('dept_plate', plate);
+      setText('dept_driver_name', driverName);
+      setText('dept_helper_phone', helperPhone);
+      setText('dept_sales_breakdown', salesBreakdown);
+    }
+
+    async function loadDeptInfo(deptId) {
+      if (!deptId) {
+        clearDeptInfo();
+        return;
+      }
+      const params = new URLSearchParams();
+      params.set('action', 'get_departures');
+      params.set('dept_id', deptId);
+      let data = await requestJson(`${API_URL}?${params.toString()}`);
+      let dept = null;
+      if (data && data.success && Array.isArray(data.data) && data.data.length) {
+        dept = data.data[0];
+      }
+      if (!dept) {
+        const fallback = await requestJson(`${API_URL}?action=get_one_departure&dept_id=${encodeURIComponent(deptId)}`);
+        if (fallback && fallback.success && fallback.row) {
+          dept = fallback.row;
+        }
+      }
+      renderDeptInfo(dept);
+      // store current dept for bus-map rendering
+      window.currentDept = dept || null;
+      window.busMapLayoutData = null;
+      window.ticket_vnd = dept['ticket_vnd'] || 0;
+      temp_console_log('loadDeptInfo called with deptId:' + deptId + ', window.ticket_vnd:' + window.ticket_vnd);
+
+      if (window.currentDept && window.currentDept.bus_type) {
+        window.busMapLayoutData = await loadBusMapRenderer(window.currentDept.bus_type, deptId);
+      }
+      await loadTickets(deptId);
+      // renderTicketModalSeatMap(deptId, '');
+      drawMovingSeats();
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str).replace(/[&<>"']/g, function (s) {
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[s];
+      });
+    }
+
+    async function loadBusMapRenderer(busType, deptId) {
+      if (!busType) return null;
+      const params = new URLSearchParams();
+      params.set('action', 'render_bus_map');
+      params.set('bus_type', busType);
+      if (deptId) params.set('dept_id', deptId);
+      const url = `/api/bus_map_renderer.php?${params.toString()}`;
+      const result = await requestJson(url);
+      return result && result.success && result.data ? result.data : null;
+    }
+
+    function extractSeatNumberFromLayoutSeat(seat) {
+      if (!seat) return '';
+      if (seat.seat_number !== undefined && seat.seat_number !== null && String(seat.seat_number).trim() !== '') {
+        return String(seat.seat_number).trim();
+      }
+      if (seat.html) {
+        const match = String(seat.html).match(/data-seat=["']([^"']+)["']/);
+        if (match) {
+          return match[1].trim();
+        }
+      }
+      return '';
+    }
+
+    function renderBusMapFromLayout(rows, deptId, layoutData) {
+      const busEl = elems.divBusMap;
+      const ticketMap = {};
+      (rows || []).forEach(r => {
+        const seatKey = r && r.seat_number !== undefined && r.seat_number !== null ? String(r.seat_number).trim() : '';
+        if (seatKey) {
+          ticketMap[seatKey] = r;
+        }
+      });
+      const busClass = layoutData.bus_class ? layoutData.bus_class : 'one-bus';
+      const seats = Array.isArray(layoutData.seats) ? layoutData.seats : [];
+      let html = `<div class="${escapeHtml(busClass)}">`;
+      seats.forEach(seat => {
+        const isDriver = seat.is_driver || seat.type === 'driver';
+        if (isDriver) {
+          const styleAttr = seat.inline_style ? ` style="${escapeHtml(seat.inline_style)}"` : (seat.style ? ` style="${escapeHtml(seat.style)}"` : '');
+          html += `<div class="one-seat driver"${styleAttr}></div>`;
+          return;
+        }
+        const seatNumber = extractSeatNumberFromLayoutSeat(seat);
+        const ticket = seat.ticket || (seatNumber ? ticketMap[String(seatNumber)] : null);
+        const classes = ['one-seat'];
+        if (ticket) classes.push('taken');
+        const ticketId = ticket ? (ticket.id || ticket.ticket_id || ticket.ticket_code || '') : '';
+        let seatContent = '';
+                  //if (seatNumber >= 41) 
+        if(window.currentDept.bus_type==5 && seatNumber >= 41) classes.push('last-seat-45');
+
+        if (ticket) {
+          const this_ticket = (seatNumber ? ticketMap[String(seatNumber)] : null) || ticket || {};
+          const branchName = this_ticket.branch_name || '';
+          const sumVnd = this_ticket.sum_vnd ? formatCurrency(this_ticket.sum_vnd) : '';
+          const passName = (this_ticket.pass_name || '').toUpperCase();
+          const passMobile = this_ticket.pass_mobile || '';
+          const onboard_at = this_ticket.onboard_at ? `<i class="fa fa-arrow-up"></i> ${escapeHtml(this_ticket.onboard_at)}` : '';
+          const temp_onboard = this_ticket.temp_onboard ? `<i class="fa fa-arrow-up"></i> ${escapeHtml(this_ticket.temp_onboard)}` : '';
+          const is_confirmed = this_ticket.is_confirmed;
+          if(is_confirmed) classes.push('is_confirmed');
+          if(this_ticket.group_seat_class) classes.push(this_ticket.group_seat_class);
+          const group_seats=this_ticket.group_seat?`${this_ticket.group_seat} G`:'';
+
+          const offboard_at = this_ticket.offboard_at ? `<i class="fa fa-arrow-down"></i> ${escapeHtml(this_ticket.offboard_at)}` : '';
+          const temp_offboard = this_ticket.temp_offboard ? `<i class="fa fa-arrow-down"></i> ${escapeHtml(this_ticket.temp_offboard)}` : '';
+          seatContent = `
+            <div class="seat_number view-log" data-ticket_id="${escapeHtml(ticketId)}">${escapeHtml(seatNumber)}</div>
+            <div class="on-offboard">
+              ${temp_onboard||onboard_at?`<div class="${temp_onboard?'temp_onboard':'onboard_at'}">${temp_onboard} ${onboard_at}</div>`:''}
+              ${temp_offboard||offboard_at?`<div class="${temp_offboard?'temp_offboard':'offboard_at'}">${temp_offboard} ${offboard_at}</div>`:''}
+            </div>
+            <div class="more-info">
+              <div class="branch_name">${escapeHtml(branchName)} <span class="sum_vnd">${sumVnd}</span> <span class="sum_vnd">${this_ticket.payment=='tài xế thu'?'tài thu':''}</span></div>
+              <div class="first_name">${escapeHtml(this_ticket.first_name)}</div>
+            <div class="branch_name_2">${group_seats}</div>
+              <div class="pass_mobile">${escapeHtml(passMobile)} ${escapeHtml(passName)}</div>
+              <div class="ticket-notes">${this_ticket.notes||''}</div>
+            </div>
+            <div class="seat-buttons">
+              <div title="Sửa vé" data-seat_number="${escapeHtml(seatNumber)}" data-ticket_id="${escapeHtml(ticketId)}">U</div>
+              <div title="Di chuyển ghế" data-ticket_id="${escapeHtml(ticketId)}">M</div>
+              <div title="Mua thêm vé" data-ticket_id="${escapeHtml(ticketId)}" data-dept_id="${escapeHtml(deptId || '')}">C</div>
+              <div title="Xác nhận" data-seat_number="${escapeHtml(seatNumber)}" class="button_x" data-ticket_id="${escapeHtml(ticketId)}">X</div>
+            </div>
+          `;
+        } else {
+          seatContent = `<div class="seat_number">${escapeHtml(seatNumber)}</div><div class="seat-buttons"><div data-seat_number="${escapeHtml(seatNumber)}" data-dept_id="${escapeHtml(deptId || '')}">B</div></div>`;
+        }
+        const elementId = ticket ? `ticket_id_${ticketId}` : `empty_id_${deptId}_${seatNumber}`;
+        html += `<div id="${elementId}" class="${classes.join(' ')}" data-seat="${escapeHtml(seatNumber)}" ${ticketId ? `data-ticket_id="${escapeHtml(ticketId)}"` : ''} data-cnt="1">${seatContent}</div>`;
+      });
+      html += `</div>`;
+      const header = (window.currentDept && (window.currentDept.route_abbr || window.currentDept.dept_date || window.currentDept.bus_plate)) ? `${window.currentDept.route_abbr || ''} ${window.currentDept.dept_date || ''} ${window.currentDept.dept_time || ''} - ${window.currentDept.bus_plate || ''}`.trim() : (busEl.querySelector('.bus-name') ? busEl.querySelector('.bus-name').textContent : '');
+      busEl.innerHTML = `<div class="bus-name">${escapeHtml(header)}</div>${html}`;
+    }
+
+    function renderBusMap(rows, deptId, layoutData) {
+      if (layoutData && layoutData.bus_class && Array.isArray(layoutData.seats)) {
+        return renderBusMapFromLayout(rows, deptId, layoutData);
+      }
+      const busEl = elems.divBusMap;
+      const seatNums = (rows||[]).map(r => Number(r.seat_number) || 0).filter(n => n>0);
+      let seatCount = 0;
+      if (window.currentDept && window.currentDept.seat_count) seatCount = Number(window.currentDept.seat_count) || 0;
+      if (!seatCount) seatCount = seatNums.length ? Math.max(...seatNums) : 45;
+      
+      const busType = window.currentDept && window.currentDept.bus_type ? window.currentDept.bus_type : 1;
+      const busTypeClass = window.currentDept && window.currentDept.bus_type ? ' bus-type-' + escapeHtml(window.currentDept.bus_type) : '';
+      
+      // Create ticket map for quick lookup
+      const ticketMap = {};
+      (rows||[]).forEach(r => {
+        const seatKey = r && r.seat_number !== undefined && r.seat_number !== null ? String(r.seat_number).trim() : '';
+        if (seatKey) {
+          ticketMap[seatKey] = r;
+        }
+      });
+      
+      let html = `<div class="one-bus${busTypeClass} large">`;
+      for (let i = 0; i < seatCount; i++) {
+        const seatNumber = i + 1;
+        const ticket = ticketMap[String(seatNumber)];
+        const classes = ['one-seat'];
+        if (seatNumber >= 41) classes.push('last-seat-45');
+        if (ticket) classes.push('taken');
+        const ticketId = ticket ? (ticket.id || ticket.ticket_id || '') : '';
+        let seatContent = '';
+        
+        if (ticket) {
+          // Render full ticket content
+          const branchName = ticket.branch_name || '';
+          const sumVnd = ticket.sum_vnd ? formatCurrency(ticket.sum_vnd) : '';
+          const passName = (ticket.pass_name || '').toUpperCase();
+          const passMobile = ticket.pass_mobile || '';
+          const tempOnboard = ticket.temp_onboard ? `<i class="fa fa-arrow-up"></i> ${escapeHtml(ticket.temp_onboard)}` : '';
+          const offboardAt = ticket.offboard_at ? `<i class="fa fa-arrow-down"></i> ${escapeHtml(ticket.offboard_at)}` : '';
+          
+          if(0) seatContent = `
+            <div class="seat_number view-log" data-ticket_id="${escapeHtml(ticketId)}">${seatNumber}</div>
+            <div class="on-offboard">
+              ${tempOnboard ? `<div class="temp_onboard">${tempOnboard}</div>` : ''}
+              ${offboardAt ? `<div class="offboard_at">${offboardAt}</div>` : ''}
+            </div>
+            <div class="more-info">
+              <div class="branch_name">${escapeHtml(branchName)} <span class="sum_vnd">${sumVnd}</span></div>
+              <div class="first_name">${escapeHtml(passName)}</div>
+              <div class="pass_mobile">${escapeHtml(passMobile)}</div>
+            </div>
+            <div class="branch_name_2">${escapeHtml(branchName)}</div>
+            <div class="seat-buttons">
+              <div title="Sửa vé" data-seat_number="${escapeHtml(seatNumber)}" data-ticket_id="${escapeHtml(ticketId)}">U</div>
+              <div title="Di chuyển ghế" data-ticket_id="${escapeHtml(ticketId)}">M</div>
+              <div title="Mua thêm vé" data-ticket_id="${escapeHtml(ticketId)}" data-dept_id="${escapeHtml(deptId || '')}">C</div>
+              <div title="In vé này" data-ticket_id="${escapeHtml(ticketId)}" data-dept_id="${escapeHtml(deptId || '')}">P</div>
+              <div title="Xác nhận" data-seat_number="${escapeHtml(seatNumber)}" data-ticket_id="${escapeHtml(ticketId)}">X</div>
+            </div>
+          `;
+        } else {
+          seatContent = `<div class="seat_number">${seatNumber}</div><div class="seat-buttons"><div data-seat_number="${seatNumber}" data-dept_id="${escapeHtml(deptId || '')}">B</div></div>`;
+        }
+        
+        const elementId = ticket ? `ticket_id_${ticketId}` : `empty_id_${deptId}_${seatNumber}`;
+        html += `<div id="${elementId}" class="${classes.join(' ')}" data-seat="${seatNumber}" ${ticketId?`data-ticket_id="${escapeHtml(ticketId)}"`:''} data-cnt="1">${seatContent}</div>`;
+      }
+      html += `</div>`;
+      
+      const header = (window.currentDept && (window.currentDept.route_abbr || window.currentDept.dept_date || window.currentDept.bus_plate)) ? `${window.currentDept.route_abbr||''} ${window.currentDept.dept_date||''} ${window.currentDept.bus_plate||''}`.trim() : (busEl.querySelector('.bus-name')?busEl.querySelector('.bus-name').textContent:'');
+      busEl.innerHTML = `<div class="bus-name">${escapeHtml(header)}</div>${html}`;
+    }
+
+    function buildTable(title, columns, rows) {
+      if (!rows.length) {
+        return `<div class="main-table"><div class="placeholder-panel">Không có dữ liệu.</div></div>`;
+      }
+      const header = columns.map(col => `<th>${typeof col === 'string' ? col : col.label}</th>`).join('');
+      const body = rows.map(row => {
+        if (row && row.__separator) {
+          return `<tr class="cancelled_tickets"><td colspan="11">${escapeHtml(row.__separatorLabel || 'Vé hủy')}</td></tr>`;
+        }
+        return `<tr ${row["group_seat_class"] ? `class="${row["group_seat_class"]}"` : ''}>
+      ${columns.map(col => {
+        const key = typeof col === 'string' ? col : col.key;
+      return `<td>${row[key] !== undefined && row[key] !== null ? row[key] : ''}</td>`;
+        }).join('')}</tr>`;
+      }).join('');
+      return `<div class="main-table"><table class="table table-bordered" style="width:100%; min-width:720px; border-collapse:collapse;"><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table></div>`;
+    }
+
+    function renderTicketList(rows) {
+      const dataRows = [];
+      let cancelledHeaderInserted = false;
+      rows.forEach((row) => {
+        const isCancelledTicket = row.seat_number === null || row.seat_number === undefined || String(row.seat_number).trim() === '';
+        if (isCancelledTicket && !cancelledHeaderInserted) {
+          dataRows.push({ __separator: true, __separatorLabel: 'Vé hủy' });
+          cancelledHeaderInserted = true;
+        }
+        dataRows.push({
+          seat: row.seat_number || '',
+          group_seat_class: row.group_seat_class || '',
+          mobile: row.pass_mobile || '',
+          name: row.pass_name || '',
+          status: row.status_title || row.status || '',
+          payment: row.payment || '',
+          code: row.ticket_code || row.random_code || '',
+          notes: row.notes || '',
+          cancel_notes: row.cancel_notes || '',
+          created_at: row.register_submit || '',
+          location: row.branch_name || '',
+          actions: row.id ? `<button class="log-button" data-ticket_id="${row.id}">log</button>` : ''
+        });
+      });
+      const html = buildTable('DS khách', [
+        { key: 'seat', label: 'Ghế' },
+        { key: 'mobile', label: 'SĐT khách' },
+        { key: 'name', label: 'Tên khách' },
+        { key: 'status', label: 'Tình trạng' },
+        { key: 'payment', label: 'PTTT' },
+        { key: 'code', label: 'Mã' },
+        { key: 'notes', label: 'Ghi chú' },
+        { key: 'cancel_notes', label: 'Ghi chú hủy' },
+        { key: 'created_at', label: 'Tạo lúc' },
+        { key: 'location', label: 'Tại' },
+        { key: 'actions', label: 'Thao tác' }
+      ], dataRows);
+      elems.ticketList.innerHTML = html;
+    }
+
+    function renderDonTra(rows) {
+      const filtered = rows.filter((row) => (row.onboard_at || row.offboard_at) && row.seat_number);
+      const dataRows = filtered.map(row => ({
+        seat: row.seat_number || '',
+        group_seat_class: row.group_seat_class || '',
+        mobile: row.pass_mobile || '',
+        name: row.pass_name || '',
+        onboard: row.onboard_at || '',
+        offboard: row.offboard_at || '',
+        vnd: formatCurrency(row.sum_vnd || row.ticket_vnd || ''),
+        code: row.ticket_code || row.random_code || '',
+        notes: row.notes || ''
+      }));
+      const html = buildTable('Đón trả', [
+        { key: 'seat', label: 'Ghế' },
+        { key: 'mobile', label: 'SĐT khách' },
+        { key: 'name', label: 'Tên khách' },
+        { key: 'onboard', label: 'Lên xe' },
+        { key: 'offboard', label: 'Xuống xe' },
+        { key: 'vnd', label: 'VND' },
+        { key: 'code', label: 'Mã' },
+        { key: 'notes', label: 'Ghi chú' }
+      ], dataRows);
+      elems.divDonTra.innerHTML = html;
+    }
+
+    function renderTrungChuyen(rows) {
+      const filtered = rows.filter((row) => (row.temp_onboard || row.temp_offboard) && row.seat_number);
+      const dataRows = filtered.map(row => ({
+        seat: row.seat_number || '',
+        group_seat_class: row.group_seat_class || '',
+        mobile: row.pass_mobile || '',
+        name: row.pass_name || '',
+        temp_onboard: row.temp_onboard || '',
+        temp_offboard: row.temp_offboard || '',
+        code: row.ticket_code || row.random_code || '',
+        notes: row.notes || ''
+      }));
+      const html = buildTable('Trung chuyển', [
+        { key: 'seat', label: 'Ghế' },
+        { key: 'mobile', label: 'SĐT khách' },
+        { key: 'name', label: 'Tên khách' },
+        { key: 'temp_onboard', label: 'TC lên' },
+        { key: 'temp_offboard', label: 'TC xuống' },
+        { key: 'code', label: 'Mã' },
+        { key: 'notes', label: 'Ghi chú' }
+      ], dataRows);
+      elems.divTrungChuyen.innerHTML = html;
+    }
+
+    function setActiveTab(tabId) {
+      const tabs = Array.from(document.querySelectorAll('.one-tab'));
+      const contentIds = tabs.map(tab => tab.dataset.tab_id).filter(Boolean);
+      tabs.forEach(tab => {
+        if (tab.dataset.tab_id === tabId) {
+          tab.classList.add('active-handle');
+        } else {
+          tab.classList.remove('active-handle');
+        }
+      });
+      contentIds.forEach(id => {
+        const content = document.getElementById(id);
+        if (!content) return;
+        content.style.display = id === tabId ? 'block' : 'none';
+      });
+      try { localStorage.setItem('td_active_tab', String(tabId)); } catch (e) {}
+    }
+
+    function onDeptChange() {
+      const deptId = elems.deptId.value;
+      if (!deptId) {
+        clearTicketSections();
+        clearDeptInfo();
+        return;
+      }
+      // persist selection
+      try { localStorage.setItem('td_dept_id', String(deptId)); } catch(e) {}
+      loadDeptInfo(deptId);
+    }
+    
+  dept_history.addEventListener('click', () => {
+        getDeptHistory(elems.deptId.value);
+    });
+
+let temp_lunar_date;
+  async function do_load_lunar(button=''){
+  if(!temp_lunar_date) temp_lunar_date=elems.deptDate.value;
+  const data = await requestJson(`${API_URL}?action=get_lunar_calendar&dept_date=${temp_lunar_date}&button=${button}`);
+  if (!data || !data.success) {
+  return;
+  }
+  temp_lunar_date=data.temp_lunar_date;
+  elems.lunar_calendar_span.innerHTML = `<div class="lunar_calendar">${data.data}</div>`;
+      document.querySelectorAll('.lunar_calendar .day').forEach(tab => {
+        tab.addEventListener('click', () => {
+          if (tab.dataset.yyyymmdd) {
+            elems.deptDate.value=(tab.dataset.yyyymmdd);
+            const event = new Event('change', { bubbles: true });
+            elems.deptDate.dispatchEvent(event);
+            lunar_calendar_span.innerHTML='';
+          }
+        });
+      });
+      document.querySelectorAll('.lunar_calendar .button.lunar_prev_month')[0].addEventListener('click', () => {
+            do_load_lunar('lunar_prev_month');
+        });
+      document.querySelectorAll('.lunar_calendar .button.lunar_next_month')[0].addEventListener('click', () => {
+            do_load_lunar('lunar_next_month');
+        });
+      document.querySelectorAll('.lunar_calendar .button.lunar_today')[0].addEventListener('click', () => {
+            do_load_lunar('lunar_today');
+        });
+      document.querySelectorAll('.lunar_calendar .button.lunar_close')[0].addEventListener('click', () => {
+            lunar_calendar_span.innerHTML='';
+        });
+  }
+
+    function addChangeHandlers() {
+      if (elems.currentBranch) {
+        elems.currentBranch.addEventListener('change', () => {
+          localStorage.setItem('current_branch_id', elems.currentBranch.value || '');
+        });
+      }
+      elems.route.addEventListener('change', () => {
+        try { localStorage.setItem('td_route_id', String(elems.route.value)); } catch(e) {}
+        loadDepartures();
+      });
+      elems.deptDate.addEventListener('change', () => {
+        try { localStorage.setItem('td_dept_date', String(elems.deptDate.value)); } catch(e) {}
+        loadDepartures();
+        temp_lunar_date=elems.deptDate.value;
+      });
+      elems.deptId.addEventListener('change', onDeptChange);
+      // elems.deptId.addEventListener('input', onDeptChange);
+      
+      // Date navigation: prev_date and next_date buttons
+      if (elems.load_lunar) {
+        elems.load_lunar.addEventListener('click', () => {
+          do_load_lunar();
+        });
+      }
+      if (elems.prevDate) {
+        elems.prevDate.addEventListener('click', () => {
+          const current = new Date(elems.deptDate.value);
+          current.setDate(current.getDate() - 1);
+          elems.deptDate.value = current.toISOString().slice(0, 10);
+          elems.deptDate.dispatchEvent(new Event('change'));
+        });
+      }
+      if (elems.nextDate) {
+        elems.nextDate.addEventListener('click', () => {
+          const current = new Date(elems.deptDate.value);
+          current.setDate(current.getDate() + 1);
+          elems.deptDate.value = current.toISOString().slice(0, 10);
+          elems.deptDate.dispatchEvent(new Event('change'));
+        });
+      }
+      
+      // Departure navigation: prev_dept and next_dept buttons
+      if (elems.prevDept) {
+        elems.prevDept.addEventListener('click', () => {
+          const options = elems.deptId.querySelectorAll('option');
+          const currentIndex = elems.deptId.selectedIndex;
+          if (currentIndex > 1) {
+            elems.deptId.selectedIndex = currentIndex - 1;
+            elems.deptId.dispatchEvent(new Event('change'));
+          }
+        });
+      }
+      if (elems.nextDept) {
+        elems.nextDept.addEventListener('click', () => {
+          const options = elems.deptId.querySelectorAll('option');
+          const currentIndex = elems.deptId.selectedIndex;
+          if (currentIndex < options.length - 1) {
+            elems.deptId.selectedIndex = currentIndex + 1;
+            elems.deptId.dispatchEvent(new Event('change'));
+          }
+        });
+      }
+      
+      document.querySelectorAll('.one-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          if (tab.dataset.tab_id) {
+            setActiveTab(tab.dataset.tab_id);
+          }
+        });
+      });
+    }
+
+        const savedBranchId = localStorage.getItem('current_branch_id') || '';
+    function addDepartureEditorHandlers() {
+      const editBtn = document.getElementById('edit_depart');
+      const addBtn = document.getElementById('add_depart');
+      if (editBtn) {
+        editBtn.addEventListener('click', () => {
+          const deptId = elems.deptId.value;
+          if (!deptId) {
+            alert('Vui lòng chọn một chuyến để sửa.');
+            return;
+          }
+          if (window.departureEditor && window.departureEditor.open) {
+            window.departureEditor.open(deptId);
+          }
+        });
+      }
+      if (addBtn) {
+        temp_console_log('add_depart clicked, savedBranchId:', savedBranchId);
+        addBtn.addEventListener('click', () => {
+
+          const initial = {
+            route_id: elems.route.value || '',
+            dept_date: elems.deptDate.value || '',
+            branch_id: savedBranchId || '',
+            dept_time: window.currentDept ? window.currentDept.dept_time : '',
+              bus_type: window.currentDept ? window.currentDept.bus_type : '',
+              ticket_vnd: window.currentDept ? window.currentDept.ticket_vnd : ''
+          };
+          if (window.departureEditor && window.departureEditor.open) {
+            window.departureEditor.open('new', initial);
+          }
+        });
+      }
+    }
+
+    async function init() {
+      initTicketModal();
+      await loadWorkingBranches();
+      await loadRoutes();
+      addChangeHandlers();
+      addDepartureEditorHandlers();
+      addBusMapClickHandlers();
+      // restore active tab from storage
+      const savedTab = localStorage.getItem('td_active_tab') || 'div_bus_map';
+      setActiveTab(savedTab);
+      // restore saved selections
+      const savedRoute = localStorage.getItem('td_route_id') || '';
+      const savedDate = localStorage.getItem('td_dept_date') || '';
+      const savedDept = localStorage.getItem('td_dept_id') || '';
+      if (savedRoute) {
+        elems.route.value = savedRoute;
+      }
+      // default date to today if no saved
+      const today = new Date().toISOString().slice(0, 10);
+      elems.deptDate.value = savedDate || today;
+
+      // load departures for restored route/date and auto-select dept if available
+      await loadDepartures();
+      if (savedDept) {
+        // try set dept_id (may not exist if departures empty)
+        try { elems.deptId.value = savedDept; } catch (e) {}
+        if (elems.deptId.value) {
+          // ensure ticket view and departure info updated
+          await loadDeptInfo(elems.deptId.value);
+        }
+      }
+      // keep UI clean: if no dept selected, ensure departures cleared state is consistent
+      if (!elems.deptId.value) clearTicketSections();
+
+      // start periodic check for ticket changes (every 5 seconds)
+      try {
+        if (window.td_check_interval) clearInterval(window.td_check_interval);
+        window.td_check_interval = setInterval(() => {
+          try { checkTicketsChanged(); } catch (e) { console.error('td check error', e); }
+        }, 5000);
+      } catch (e) { console.error('start check interval error', e); }
+      // clear interval on unload
+      window.addEventListener('beforeunload', () => {
+        if (window.td_check_interval) clearInterval(window.td_check_interval);
+      });
+    }
+
+    // log-button click handler: call getHistory(ticket_id)
+    document.addEventListener('click', (event) => {
+      const btn = event.target.closest('.log-button');
+      if (!btn) return;
+      const ticket_id = btn.dataset.ticket_id || btn.getAttribute('data-ticket_id') || '';
+      if (!ticket_id) return;
+      getHistory(ticket_id);
+    });
+
+    document.addEventListener('DOMContentLoaded', init);
+
+    function printListReport(type) {
+      const dept = window.currentDept;
+      if (!dept || !dept.dept_id) {
+        alert('Vui lòng chọn phơi trước khi in.');
+        return;
+      }
+
+      const allTickets = (window.currentDeptTickets || []).filter(r => r.seat_number !== null && r.seat_number !== undefined && String(r.seat_number).trim() !== '');
+
+      const routeLabel  = dept.route_abbr || '';
+      const dateLabel   = dept.dept_date || '';
+      const timeLabel   = (dept.dept_time || '').slice(0, 5);
+      const now         = new Date().toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+      // Group tickets by pass_mobile (same mobile = same group row)
+      // Tickets without mobile (edge case) get their own row keyed by id
+      const groupOrder = [];
+      const groups     = {};
+      allTickets.forEach(r => {
+        const key = (r.pass_mobile || '').trim() || ('__solo_' + (r.id || r.ticket_id || Math.random()));
+        if (!groups[key]) {
+          groups[key] = [];
+          groupOrder.push(key);
+        }
+        groups[key].push(r);
+      });
+
+      // Build grouped rows (sorted seats)
+      const groupedRows = groupOrder.map(key => {
+        const grp      = groups[key];
+        const first    = grp[0];
+        const seats    = grp.map(r => Number(r.seat_number)).sort((a,b) => a-b).join(',');
+        const groupCls = first.group_seat_class || '';
+        return { seats, groupCls, first, grp };
+      });
+
+      let titleText = '';
+      let thead     = '';
+      let tbodyRows = '';
+
+      if (type === 'ds_khach') {
+        titleText = `DANH SÁCH KHÁCH [${escapeHtml(routeLabel)} / ${escapeHtml(dateLabel)} / ${escapeHtml(timeLabel)}]`;
+        thead = '<tr><th>Ghế</th><th>SĐT khách</th><th>Tên khách</th></tr>';
+        let totalSeats_dk = 0;
+        groupedRows.forEach(({ seats, groupCls, first, grp }) => {
+          totalSeats_dk += grp.length;
+          const name = first.pass_name ? escapeHtml(first.pass_name) : '&nbsp;';
+          tbodyRows += `<tr class="${escapeHtml(groupCls)}"><td align="center">${escapeHtml(seats)}</td><td align="center">${escapeHtml(first.pass_mobile || '')}</td><td>${name}</td></tr>`;
+        });
+        tbodyRows += `<tr><td colspan="3" align="center">Tổng [${totalSeats_dk}] ghế</td></tr>`;
+
+      } else if (type === 'don_tra') {
+        titleText = `DANH SÁCH ĐÓN TRẢ [${escapeHtml(routeLabel)} / ${escapeHtml(dateLabel)} / ${escapeHtml(timeLabel)}]`;
+        thead = '<tr><th>Ghế</th><th>SĐT khách</th><th>Tên khách</th><th>Lên xe</th><th>Xuống xe</th></tr>';
+        let totalSeats_dt = 0;
+        groupedRows.forEach(({ seats, groupCls, first, grp }) => {
+          totalSeats_dt += grp.length;
+          const onboard  = first.temp_onboard || first.onboard_at  || '';
+          const offboard = first.temp_offboard || first.offboard_at || '';
+          const name     = first.pass_name ? escapeHtml(first.pass_name) : '&nbsp;';
+          tbodyRows += `<tr class="${escapeHtml(groupCls)}"><td align="center">${escapeHtml(seats)}</td><td align="center">${escapeHtml(first.pass_mobile || '')}</td><td>${name}</td>`
+            + `<td align="left"><i class="fa fa-arrow-up"></i> ${escapeHtml(onboard)}</td>`
+            + `<td align="left"><i class="fa fa-arrow-down"></i> ${escapeHtml(offboard)}</td></tr>`;
+        });
+        tbodyRows += `<tr><td colspan="5" align="center">Tổng [${totalSeats_dt}] ghế</td></tr>`;
+
+      } else if (type === 'trung_chuyen') {
+        // filter: only rows with temp_onboard or temp_offboard
+        const tcRows = groupedRows.filter(({ grp }) => grp.some(r => r.temp_onboard || r.temp_offboard));
+        titleText = `DANH SÁCH TRUNG CHUYỂN [${escapeHtml(routeLabel)} / ${escapeHtml(dateLabel)} / ${escapeHtml(timeLabel)}]`;
+        thead = '<tr><th>Ghế</th><th>SĐT khách</th><th>Tên khách</th><th>TC lên</th><th>TC xuống</th></tr>';
+        let totalSeats_tc = 0;
+        tcRows.forEach(({ seats, groupCls, first, grp }) => {
+          totalSeats_tc += grp.length;
+          const name = first.pass_name ? escapeHtml(first.pass_name) : '&nbsp;';
+          tbodyRows += `<tr class="${escapeHtml(groupCls)}"><td align="center">${escapeHtml(seats)}</td><td align="center">${escapeHtml(first.pass_mobile || '')}</td><td>${name}</td>`
+            + `<td align="left"><i class="fa fa-arrow-up"></i> ${escapeHtml(first.temp_onboard || '')}</td>`
+            + `<td align="left"><i class="fa fa-arrow-down"></i> ${escapeHtml(first.temp_offboard || '')}</td></tr>`;
+        });
+        tbodyRows += `<tr><td colspan="5" align="center">Tổng [${totalSeats_tc}] ghế</td></tr>`;
+      }
+
+      const colCount = type === 'ds_khach' ? 3 : 5;
+      const html = `<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>${titleText}</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous">
+<style>
+html { padding: 0.5cm; }
+html * { font-size: 11pt; }
+h2 { margin: 0; font-size: 120%; }
+.pax_table, .pax_table td, .pax_table th { border: 1px solid #999; border-collapse: collapse; }
+.pax_table td, .pax_table th { padding: 1mm 2mm; }
+.pax_table th { background: #f0f0f0; }
+.group_ticket_1  { background: #fff0fe; }
+.group_ticket_2  { background: #edecff; }
+.group_ticket_3  { background: #dcffe5; }
+.group_ticket_4  { background: #dbffc8; }
+.group_ticket_5  { background: #ede6ff; }
+.group_ticket_6  { background: #d1ffb5; }
+.group_ticket_7  { background: #fffdb5; }
+.group_ticket_8  { background: #ffd1f8; }
+.group_ticket_9  { background: #d4d1ff; }
+.group_ticket_10 { background: #ffd1d1; }
+</style>
+</head>
+<body onload="window.print()">
+<table width="100%" border="1" cellpadding="0" cellspacing="0" class="pax_table">
+<tbody>
+<tr>
+  <td colspan="${colCount - 1}"><h2>${titleText}</h2></td>
+  <td align="right">In ngày: ${escapeHtml(now)}</td>
+</tr>
+${thead}
+${tbodyRows}
+</tbody>
+</table>
+</body>
+</html>`;
+
+      const win = window.open('', '_blank', 'width=960,height=720');
+      if (!win) {
+        alert('Không thể mở cửa sổ in. Vui lòng cho phép popup từ trang này.');
+        return;
+      }
+      win.document.write(html);
+      win.document.close();
+    }
+
+    function printBusMap() {
+      const dept = window.currentDept;
+      if (!dept || !dept.dept_id) {
+        alert('Vui lòng chọn phơi trước khi in.');
+        return;
+      }
+
+      const tickets = window.currentDeptTickets || [];
+      const layout = window.busMapLayoutData;
+
+      // Build ticket map for quick lookup
+      const ticketMap = {};
+      tickets.forEach(r => {
+        const key = r && r.seat_number !== null && r.seat_number !== undefined ? String(r.seat_number).trim() : '';
+        if (key) ticketMap[key] = r;
+      });
+
+      // Departure header info
+      const routeLabel   = dept.route_abbr || '';
+      const dateLabel    = dept.dept_date || '';
+      const timeLabel    = (dept.dept_time || '').slice(0, 5);
+      const driver       = dept.driver || '';
+      const driverPhone  = dept.driver_mobile || '';
+      const helper       = dept.sub_driver || '';
+      const helperPhone  = dept.sub_driver_mobile || '';
+      const plate        = dept.bus_plate || '';
+      const ticketCount  = dept.ticket_count !== undefined ? dept.ticket_count : tickets.length;
+      const busTypeName  = dept.bus_type_name || '';
+      const deptNotes    = dept.dept_notes || '';
+
+      // Build bus map seats HTML (print-friendly, no interactive buttons)
+      const busTypeNum  = dept.bus_type ? String(dept.bus_type) : '';
+      const busClass    = layout && layout.bus_class ? layout.bus_class
+                         : ('one-bus large' + (busTypeNum ? ' bus-type-' + busTypeNum : ''));
+      const seats       = layout && Array.isArray(layout.seats) ? layout.seats : [];
+
+      let seatsHtml = '';
+
+      if (seats.length > 0) {
+        seatsHtml += `<div class="${escapeHtml(busClass)}">`;
+        seats.forEach(seat => {
+          if (seat.is_driver || seat.type === 'driver') {
+            const styleAttr = seat.inline_style ? ` style="${escapeHtml(seat.inline_style)}"` : (seat.style ? ` style="${escapeHtml(seat.style)}"` : '');
+            seatsHtml += `<div class="one-seat driver"${styleAttr}></div>`;
+            return;
+          }
+
+          let seatNumber = '';
+          if (seat.seat_number !== undefined && seat.seat_number !== null && String(seat.seat_number).trim() !== '') {
+            seatNumber = String(seat.seat_number).trim();
+          } else if (seat.html) {
+            const m = String(seat.html).match(/data-seat=["']([^"']+)["']/);
+            if (m) seatNumber = m[1].trim();
+          }
+
+          const ticket = ticketMap[seatNumber];
+          const classes = ['one-seat'];
+          if (ticket) classes.push('taken');
+          if (ticket && ticket.group_seat_class) classes.push(ticket.group_seat_class);
+          if (dept.bus_type == 5 && Number(seatNumber) >= 41) classes.push('last-seat-45');
+
+          let inner = `<div class="rp_seat_number">${escapeHtml(seatNumber)}</div>`;
+
+          if (ticket) {
+            const sumVnd       = ticket.sum_vnd ? formatCurrency(ticket.sum_vnd) : '';
+            const passMobile   = ticket.pass_mobile || '';
+            const passName     = ticket.pass_name || '';
+            const onboardText  = ticket.temp_onboard || ticket.onboard_at || '';
+            const offboardText = ticket.temp_offboard || ticket.offboard_at || '';
+            const groupSeats   = ticket.group_seat ? ` [${ticket.group_seat}G]` : '';
+
+            inner += `<div class="rp_sum_vnd">${escapeHtml(sumVnd)}</div>`;
+            inner += `<div class="rp_on-offboard">`;
+            if (onboardText)  inner += `<div class="rp_onboard_at"><i class="fa fa-arrow-up"></i> ${escapeHtml(onboardText)}</div>`;
+            if (offboardText) inner += `<div class="rp_offboard_at"><i class="fa fa-arrow-down"></i> ${escapeHtml(offboardText)}</div>`;
+            inner += `</div>`;
+            inner += `<div class="rp_pass_mobile">${escapeHtml(passMobile)}<span class="rp_pass_name">${passName ? ' ' + escapeHtml(passName) : ''}</span>${escapeHtml(groupSeats)}</div>`;
+          }
+
+          seatsHtml += `<div class="${classes.join(' ')}" data-cnt="1" data-seat="${escapeHtml(seatNumber)}"><div>${inner}</div></div>`;
+        });
+        seatsHtml += `</div>`;
+      } else {
+        // Fallback: clone div_bus_map and strip interactive controls
+        const busMapEl = document.getElementById('div_bus_map');
+        if (busMapEl) {
+          const clone = busMapEl.cloneNode(true);
+          clone.querySelectorAll('.seat-buttons').forEach(el => el.remove());
+          seatsHtml = clone.innerHTML;
+        }
+      }
+
+      const html = `<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>In sơ đồ xe - ${escapeHtml(routeLabel)} ${escapeHtml(dateLabel)}</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous">
+<style>
+html { padding: 0.5cm; }
+html * { font-size: 11pt; }
+h2 { font-size: 120%; margin: 0; }
+p { margin: 4px 0 8px; }
+.one-bus .one-seat { width: 25%; border: 1px solid #999; float: left; box-sizing: border-box; text-align: center; overflow: hidden; }
+.one-bus.large .one-seat { height: 3.1cm; background: #fafafa; }
+.bus-type-3 .one-seat, .bus-type-5 .one-seat { width: 24%; }
+.bus-type-3 .driver, .bus-type-5 .driver { width: 4%; }
+.bus-type-4 .one-seat { width: 20%; }
+.bus-type-5 .last-seat-45 { width: 20% !important; }
+.driver { font-weight: bold; font-size: 400%; background-color: #d9d9d9 !important; }
+.bus-report .one-seat { padding: 2mm; }
+.bus-report .rp_seat_number { float: left; padding-right: 3.1mm; font-weight: 700; }
+.bus-report .rp_pass_mobile { font-size: 13pt !important; font-weight: 700; }
+.bus-report .rp_sum_vnd { font-weight: 700; }
+.bus-report .taken div { text-align: left; margin-bottom: 1mm; font-size: 11pt; }
+.bus-report .bus-name { display: none; }
+.group_ticket_1  { background: #fff0fe !important; }
+.group_ticket_2  { background: #edecff !important; }
+.group_ticket_3  { background: #dcffe5 !important; }
+.group_ticket_4  { background: #dbffc8 !important; }
+.group_ticket_5  { background: #ede6ff !important; }
+.group_ticket_6  { background: #d1ffb5 !important; }
+.group_ticket_7  { background: #fffdb5 !important; }
+.group_ticket_8  { background: #ffd1f8 !important; }
+.group_ticket_9  { background: #d4d1ff !important; }
+.group_ticket_10 { background: #ffd1d1 !important; }
+</style>
+</head>
+<body onload="window.print()">
+<div class="bus-report">
+<h2>Tuyến [${escapeHtml(routeLabel)}]</h2>
+<p>Chuyến [<strong>${escapeHtml(dateLabel)}</strong> / <strong>${escapeHtml(timeLabel)}</strong>] - Tài xế [${escapeHtml(driver)}] / [${escapeHtml(driverPhone)}] - Phụ xế [${escapeHtml(helper)}] / [${escapeHtml(helperPhone)}] / ${escapeHtml(busTypeName)} / [${escapeHtml(plate)}] / Vé đặt: ${escapeHtml(String(ticketCount))}${deptNotes ? ' / ' + escapeHtml(deptNotes) : ''}</p>
+<div class="bus-name"></div>
+${seatsHtml}
+</div>
+</body>
+</html>`;
+
+      const win = window.open('', '_blank', 'width=960,height=720');
+      if (!win) {
+        alert('Không thể mở cửa sổ in. Vui lòng cho phép popup từ trang này.');
+        return;
+      }
+      win.document.write(html);
+      win.document.close();
+    }
+
+  </script>
+</body>
+</html>

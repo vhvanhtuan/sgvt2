@@ -1,0 +1,20 @@
+.booking-review-page, .booking-done-page, .booking-form-page, .payment-page, .payment-qr-page {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px #0001;
+  padding: 16px;
+}
+.booking-review-info {
+  margin-bottom: 24px;
+  line-height: 2;
+}
+.booking-review-actions {
+  text-align: right;
+}
+.one_cms_option{
+  color:  #1976d2;
+  padding: 0px 10px;
+}
+.one_cms_option::before{
+  content: "• ";
+}

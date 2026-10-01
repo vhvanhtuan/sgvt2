@@ -1,0 +1,20 @@
+.contact-page .contact-form {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.contact-page h2 {
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+.contact-page .form-label {
+  font-weight: 500;
+}
+.contact-page .list-unstyled li {
+  margin-bottom: 8px;
+}
+.tour-text img{
+  max-width: 100%;
+  height: auto;
+}

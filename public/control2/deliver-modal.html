@@ -1,0 +1,71 @@
+<div id="deliver-modal">
+  <div id="deliver-customer-modal" class="cargo-modal" role="dialog" aria-modal="true" aria-labelledby="deliverCustomerTitle">
+    <div class="cargo-modal-backdrop"></div>
+    <div class="cargo-modal-dialog">
+    <div class="cargo-modal-header">
+      <h3 id="deliverCustomerTitle">Giao khách</h3>
+      <button type="button" class="cargo-modal-close" aria-label="Đóng">&times;</button>
+    </div>
+    <div class="cargo-modal-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Mã đơn</label>
+          <input type="text" id="deliver-code" class="form-control" readonly />
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Trạng thái</label>
+          <input type="text" id="deliver-status" class="form-control" readonly />
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Người gửi</label>
+          <input type="text" id="deliver-pass-name" class="form-control" readonly />
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">SĐT người gửi</label>
+          <input type="text" id="deliver-pass-mobile" class="form-control" readonly />
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">VP gửi</label>
+          <input type="text" id="deliver-onboard-branch" class="form-control" readonly />
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">VP nhận</label>
+          <input type="text" id="deliver-offboard-branch" class="form-control" readonly />
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Người nhận</label>
+          <input type="text" id="deliver-receiver-name" class="form-control" readonly />
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">SĐT người nhận</label>
+          <input type="text" id="deliver-receiver-mobile" class="form-control" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Tổng tiền</label>
+          <input type="text" id="deliver-total" class="form-control" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Đã trả</label>
+          <input type="text" id="deliver-sender-paid" class="form-control" readonly />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Còn lại</label>
+          <input type="text" id="deliver-receiver-paid" class="form-control" readonly />
+        </div>
+        <div class="col-md-12">
+          <label class="form-label">Hình thức thanh toán</label>
+          <input type="text" id="deliver-payment-method" class="form-control" readonly />
+        </div>
+        <div class="col-md-12">
+          <label class="form-label">Ghi chú</label>
+          <textarea id="deliver-notes" class="form-control" rows="4" placeholder="Ghi chú giao khách..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="cargo-modal-footer">
+      <button type="button" class="btn btn-secondary" id="btn-cancel-deliver">Hủy</button>
+      <button type="button" class="btn btn-primary" id="btn-confirm-deliver">Xác nhận giao khách</button>
+    </div>
+    </div>
+  </div>
+</div>

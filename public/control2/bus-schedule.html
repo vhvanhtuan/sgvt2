@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Danh sách HĐ</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="cms.css" />
+  <link rel="stylesheet" href="cargo.css" />
+  <link rel="stylesheet" href="scroll-top.css" />
+  <style>
+    .filter-panel { background: #fff; border: 1px solid #d9dee6; border-radius: 10px; padding: 16px; margin-bottom: 18px; box-shadow: 0 1px 10px rgba(0,0,0,0.03); }
+    .filter-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; align-items: end; }
+    .table-card { background: #fff; border: 1px solid #d9dee6; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 10px rgba(0,0,0,0.03); }
+    .table-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid #e5e9ef; }
+    .summary-box { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+    .summary-badge { background: #e7f1ff; color: #0d47a1; border-radius: 8px; padding: 10px 12px; font-size: 13px; min-width: 110px; font-weight: 500; }
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
+    .table-scroll::-webkit-scrollbar { height: 8px; }
+    .table-scroll::-webkit-scrollbar-thumb { background: rgba(13, 110, 253, 0.35); border-radius: 999px; }
+    .table-scroll::-webkit-scrollbar-track { background: transparent; }
+    table.list-table { width: 100%; border-collapse: collapse; min-width: 1300px; }
+    table.list-table th, table.list-table td { border-bottom: 1px solid #e7edf3; padding: 12px 10px; text-align: left; vertical-align: middle; }
+    table.list-table th { background: #f8f9fa; color: #1f3f6c; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+    table.list-table tbody tr { transition: background-color 0.15s ease; }
+    table.list-table tbody tr:hover { background: #f8fbff; }
+    table.list-table tbody tr.selected { background: #e7f1ff; }
+    table.list-table td small { color: #556f88; display: block; margin-top: 4px; }
+    .pagination { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; padding: 14px 18px; }
+    .pagination button { border: 1px solid #c4cdd7; background: #fff; padding: 8px 12px; border-radius: 6px; cursor: pointer; color: #1f3f6c; transition: all 0.15s ease; }
+    .pagination button:hover { background: #f0f0f0; border-color: #999; }
+    .pagination button.active { background: #0d6efd; color: #fff; border-color: #0d6efd; }
+    .checkbox-center { text-align: center; }
+    .text-right { text-align: right; }
+    .empty-state { padding: 24px; text-align: center; color: #556f88; font-size: 16px; }
+    @media (max-width: 768px) { .filter-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+  </style>
+</head>
+<body>
+  <div id="cms-header"></div>
+  <script src="header-loader.js"></script>
+  <div class="page-shell">
+    <div class="page-title">
+      <div>
+        <h1>Danh sách HĐ</h1>
+        <div class="status-pill">Danh sách HĐ</div>
+      </div>
+      <div class="toolbar">
+        <button id="btn-create-new"><i class="fa fa-plus-circle"></i> Tạo mới</button>
+        <button id="btn-refresh" class="secondary"><i class="fa fa-sync"></i> Làm mới</button>
+      </div>
+    </div>
+
+    <div class="filter-panel" style="display: none;">
+      <div class="filter-grid">
+        <div class="field-group" style="grid-column: span 3;">
+          <label for="filter-search">Tìm kiếm</label>
+          <input type="search" id="filter-search" class="form-control" placeholder="Mã vé, điện thoại, tên..." />
+        </div>
+        <div class="field-group" style="grid-column: span 2;">
+          <label for="filter-status">Trạng thái</label>
+          <select id="filter-status" class="form-select"></select>
+        </div>
+        <div class="field-group" style="grid-column: span 2;">
+          <label for="filter-onboard">VP gửi</label>
+          <select id="filter-onboard" class="form-select"></select>
+        </div>
+        <div class="field-group" style="grid-column: span 2;">
+          <label for="filter-offboard">VP nhận</label>
+          <select id="filter-offboard" class="form-select"></select>
+        </div>
+        <div class="field-group" style="grid-column: span 2;">
+          <label for="filter-limit">Đơn/trang</label>
+          <select id="filter-limit" class="form-select">
+            <option value="15">15</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="100" selected>100</option>
+          </select>
+        </div>
+        <div class="field-group" style="grid-column: span 1;">
+          <button id="btn-filter" class="secondary" style="width:100%;">Lọc</button>
+        </div>
+        <div class="field-group" style="grid-column: span 1;">
+          <button id="btn-reset-filter" class="secondary" style="width:100%;">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-actions">
+        <div class="summary-box">
+          <div class="summary-badge" id="summary-total">Tổng: 0 phơi</div>
+        </div>
+        <div class="summary-box">
+          <button id="btn-select-all" class="secondary"><i class="fa fa-check-square"></i> Chọn tất cả trang</button>
+          <button id="btn-clear-selection" class="secondary"><i class="fa fa-ban"></i> Bỏ chọn</button>
+        </div>
+      </div>
+      <div class="table-scroll">
+<table class="list-table" id="ticket-table">
+<thead>
+<tr>
+<th>STT</th>
+<th>Ngày</th>
+<th>Tuyến</th>
+<th>Loại xe</th>
+<th>SL</th>
+<th>Tạo lúc</th>
+<th>Khách</th>
+<th>Giá nhận</th>
+<th>Nhà xe</th>
+</tr>
+</thead>
+<tbody id="ticket-table-body"></tbody>
+</table>
+        <div id="ticket-empty" class="empty-state" style="display:none;">Không có vé phù hợp.</div>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+
+  <button id="scrollTopBtn" class="scroll-top-btn" type="button" title="Lên đầu trang">↑</button>
+
+    <div id="cargo-edit-modal" class="cargo-modal" role="dialog" aria-modal="true" style="display:none;">
+    <div class="cargo-modal-backdrop"></div>
+    <div class="cargo-modal-dialog" style="">
+      <div class="cargo-modal-body" style="height:100%; padding:0px; overflow:auto;">
+        <div class="page-shell">
+          <div class="page-title">
+            <div>
+              <h1>Thêm/sửa chuyến xe (phơi)</h1>
+              <div class="status-bar">
+                <span class="status-pill" id="cargo-status-pill">Mới</span>
+                <span class="status-pill" id="cargo-code-pill">Mã: -</span>
+              </div>
+            </div>
+            <div class="toolbar no-print">
+              <button class="cms-btn" id="btn-save" type="button"><i class="fa fa-save"></i> Lưu</button>
+              <button class="cms-btn danger" id="btn-cancel-order" type="button" style="display:none;"><i class="fa fa-ban"></i> Hủy đơn</button><button class="cms-btn cms-btn-back" id="btn-back" type="button"><i class="fa fa-arrow-left"></i> Đóng</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="form-section-title">Thông tin chuyến xe</div>
+            <div class="form-grid">
+              <div class="field-group" style="grid-column: span 3;">
+                <label for="route_id">Tuyến <span style="color:#d00">*</span> </label>
+                <span class="field-group" style="grid-column: span 3;">
+                <select name="route_id" id="route_id" required >
+                </select>
+                </div>
+              <div class="field-group" style="grid-column: span 3;">
+                <label for="dept_date">Ngày <span style="color:#d00">*</span></label>
+                <input name="dept_date" type="date" id="dept_date" required />
+              </div>
+              <div class="field-group" style="grid-column: span 3;">
+                <label for="dept_time">Giờ <span style="color:#d00">*</span></label>
+                <input name="dept_time" type="time" id="dept_time" required />
+                </div>
+              <div class="field-group" style="grid-column: span 3;">
+                <label for="ticket_vnd">Giá vé <span style="color:#d00">*</span></label>
+                <input name="ticket_vnd" type="text" id="ticket_vnd" required  />
+              </div>
+              <div class="field-group" style="grid-column: span 3;">
+                <label for="dept_notes">Ghi chú </label>
+                <input name="dept_notes" type="text" id="dept_notes"  />
+              </div>
+              <div class="field-group" style="grid-column: span 3;">
+                <label for="bus_id">Xe</label>
+                <select name="bus_id" id="bus_id" required></select>
+              </div>
+              <div class="field-group" style="grid-column: span 3;">
+                <label for="bus_plate">BKS</label>
+                <input name="bus_plate" type="text" id="bus_plate"  />
+              </div>
+              <div class="field-group" style="grid-column: span 3;">
+                <label for="bus_type">Loại <span style="color:#d00">*</span></label>
+                <select name="bus_type" id="bus_type" required>
+                </select>
+              </div>
+              <div class="field-group" style="grid-column: span 3;">
+                <label for="bus_notes">Ghi chú xe</label>
+                <input name="bus_notes" type="text" id="bus_notes"  />
+              </div>
+              <div class="field-group" style="grid-column: span 3;">
+                <label for="driver">Tài xế</label>
+                <input type="text" id="driver"  />
+              </div>
+              <div class="field-group" style="grid-column: span 3;">
+                <label for="driver_mobile">SĐT tài xế</label>
+                <input type="text" id="driver_mobile"  />
+              </div>
+              <div class="field-group" style="grid-column: span 3;">
+                <label for="sub_driver">Phụ xế</label>
+                <input type="text" id="sub_driver"  />
+              </div>
+              <div class="field-group" style="grid-column: span 3;">
+                <label for="sub_driver_mobile">SĐT phụ xế</label>
+                <input type="text" id="sub_driver_mobile"  />
+              </div>
+              <div class="field-group" style="grid-column: span 3;">
+                <label for="status_id">Trạng thái</label>
+                <select name="status_id" id="status_id" required>
+                </select>
+              </div>
+              <div class="field-group inline" style="grid-column: span 3;">
+                <input type="checkbox" id="cargo_only" />
+                <label for="cargo_only">Chỉ chở hàng</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="scroll-top.js"></script>
+  <script>
+  const API_URL = '/api/cargo.php';
+  const token = localStorage.getItem('cms_token') || localStorage.getItem('api_token') || '';
+  if (!token) {
+    window.location.href = 'cms-login.html';
+  }
+
+  const state = {
+    rows: [],
+    selected: {},
+    page: 1,
+    limit: 100,
+    total: 0,
+    filters: { q: '', status_id: '', onboard_at: '', offboard_at: '' }
+  };
+
+  const elems = {
+    search: document.getElementById('filter-search'),
+    status: document.getElementById('filter-status'),
+    onboardBranch: document.getElementById('filter-onboard'),
+    offboardBranch: document.getElementById('filter-offboard'),
+    limit: document.getElementById('filter-limit'),
+    filterBtn: document.getElementById('btn-filter'),
+    resetFilterBtn: document.getElementById('btn-reset-filter'),
+    refreshBtn: document.getElementById('btn-refresh'),
+    selectAllPage: document.getElementById('select-all-page'),
+    selectAllButton: document.getElementById('btn-select-all'),
+    clearSelectionButton: document.getElementById('btn-clear-selection'),
+    summaryTotal: document.getElementById('summary-total'),
+    summarySelected: document.getElementById('summary-selected'),
+    summarySelectedAmount: document.getElementById('summary-selected-amount'),
+    summaryPaid: document.getElementById('summary-paid'),
+    tableBody: document.getElementById('ticket-table-body'),
+    pagination: document.getElementById('pagination'),
+    emptyState: document.getElementById('ticket-empty'),
+    
+    route_id: document.getElementById('route_id'),
+    dept_date: document.getElementById('dept_date'),
+    dept_time: document.getElementById('dept_time'),
+    dept_notes: document.getElementById('dept_notes'),
+    bus_id: document.getElementById('bus_id'),
+    bus_plate: document.getElementById('bus_plate'),
+    bus_type: document.getElementById('bus_type'),
+    bus_notes: document.getElementById('bus_notes'),
+    driver: document.getElementById('driver'),
+    driver_mobile: document.getElementById('driver_mobile'),
+    sub_driver: document.getElementById('sub_driver'),
+    sub_driver_mobile: document.getElementById('sub_driver_mobile'),
+    ticket_vnd: document.getElementById('ticket_vnd'),
+    status_id: document.getElementById('status_id'),
+    cargo_only: document.getElementById('cargo_only')
+  };
+
+  function redirectToLogin() {
+    localStorage.removeItem('cms_token');
+    localStorage.removeItem('api_token');
+    window.location.href = 'cms-login.html';
+  }
+
+  function isAuthError(data, response) {
+    if (response && (response.status === 401 || response.status === 403)) return true;
+    const msg = data && data.message ? String(data.message) : '';
+    return data && data.success === false && /invalid|expired|missing.*authorization|missing.*auth|access denied/i.test(msg);
+  }
+
+  async function requestJson(url, opts = {}) {
+    const headers = opts.headers || {};
+    headers['Authorization'] = 'Bearer ' + token;
+    if (!opts.method || opts.method.toUpperCase() === 'GET') {
+      headers['Accept'] = 'application/json';
+    }
+    if (opts.body && !opts.headers?.['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
+    }
+    const response = await fetch(url, Object.assign({ credentials: 'same-origin' }, opts, { headers }));
+    const text = await response.text();
+    let data;
+    try { data = JSON.parse(text); } catch (err) { data = { success: false, message: 'Invalid response', raw: text }; }
+    if (isAuthError(data, response)) {
+      redirectToLogin();
+      return data;
+    }
+    return data;
+  }
+
+  function formatCurrency(num) {
+    const n = Number(num);
+    if (!isFinite(n)) return '0';
+    return n.toLocaleString('vi-VN');
+  }
+
+  function getFilterStorageKey() {
+    return 'ticketListFilters';
+  }
+
+  function saveFiltersToStorage() {
+    const filterData = {
+      q: elems.search.value.trim(),
+      status_id: elems.status.value,
+      onboard_at: elems.onboardBranch.value,
+      offboard_at: elems.offboardBranch.value,
+      limit: elems.limit.value,
+      page: state.page
+    };
+    localStorage.setItem(getFilterStorageKey(), JSON.stringify(filterData));
+  }
+
+  function loadFiltersFromStorage() {
+    const raw = localStorage.getItem(getFilterStorageKey());
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw);
+      if (saved.q !== undefined) elems.search.value = saved.q;
+      if (saved.status_id !== undefined) elems.status.value = saved.status_id;
+      if (saved.onboard_at !== undefined) elems.onboardBranch.value = saved.onboard_at;
+      if (saved.offboard_at !== undefined) elems.offboardBranch.value = saved.offboard_at;
+      if (saved.limit !== undefined) elems.limit.value = saved.limit;
+      if (saved.page !== undefined) state.page = Number(saved.page) || 1;
+    } catch (err) {
+      console.warn('Không thể đọc filter session', err);
+    }
+  }
+
+  function resetFilters() {
+    elems.search.value = '';
+    elems.status.value = '';
+    elems.onboardBranch.value = '';
+    elems.offboardBranch.value = '';
+    elems.limit.value = '100';
+    state.page = 1;
+    state.selected = {};
+    saveFiltersToStorage();
+    loadList(1);
+  }
+
+  function renderSummary() {
+    elems.summaryTotal.textContent = `Tổng: ${formatNumberDisplay(state.total)} phơi`;
+    // const selectedItems = Object.values(state.selected);
+    // const count = selectedItems.length;
+    // const sumTotal = selectedItems.reduce((s, row) => s + (Number(row.sum_vnd) || 0), 0);
+    // elems.summarySelected.textContent = `Đã chọn: ${count} vé`;
+    // elems.summarySelectedAmount.textContent = `Tổng tiền: ${formatCurrency(sumTotal)} đ`;
+    // elems.summaryPaid.textContent = `Đã trả: 0 đ`;
+  }
+
+  function buildRow(row) {
+            // <br><small>ID:${row.id}</small>
+
+    const checked = '';//state.selected[String(row.id)] ? 'checked' : '';
+        // <td class="checkbox-center"><input type="checkbox" class="row-checkbox" data-id="${row.id}" ${checked} /></td>
+    return `
+      <tr class="${checked ? 'selected' : ''}">
+        <td>${row.route_abbr || ''}</td>
+        <td>${row.dept_date_time || ''}</td>
+        <td>${row.status || ''}</td>
+        <td>${formatNumberDisplay(row.ticket_vnd, 0) || ''}</td>
+        <td>${row.bus_plate || ''} (${row.bus_type_name || ''})</td>
+        <td>${row.ticket_count || '0'}</td>
+        <td>${row.seat_left || '0'}</td>
+        <td><button class="btn btn-sm btn-primary btn-edit" data-dept_id="${row.dept_id}" title="Sửa">Sửa</button></td>
+      </tr>
+    `;
+  }
+
+  function renderTable() {
+    const html = state.rows.map(buildRow).join('');
+    elems.tableBody.innerHTML = html;
+    elems.emptyState.style.display = state.rows.length ? 'none' : 'block';
+    Array.from(elems.tableBody.querySelectorAll('.row-checkbox')).forEach(cb => {
+      cb.addEventListener('change', () => {
+        const id = cb.dataset.id;
+        const row = state.rows.find(r => String(r.id) === String(id));
+        if (cb.checked) {
+          state.selected[id] = row || { id };
+        } else {
+          delete state.selected[id];
+        }
+        cb.closest('tr')?.classList.toggle('selected', cb.checked);
+        renderSummary();
+      });
+    });
+    const allChecked = state.rows.length > 0 && state.rows.every(r => state.selected[String(r.id)]);
+
+            // Attach per-row action handlers
+      const editButtons = Array.from(document.querySelectorAll('.btn-edit'));
+      editButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const dept_id = btn.dataset.dept_id;
+          showCargoEditModal(dept_id);
+        });
+      });
+
+    // elems.selectAllPage.checked = allChecked;
+    renderPagination();
+    renderSummary();
+  }
+
+  function renderPagination() {
+    const totalPages = Math.max(1, Math.ceil((state.total || 0) / (state.limit || 1)));
+    const current = Number(state.page) || 1;
+    if (totalPages <= 1) {
+      elems.pagination.innerHTML = '';
+      return;
+    }
+    let start = Math.max(1, current - 3);
+    let end = Math.min(totalPages, start + 6);
+    if (end - start < 6) start = Math.max(1, end - 6);
+    const parts = [];
+    parts.push(`<button data-page="${Math.max(1, current - 1)}" ${current === 1 ? 'disabled' : ''}>‹</button>`);
+    if (start > 1) parts.push(`<button data-page="1">1</button>`);
+    if (start > 2) parts.push(`<span class="mx-2">…</span>`);
+    for (let p = start; p <= end; p++) {
+      parts.push(`<button data-page="${p}" class="${p === current ? 'active' : ''}">${p}</button>`);
+    }
+    if (end < totalPages - 1) parts.push(`<span class="mx-2">…</span>`);
+    if (end < totalPages) parts.push(`<button data-page="${totalPages}">${totalPages}</button>`);
+    parts.push(`<button data-page="${Math.min(totalPages, current + 1)}" ${current === totalPages ? 'disabled' : ''}>›</button>`);
+    elems.pagination.innerHTML = parts.join('');
+    Array.from(elems.pagination.querySelectorAll('button[data-page]')).forEach(btn => {
+      btn.addEventListener('click', () => {
+        const p = Number(btn.getAttribute('data-page')) || 1;
+        if (p === current) return;
+        loadList(p);
+      });
+    });
+  }
+
+  function buildListParams(page) {
+    const params = new URLSearchParams();
+    params.set('action', 'get_departures');
+    params.set('page', page);
+    params.set('limit', state.limit || 30);
+    if (state.filters.q) params.set('q', state.filters.q);
+    if (state.filters.status_id) params.set('status_id', state.filters.status_id);
+    if (state.filters.onboard_at) params.set('onboard_at', state.filters.onboard_at);
+    if (state.filters.offboard_at) params.set('offboard_at', state.filters.offboard_at);
+    return params;
+  }
+
+  async function loadMeta() {
+    const data = await requestJson(`${API_URL}?action=meta_departures`);
+    if (!data || !data.success) {
+      return;
+    }
+    const opts = data.options || {};
+    elems.status.innerHTML = '<option value="">-- Tất cả trạng thái --</option>' + (opts.statuses || []).map(item => `<option value="${item.id}">${item.label}</option>`).join('');
+    const branchOptions = '<option value="">-- Tất cả VP --</option>' + (opts.branches || []).map(item => `<option value="${item.id}">${item.label}</option>`).join('');
+    elems.onboardBranch.innerHTML = branchOptions;
+    elems.offboardBranch.innerHTML = branchOptions;
+  }
+
+  async function loadList(page = 1) {
+    state.page = page;
+    state.limit = Number(elems.limit.value) || 30;
+    state.filters.q = elems.search.value.trim();
+    state.filters.status_id = elems.status.value;
+    state.filters.onboard_at = elems.onboardBranch.value;
+    state.filters.offboard_at = elems.offboardBranch.value;
+    saveFiltersToStorage();
+    const params = buildListParams(state.page);
+    const data = await requestJson(`${API_URL}?${params.toString()}`);
+    if (!data || !data.success) {
+      alert(data?.message || 'Không tải được danh sách HĐ.');
+      return;
+    }
+    state.rows = data.data || [];
+    state.total = Number(data.total) || 0;
+    renderTable();
+  }
+
+  elems.filterBtn.addEventListener('click', () => loadList(1));
+  elems.search.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      loadList(1);
+    }
+  });
+  elems.resetFilterBtn.addEventListener('click', resetFilters);
+  elems.refreshBtn.addEventListener('click', () => loadList(state.page));
+  elems.limit.addEventListener('change', () => loadList(1));
+  elems.selectAllButton.addEventListener('click', () => {
+    state.rows.forEach(row => { state.selected[String(row.id)] = row; });
+    renderTable();
+  });
+  elems.clearSelectionButton.addEventListener('click', () => {
+    state.selected = {};
+    renderTable();
+  });
+    document.getElementById('btn-create-new').addEventListener('click', () => {
+      showCargoEditModal('new');
+    });
+
+
+    const cargoEditModule = (function(){
+      const modal = document.getElementById('cargo-edit-modal');
+      const root = modal ? modal.querySelector('.page-shell') : null;
+      if (!modal || !root) return {
+        open: (id) => { window.location.href = `cargo-edit.html?id=${encodeURIComponent(id)}`; }
+      };
+
+      const q = (sel) => root.querySelector(sel);
+      const fields = {
+        route_id: q('#route_id'), dept_date: q('#dept_date'), dept_time: q('#dept_time'), dept_notes: q('#dept_notes'), bus_id: q('#bus_id'), bus_plate: q('#bus_plate'), bus_type: q('#bus_type'), bus_notes: q('#bus_notes'),
+        driver: q('#driver'), driver_mobile: q('#driver_mobile'), sub_driver: q('#sub_driver'), sub_driver_mobile: q('#sub_driver_mobile'),
+        ticket_vnd: q('#ticket_vnd'), status_id: q('#status_id'), cargo_only: q('#cargo_only')
+      };
+
+      let state = { meta: null, row: {}, details: [], cargoId: 'new' };
+
+      function createOption(value, text) { const o = document.createElement('option'); o.value = value; o.textContent = text; return o; }
+      // function populateSelect(select, items){ if(!select) return; select.innerHTML = '<option value="">-- Chọn --</option>'; (items||[]).forEach(it=> select.appendChild(createOption(it.id, it.label||it.name||it.branch_name||it.payment||it.status_title))); }
+
+
+    function populateSelect(select, items) {
+  if (!select) return;
+  select.innerHTML = '<option value="">-- Chọn --</option>';
+  (items || []).forEach(it => {
+    const option = createOption(
+      it.id,
+      it.label || it.name || it.branch_name || it.payment || it.status_title
+    );
+    if (it.bus_plate) {
+      option.setAttribute("data-bus_plate", it.bus_plate);
+    }
+    select.appendChild(option);
+  });
+}
+
+      function setValue(el, v){ if(!el) return; if(el.type==='checkbox') el.checked = Boolean(Number(v)||v===true); else el.value = v!=null? v : ''; }
+      function getValue(el){ if(!el) return null; if(el.type==='checkbox') return el.checked?1:0; return el.value; }
+      function parseNumber(v){ if(v===null||v===undefined||v==='') return 0; const n=Number(String(v).replace(/[\,\s]/g,'')); return Number.isFinite(n)?n:0; }
+
+      function buildDetails(ds){ return; fields.detailsBody.innerHTML=''; }
+      function gatherDetails(){ const rows=Array.from(fields.detailsBody.querySelectorAll('tr')); return rows.map(tr=>({ quantity: Number(tr.querySelector('.detail-quantity').value)||1, unit_name: tr.querySelector('.detail-unit').value.trim(), cargo_name: tr.querySelector('.detail-name').value.trim(), value_vnd: tr.querySelector('.detail-value').value.trim()||null, notes: tr.querySelector('.detail-note').value.trim()||null, ship_fee_vnd: tr.querySelector('.detail-ship').value.trim()||null })).filter(i=> i.cargo_name || i.value_vnd || i.ship_fee_vnd || i.unit_name); }
+
+      function updateSummaryFromTotals(){ const rows = Array.from(fields.detailsBody.querySelectorAll('tr')); let totalValue=0, totalShip=0; rows.forEach(tr=>{ const q=Number(tr.querySelector('.detail-quantity').value)||1; const v=Number(tr.querySelector('.detail-value').value)||0; const s=Number(tr.querySelector('.detail-ship').value)||0; totalValue += q*v; totalShip += s; }); fields.ticket_vnd.value = totalValue||0; fields.sum_vnd.value = totalShip||0; const codFee = Number(fields.cod_vnd.value)||0; const senderPaid = Number(fields.sender_paid_vnd.value)||0; const codEnabled = Boolean(Number(getValue(fields.cod_service))); if(!codEnabled) fields.cod_vnd.value=0; const amountToCollect = codEnabled? totalValue:0; const receiverPay = (amountToCollect + (codEnabled?codFee:0) + totalShip) - senderPaid; fields.receiver_paid_vnd.value = Math.max(0, Math.round(receiverPay)); }
+
+      function getFormData(){
+        // return;
+        return { route_id: getValue(fields.route_id), dept_date: getValue(fields.dept_date), dept_time: getValue(fields.dept_time), dept_notes: getValue(fields.dept_notes), bus_id: getValue(fields.bus_id), bus_plate: getValue(fields.bus_plate), bus_type: getValue(fields.bus_type), bus_notes: getValue(fields.bus_notes), driver: getValue(fields.driver), driver_mobile: getValue(fields.driver_mobile), sub_driver: getValue(fields.sub_driver), sub_driver_mobile: getValue(fields.sub_driver_mobile), ticket_vnd: parseNumber(getValue(fields.ticket_vnd)), status_id: getValue(fields.status_id), cargo_only: getValue(fields.cargo_only)}; }
+
+      function setStatusText(status, code){ if(fields.cargoStatus) fields.cargoStatus.textContent = status||'Mới'; if(fields.cargoCode) fields.cargoCode.textContent = `Mã: ${code||'-'}`; }
+
+      async function loadMeta(){ const data = await requestJson(`${API_URL}?action=meta_departures`); if(!data||!data.success){ alert('Không tải được metadata departures.'); return; } state.meta = data; const opts = data.options || {}; populateSelect(fields.route_id, opts.vexe_routes||[]); populateSelect(fields.bus_id, opts.vexe_buses||[]); populateSelect(fields.bus_type, opts.vexe_bus_types||[]); populateSelect(fields.status_id, opts.vexe_cargo_status||[]); if(state.cargoId && state.cargoId !== 'new') loadCargo(state.cargoId); else { setStatusText('Mới','---'); buildDetails([]); } }
+
+      async function loadCargo(id){ const data = await requestJson(`${API_URL}?action=get_one_departure&dept_id=${encodeURIComponent(id)}`); if(!data||!data.success){ alert('Không tìm thấy phơi này'); return; } state.row = data.row||{}; setStatusText(state.row.status_label||'Đã lưu', state.row.dept_id||'---'); setValue(fields.route_id, state.row.route_id); setValue(fields.dept_date, state.row.dept_date); setValue(fields.dept_time, state.row.dept_time); setValue(fields.dept_notes, state.row.dept_notes); setValue(fields.bus_id, state.row.bus_id); setValue(fields.bus_plate, state.row.bus_plate); setValue(fields.bus_type, state.row.bus_type); setValue(fields.bus_notes, state.row.bus_notes); setValue(fields.driver, state.row.driver); setValue(fields.driver_mobile, state.row.driver_mobile); setValue(fields.sub_driver, state.row.sub_driver); setValue(fields.sub_driver_mobile, state.row.sub_driver_mobile); setValue(fields.ticket_vnd, state.row.ticket_vnd); setValue(fields.status_id, state.row.status_id); setValue(fields.cargo_only, state.row.cargo_only); }
+
+      function validateForm(payload){ const errors=[]; if(!payload.dept_time) errors.push('Giờ KH là bắt buộc.'); return errors; }
+
+      async function save(){
+        console.log('Saving departure:', getFormData());
+        const payload = getFormData();
+        const errors = validateForm(payload);
+        if(errors.length){ alert(errors.join('\n')); return null; }
+        const action = (state.cargoId==='new')? 'insert_departure' : 'edit_departure';
+        const endpoint = `${API_URL}?action=${action}${state.cargoId==='new'?'':'&id='+encodeURIComponent(state.cargoId)}`;
+        const res = await requestJson(endpoint, { method:'POST', body: JSON.stringify(payload) });
+        if(!res||!res.success){ alert(res?.message||'Lưu thất bại'); return res || null; }
+        const currentId = res.insert_id || state.cargoId;
+        state.cargoId = currentId;
+        if (res.row) state.row = res.row; else state.row = Object.assign(state.row || {}, { cargo_id: currentId });
+        alert('Lưu thành công!');
+        // hide(true);
+        return res;
+      }
+
+      async function cancel(){ if(state.cargoId==='new') return; const confirmed = confirm('Bạn có chắc chắn muốn hủy đơn hàng này?'); if(!confirmed) return; const res = await requestJson(`${API_URL}?action=delete&id=${encodeURIComponent(state.cargoId)}`, { method:'POST' }); if(!res||!res.success){ alert(res?.message||'Hủy đơn thất bại'); return; } alert('Đã hủy đơn hàng thành công.'); hide(true); }
+
+      function show(){ modal.style.display = 'block'; setTimeout(()=> modal.classList.add('show'),20); }
+      function hide(reload=true){ modal.classList.remove('show'); setTimeout(()=>{ modal.style.display='none'; if(reload) loadList(1); },160); }
+
+      async function printCargo(){
+        if(state.cargoId === 'new'){
+          const proceed = confirm('Đơn hàng chưa được lưu. Bạn có muốn lưu trước khi in?');
+          if(!proceed) return;
+          const res = await save();
+          if(!res || !res.success) return;
+          const idToPrint = res.insert_id || state.cargoId;
+          const url = `cargo-report-don-hang.html?ids=${encodeURIComponent(idToPrint)}`;
+          window.open(url, '_blank');
+          return;
+        }
+        const id = state.cargoId || (state.row && state.row.cargo_id) || '';
+        if(!id){ alert('Không có mã đơn để in.'); return; }
+        const url = `cargo-report-don-hang.html?ids=${encodeURIComponent(id)}`;
+        window.open(url, '_blank');
+      }
+
+      // wire buttons
+      const btnSave = q('#btn-save'); if(btnSave) btnSave.addEventListener('click', save);
+      const btnPrint = q('#btn-print'); if(btnPrint) btnPrint.addEventListener('click', printCargo);
+      const btnNew = q('#btn-new'); if(btnNew) btnNew.addEventListener('click', ()=>{ state.cargoId='new'; state.row={}; buildDetails([]); setStatusText('Mới','---'); });
+      const btnBack = q('#btn-back'); if(btnBack) btnBack.addEventListener('click', ()=> hide(true));
+      const btnCancelOrder = q('#btn-cancel-order'); if(btnCancelOrder) btnCancelOrder.addEventListener('click', cancel);
+      // inputs affecting summary
+      [q('#ticket_vnd'), q('#sum_vnd'), q('#cod_vnd'), q('#sender_paid_vnd')].forEach(el=>{ if(el) el.addEventListener('input', updateSummaryFromTotals); });
+      if(q('#bus_id')) q('#bus_id').addEventListener('change', update_bus_plate);
+      function update_bus_plate(){ const busId = getValue(fields.bus_id); if(!busId) return; const option = fields.bus_id.querySelector(`option[value="${busId}"]`); if(option && option.dataset.bus_plate){ setValue(fields.bus_plate, option.dataset.bus_plate); }
+    }
+
+      // modal backdrop click
+      modal.addEventListener('click', (e)=>{ if(e.target === modal) hide(true); });
+
+      return {
+        open: async (id='new')=>{ 
+          state.cargoId = id || 'new'; 
+          // buildDetails([]); 
+          // setStatusText('...','---'); 
+          show(); 
+          await loadMeta(); 
+          // Pre-fill onboard_at with current_branch_id for new cargo
+          if(state.cargoId === 'new') {
+          elems.route_id.value = '';
+          elems.dept_date.value = '';
+          elems.dept_time.value = '';
+          elems.dept_notes.value = '';
+          elems.bus_id.value = '';
+          elems.bus_plate.value = '';
+          elems.bus_type.value = '';
+          elems.bus_notes.value = '';
+          elems.driver.value = '';
+          elems.driver_mobile.value = '';
+          elems.sub_driver.value = '';
+          elems.sub_driver_mobile.value = '';
+          elems.ticket_vnd.value = '120000'; // default ticket price
+          elems.status_id.value = '20'; // default status
+          elems.cargo_only.checked = false;
+          }
+        },
+        close: ()=> hide(true)
+      };
+    })();
+
+        function showCargoEditModal(dept_id){
+      if (typeof cargoEditModule !== 'undefined' && cargoEditModule && cargoEditModule.open) {
+        cargoEditModule.open(dept_id);
+        return;
+      }
+      // fallback to navigation
+      window.location.href = `cargo-edit.html?id=${encodeURIComponent(id)}`;
+    }
+
+
+  // elems.selectAllPage.addEventListener('change', () => {
+  //   const checked = elems.selectAllPage.checked;
+  //   if (checked) {
+  //     state.rows.forEach(row => { state.selected[String(row.id)] = row; });
+  //   } else {
+  //     state.rows.forEach(row => { delete state.selected[String(row.id)]; });
+  //   }
+  //   renderTable();
+  // });
+
+  (async function init() {
+    await loadMeta();
+    // loadFiltersFromStorage();
+    await loadList(state.page);
+  })();
+  </script>
+</body>
+</html>

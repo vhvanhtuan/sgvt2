@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đơn hàng gửi - Cargo Edit</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="cms.css" />
+  <link rel="stylesheet" href="cargo.css" />
+  <link rel="stylesheet" href="scroll-top.css">
+  <style>
+    /* Page Shell - Edit specific max-width */
+    .page-shell { 
+      max-width: 1180px; 
+      margin: 0 auto; 
+      padding: 18px; 
+    }
+
+    /* Toolbar Button - Edit specific width */
+    .toolbar button { 
+      min-width: 170px;
+    }
+
+    /* Detail Table - Edit specific */
+    .detail-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .detail-table th, .detail-table td { 
+      border: 1px solid #d9dee6; 
+      padding: 10px; 
+      text-align: left;
+      font-size: 14px;
+    }
+    .detail-table th { 
+      background: #f8f9fa; 
+      color: #1f3f6c; 
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 13px;
+    }
+    .detail-table tbody tr:hover { background: #f8fbff; }
+    .detail-table input { width: 100%; box-sizing: border-box; border: 1px solid #ced4da; border-radius: 4px; padding: 6px 8px; }
+    .detail-table .action-btn { 
+      border: none; 
+      background: #0d6efd; 
+      color: #fff; 
+      border-radius: 4px; 
+      padding: 4px 10px; 
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.15s ease;
+    }
+    .detail-table .action-btn:hover { background: #0b5ed7; }
+    .detail-table .action-btn.remove { background: #dc3545; }
+    .detail-table .action-btn.remove:hover { background: #bb2d3b; }
+
+    /* Print Styles */
+    .print-ready { display: none; }
+    @media print {
+      body { background: #fff; font-family: Arial, sans-serif; }
+      .page-title, .toolbar, .card, .detail-table .action-btn, .no-print { display: none !important; }
+      .print-ready { display: block !important; }
+    }
+    .print-box { background: #fff; border: 1px solid #000; padding: 18px; margin-top: 18px; }
+    .print-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .print-meta { line-height: 1.4; }
+    .print-meta .meta-line { margin-bottom: 6px; }
+    .print-header h2 { margin: 0; font-size: 24px; letter-spacing: 0.04em; font-weight: 700; }
+    .barcode { font-family: monospace; letter-spacing: 4px; padding: 8px 12px; border: 1px dashed #000; display: inline-block; margin-top: 10px; font-size: 18px; }
+    .print-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+    .print-block { border: 1px solid #000; padding: 10px; }
+    .print-block h3 { margin: 0 0 8px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+    .print-block .print-cell { margin-bottom: 6px; }
+    .print-cell strong { display: inline-block; min-width: 80px; }
+    .print-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .print-table th, .print-table td { border: 1px solid #000; padding: 8px 10px; }
+    .print-table th { background: #f5f5f5; font-weight: 700; }
+    .print-table .text-right { text-align: right; }
+    .print-summary { margin-top: 12px; width: 100%; border-collapse: collapse; }
+    .print-summary td { padding: 8px 10px; }
+    .print-summary tr td:first-child { width: 70%; }
+    .print-note { margin-top: 12px; border: 1px solid #000; padding: 10px; min-height: 48px; }
+    .print-signature { margin-top: 20px; display: flex; justify-content: space-between; gap: 20px; }
+    .print-signature div { width: 48%; text-align: center; }
+    .print-signature .sign-title { margin-top: 40px; font-size: 13px; }
+
+    @media (max-width: 768px) {
+      .print-grid { grid-template-columns: 1fr; }
+      .print-signature { flex-direction: column; }
+      .print-signature div { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div id="cms-header"></div>
+  <script src="header-loader.js"></script>
+  <div class="page-shell">
+    <div class="page-title">
+      <div>
+        <h1>Thêm đơn hàng gửi</h1>
+        <div class="status-bar">
+          <span class="status-pill" id="cargo-status-pill">Mới</span>
+          <span class="status-pill" id="cargo-code-pill">Mã: -</span>
+        </div>
+      </div>
+      <div class="toolbar no-print">
+        <button class="cms-btn" id="btn-save" type="button"><i class="fa fa-save"></i> Lưu</button>
+        <button class="cms-btn" id="btn-print" type="button"><i class="fa fa-print"></i> Lưu, In tem và hóa đơn</button>
+        <button class="cms-btn" id="btn-new" type="button"><i class="fa fa-plus-circle"></i> Tạo đơn mới</button>
+        <button class="cms-btn danger" id="btn-cancel-order" type="button" style="display:none;"><i class="fa fa-ban"></i> Hủy đơn</button>
+        <button class="cms-btn cms-btn-back" id="btn-back" type="button"><i class="fa fa-arrow-left"></i> Quay về</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="form-section-title">Thông tin người gửi và người nhận</div>
+      <div class="form-grid">
+        <div class="field-group" style="grid-column: span 6;">
+          <label for="pass_mobile">SDT người gửi</label>
+          <input type="text" id="pass_mobile" autocomplete="tel" />
+        </div>
+        <div class="field-group" style="grid-column: span 6;">
+          <label for="pass_name">Người gửi</label>
+          <input type="text" id="pass_name" />
+        </div>
+        <div class="field-group" style="grid-column: span 4;">
+          <label for="onboard_at">VP gửi <span style="color:#d00">*</span></label>
+          <select id="onboard_at" required></select>
+        </div>
+        <div class="field-group" style="grid-column: span 4;">
+          <label for="temp_onboard">Lấy hàng dọc đường</label>
+          <input type="text" id="temp_onboard" placeholder="Nhập địa điểm..." />
+        </div>
+        <div class="field-group inline" style="grid-column: span 4;">
+          <input type="checkbox" id="lay_tan_noi" />
+          <label for="lay_tan_noi">Lấy tận nơi</label>
+        </div>
+        <div class="field-group" style="grid-column: span 4;">
+          <label for="receiver_mobile">SDT người nhận</label>
+          <input type="text" id="receiver_mobile" autocomplete="tel" />
+        </div>
+        <div class="field-group" style="grid-column: span 4;">
+          <label for="reveiver_name">Người nhận</label>
+          <input type="text" id="reveiver_name" />
+        </div>
+        <div class="field-group" style="grid-column: span 4;">
+          <label for="offboard_at">VP nhận <span style="color:#d00">*</span></label>
+          <select id="offboard_at" required></select>
+        </div>
+        <div class="field-group" style="grid-column: span 4;">
+          <label for="temp_offboard">Giao hàng dọc đường</label>
+          <input type="text" id="temp_offboard" placeholder="Nhập địa điểm..." />
+        </div>
+        <div class="field-group inline" style="grid-column: span 4;">
+          <input type="checkbox" id="giao_tan_noi" />
+          <label for="giao_tan_noi">Giao tận nơi</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="form-section-title">Chi tiết hàng hóa</div>
+      <div style="overflow-x:auto;">
+        <table class="detail-table" id="details-table">
+          <thead>
+            <tr>
+              <th style="width: 75px;">SL</th>
+              <th style="width: 120px;">Đơn vị tính</th>
+              <th>Tên hàng</th>
+              <th style="width: 140px;">Giá trị</th>
+              <th>Ghi chú</th>
+              <th style="width: 140px;">Phí ship</th>
+              <th style="width: 80px;">Xóa</th>
+            </tr>
+          </thead>
+          <tbody id="details-body"></tbody>
+        </table>
+      </div>
+      <button class="cms-btn" id="btn-add-row" type="button" style="margin-top:12px;"><i class="fa fa-plus"></i> Thêm dòng</button>
+    </div>
+
+    <div class="card">
+      <div class="form-section-title">Thanh toán và tổng cước</div>
+      <div class="summary-grid">
+        <div class="summary-item" style="grid-column: span 3;"><label for="ticket_vnd">Tổng giá trị hàng hóa</label><input type="number" id="ticket_vnd" min="0" /></div>
+        <div class="summary-item" style="grid-column: span 3;"><label for="sum_vnd">Tổng cước</label><input type="number" id="sum_vnd" min="0" /></div>
+        <div class="summary-item" style="grid-column: span 3;"><label for="payment_method">Hình thức thanh toán</label><select id="payment_method"></select></div>
+        <div class="summary-item" style="grid-column: span 3;"><label for="sender_paid_vnd">Người gửi trả</label><input type="number" id="sender_paid_vnd" min="0" /></div>
+        <div class="summary-item" style="grid-column: span 3;"><label for="receiver_paid_vnd">Người nhận trả</label><input type="number" id="receiver_paid_vnd" min="0" /></div>
+        <div class="summary-item" style="grid-column: span 3; display:flex; flex-direction:column; gap:8px;"><div class="field-group inline"><input type="checkbox" id="cod_service" /><label for="cod_service">Thu hộ</label></div><label for="cod_vnd">Phí thu hộ</label><input type="number" id="cod_vnd" min="0" /></div>
+        <div class="summary-item" style="grid-column: span 6;"><label for="notes">Ghi chú</label><textarea id="notes"></textarea></div>
+      </div>
+    </div>
+
+    <div class="print-ready" id="print-section"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <script>
+    const API_URL = '/api/cargo.php';
+    const token = localStorage.getItem('api_token') || localStorage.getItem('cms_token') || '';
+    if (!token) {
+      window.location.href = 'cms-login.html';
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const cargoId = params.get('id') || 'new';
+
+    const state = {
+      meta: null,
+      row: {},
+      options: {},
+      details: []
+    };
+
+    const fields = {
+      pass_mobile: document.getElementById('pass_mobile'),
+      pass_name: document.getElementById('pass_name'),
+      onboard_at: document.getElementById('onboard_at'),
+      temp_onboard: document.getElementById('temp_onboard'),
+      receiver_mobile: document.getElementById('receiver_mobile'),
+      reveiver_name: document.getElementById('reveiver_name'),
+      offboard_at: document.getElementById('offboard_at'),
+      temp_offboard: document.getElementById('temp_offboard'),
+      lay_tan_noi: document.getElementById('lay_tan_noi'),
+      giao_tan_noi: document.getElementById('giao_tan_noi'),
+      ticket_vnd: document.getElementById('ticket_vnd'),
+      sum_vnd: document.getElementById('sum_vnd'),
+      payment_method: document.getElementById('payment_method'),
+      sender_paid_vnd: document.getElementById('sender_paid_vnd'),
+      receiver_paid_vnd: document.getElementById('receiver_paid_vnd'),
+      cod_service: document.getElementById('cod_service'),
+      cod_vnd: document.getElementById('cod_vnd'),
+      notes: document.getElementById('notes'),
+      detailsBody: document.getElementById('details-body'),
+      cargoStatus: document.getElementById('cargo-status-pill'),
+      cargoCode: document.getElementById('cargo-code-pill'),
+      printSection: document.getElementById('print-section')
+    };
+
+    document.getElementById('btn-save').addEventListener('click', saveCargo);
+    document.getElementById('btn-print').addEventListener('click', printCargo);
+    document.getElementById('btn-new').addEventListener('click', ()=>{ window.location.href = 'cargo-edit.html?id=new'; });
+
+    // --- Session persistence (localStorage) ---
+    const STORAGE_KEY = 'cargoEditSession';
+
+    function saveSessionToStorage() {
+      try {
+        const data = {
+          onboard_at: fields.onboard_at.value || '',
+          offboard_at: fields.offboard_at.value || '',
+          payment_method: fields.payment_method.value || '',
+          lay_tan_noi: fields.lay_tan_noi.checked ? 1 : 0,
+          giao_tan_noi: fields.giao_tan_noi.checked ? 1 : 0,
+          cod_service: fields.cod_service.checked ? 1 : 0,
+          ticket_vnd: fields.ticket_vnd.value || '',
+          sum_vnd: fields.sum_vnd.value || ''
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (e) { console.warn('saveSession error', e); }
+    }
+
+    function loadSessionFromStorage() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (!data) return;
+        // Only restore when creating new cargo or when fields are empty
+        if (cargoId === 'new' || !fields.onboard_at.value) fields.onboard_at.value = data.onboard_at || '';
+        if (cargoId === 'new' || !fields.offboard_at.value) fields.offboard_at.value = data.offboard_at || '';
+        if (cargoId === 'new' || !fields.payment_method.value) fields.payment_method.value = data.payment_method || '';
+        if (cargoId === 'new' || fields.lay_tan_noi.checked === false) fields.lay_tan_noi.checked = !!Number(data.lay_tan_noi);
+        if (cargoId === 'new' || fields.giao_tan_noi.checked === false) fields.giao_tan_noi.checked = !!Number(data.giao_tan_noi);
+        if (cargoId === 'new' || fields.cod_service.checked === false) fields.cod_service.checked = !!Number(data.cod_service);
+        if (cargoId === 'new' || !fields.ticket_vnd.value) fields.ticket_vnd.value = data.ticket_vnd || '';
+        if (cargoId === 'new' || !fields.sum_vnd.value) fields.sum_vnd.value = data.sum_vnd || '';
+      } catch (e) { console.warn('loadSession error', e); }
+    }
+
+    function bindSessionSaveListeners() {
+      ['change','input'].forEach(evt => {
+        fields.onboard_at.addEventListener(evt, saveSessionToStorage);
+        fields.offboard_at.addEventListener(evt, saveSessionToStorage);
+        fields.payment_method.addEventListener(evt, saveSessionToStorage);
+        fields.lay_tan_noi.addEventListener(evt, saveSessionToStorage);
+        fields.giao_tan_noi.addEventListener(evt, saveSessionToStorage);
+        fields.cod_service.addEventListener(evt, saveSessionToStorage);
+        fields.ticket_vnd.addEventListener(evt, saveSessionToStorage);
+        fields.sum_vnd.addEventListener(evt, saveSessionToStorage);
+      });
+    }
+
+    // restore on load
+    loadSessionFromStorage();
+    bindSessionSaveListeners();
+    document.getElementById('btn-back').addEventListener('click', () => {
+      if (window.parent && window.parent !== window) {
+        try { window.parent.postMessage('cargo_closed', '*'); } catch (e) { /* ignore */ }
+        return;
+      }
+      window.location.href = 'cargo-list.html';
+    });
+    document.getElementById('btn-new').addEventListener('click', () => window.location.href = 'cargo-edit.html?id=new');
+    document.getElementById('btn-add-row').addEventListener('click', () => addDetailRow());
+    document.getElementById('btn-cancel-order').addEventListener('click', cancelCargo);
+
+    fields.ticket_vnd.addEventListener('input', updateSummaryFromTotals);
+    fields.sum_vnd.addEventListener('input', updateSummaryFromTotals);
+    fields.cod_vnd.addEventListener('input', updateSummaryFromTotals);
+    fields.cod_service.addEventListener('change', updateSummaryFromTotals);
+    fields.sender_paid_vnd.addEventListener('input', updateSummaryFromTotals);
+
+    function redirectToLogin() {
+      localStorage.removeItem('cms_token');
+      localStorage.removeItem('api_token');
+      window.location.href = 'cms-login.html';
+    }
+
+    function isAuthError(data, response) {
+      if (response && (response.status === 401 || response.status === 403)) return true;
+      const msg = data && data.message ? String(data.message) : '';
+      return data && data.success === false && /invalid|expired|missing.*authorization|missing.*auth|access denied/i.test(msg);
+    }
+
+    async function requestJson(url, opts={}) {
+      const headers = opts.headers || {};
+      if (token) {
+        headers['Authorization'] = 'Bearer ' + token;
+      }
+      if (!opts.method || opts.method.toUpperCase() === 'GET') {
+        headers['Accept'] = 'application/json';
+      } else if (!opts.contentType) {
+        headers['Content-Type'] = 'application/json';
+      }
+      const response = await fetch(url, Object.assign({ credentials: 'same-origin' }, opts, { headers }));
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (err) {
+        console.error('API parse error', url, text, err);
+        data = { success: false, message: 'Invalid JSON response from server', raw: text };
+      }
+      if (isAuthError(data, response)) {
+        redirectToLogin();
+        return data;
+      }
+      return data;
+    }
+
+    function setStatusText(status, code) {
+      fields.cargoStatus.textContent = status ? status : 'Mới';
+      fields.cargoCode.textContent = `Mã: ${code || '-'}`;
+    }
+
+    function setCancelButtonVisibility() {
+      const isVisible = cargoId !== 'new' && Number(state.row?.status_id) === 1;
+      if (document.getElementById('btn-cancel-order')) {
+        document.getElementById('btn-cancel-order').style.display = isVisible ? '' : 'none';
+      }
+    }
+
+    function findCancelStatusId() {
+      const statuses = Array.isArray(state.options?.statuses) ? state.options.statuses : [];
+      const candidate = statuses.find(item => {
+        const label = String(item.label || item.name || item.status_title || item.text || '').toLowerCase();
+        return label.includes('hủy') || label.includes('huỷ') || label.includes('cancel') || label.includes('canceled') || label.includes('cancelled');
+      });
+      return candidate ? Number(candidate.id || candidate.value || candidate.status_id) : null;
+    }
+
+    function formatCurrency(value) {
+      if (value === null || value === undefined || value === '') return '';
+      const num = Number(value);
+      return isNaN(num) ? '' : num.toLocaleString('vi-VN');
+    }
+
+    function escapeHtml(value) {
+      if (value === null || value === undefined) return '';
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function createOption(value, text) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = text;
+      return option;
+    }
+
+    function populateSelect(select, items) {
+      select.innerHTML = '<option value="">-- Chọn --</option>';
+      items.forEach(item => {
+        const option = createOption(item.id, item.label || item.name || item.branch_name || item.route_name || item.payment || item.status_title || item.dep_date || item.branch_name);
+        select.appendChild(option);
+      });
+    }
+
+    function getSelectedText(select) {
+      return (select.options[select.selectedIndex] || {}).text || '';
+    }
+
+    function setValue(element, value) {
+      if (!element) return;
+      if (element.type === 'checkbox') {
+        element.checked = Boolean(Number(value) || value === true);
+      } else {
+        element.value = value !== null && value !== undefined ? value : '';
+      }
+    }
+
+    function ensureOption(select, value, label) {
+      if (!select || value === '' || value === null || value === undefined) return;
+      if (select.querySelector(`option[value="${value}"]`)) return;
+      const option = createOption(value, label || `#${value}`);
+      select.appendChild(option);
+    }
+
+    function getValue(element) {
+      if (!element) return null;
+      if (element.type === 'checkbox') return element.checked ? 1 : 0;
+      return element.value;
+    }
+
+    function addDetailRow(detail = {}) {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td><input type="number" class="detail-quantity" min="1" value="${detail.quantity || 1}" /></td>
+        <td><input type="text" class="detail-unit" value="${detail.unit_name || 'kiện'}" /></td>
+        <td><input type="text" class="detail-name" value="${detail.cargo_name || ''}" /></td>
+        <td><input type="number" class="detail-value" min="0" value="${detail.value_vnd || ''}" /></td>
+        <td><input type="text" class="detail-note" value="${detail.notes || ''}" /></td>
+        <td><input type="number" class="detail-ship" min="0" value="${detail.ship_fee_vnd || ''}" /></td>
+        <td><button type="button" class="action-btn remove"><i class="fa fa-trash"></i></button></td>
+      `;
+      row.querySelector('.remove').addEventListener('click', () => {
+        row.remove();
+        updateSummaryFromTotals();
+      });
+      ['detail-value', 'detail-ship', 'detail-quantity'].forEach(cls => {
+        row.querySelector('.' + cls).addEventListener('input', updateSummaryFromTotals);
+      });
+      fields.detailsBody.appendChild(row);
+    }
+
+    function buildDetails(detailRows) {
+      fields.detailsBody.innerHTML = '';
+      if (!detailRows || detailRows.length === 0) {
+        addDetailRow({ quantity: 1, unit_name: 'kiện' });
+        return;
+      }
+      detailRows.forEach(d => addDetailRow(d));
+    }
+
+    function gatherDetails() {
+      const rows = Array.from(fields.detailsBody.querySelectorAll('tr'));
+      return rows.map(tr => ({
+        quantity: Number(tr.querySelector('.detail-quantity').value) || 1,
+        unit_name: tr.querySelector('.detail-unit').value.trim(),
+        cargo_name: tr.querySelector('.detail-name').value.trim(),
+        value_vnd: tr.querySelector('.detail-value').value.trim() || null,
+        notes: tr.querySelector('.detail-note').value.trim() || null,
+        ship_fee_vnd: tr.querySelector('.detail-ship').value.trim() || null
+      })).filter(item => item.cargo_name || item.value_vnd || item.ship_fee_vnd || item.unit_name);
+    }
+
+    function updateSummaryFromTotals() {
+      const detailRows = Array.from(fields.detailsBody.querySelectorAll('tr'));
+      let totalValue = 0;
+      let totalShip = 0;
+      detailRows.forEach(tr => {
+        const quantity = Number(tr.querySelector('.detail-quantity').value) || 1;
+        const value = Number(tr.querySelector('.detail-value').value) || 0;
+        const ship = Number(tr.querySelector('.detail-ship').value) || 0;
+        totalValue += quantity * value;
+        totalShip += ship;
+      });
+
+      // Fill empty inputs with 0 and set totals
+      fields.ticket_vnd.value = totalValue || 0;
+      fields.sum_vnd.value = totalShip || 0;
+
+      // COD handling
+      const codFee = Number(fields.cod_vnd.value) || 0;
+      const senderPaid = Number(fields.sender_paid_vnd.value) || 0;
+      const codEnabled = Boolean(Number(getValue(fields.cod_service)));
+
+      // If COD not enabled, ensure cod_vnd is zero
+      if (!codEnabled) {
+        fields.cod_vnd.value = 0;
+      }
+
+      // Receiver pays: (tiền hàng cần thu hộ (only if COD) + Phí thu hộ + Tổng cước) - Người gửi trả
+      const amountToCollect = codEnabled ? totalValue || 0 : 0; // tiền hàng chỉ tính vào khi có thu hộ
+      const receiverPay = (amountToCollect + (codEnabled ? codFee : 0) + totalShip) - senderPaid;
+      fields.receiver_paid_vnd.value = Math.max(0, Math.round(receiverPay));
+    }
+
+    function parseNumber(value) {
+      if (value === null || value === undefined || value === '') return 0;
+      const num = Number(String(value).replace(/[\,\s]/g, ''));
+      return Number.isFinite(num) ? num : 0;
+    }
+
+    function getFormData() {
+      return {
+        pass_mobile: getValue(fields.pass_mobile),
+        pass_name: getValue(fields.pass_name),
+        onboard_at: getValue(fields.onboard_at) || null,
+        temp_onboard: getValue(fields.temp_onboard),
+        receiver_mobile: getValue(fields.receiver_mobile),
+        reveiver_name: getValue(fields.reveiver_name),
+        offboard_at: getValue(fields.offboard_at) || null,
+        temp_offboard: getValue(fields.temp_offboard),
+        lay_tan_noi: getValue(fields.lay_tan_noi) ? 1 : 0,
+        giao_tan_noi: getValue(fields.giao_tan_noi) ? 1 : 0,
+        ticket_vnd: parseNumber(getValue(fields.ticket_vnd)),
+        sum_vnd: parseNumber(getValue(fields.sum_vnd)),
+        payment_method: getValue(fields.payment_method) || null,
+        sender_paid_vnd: parseNumber(getValue(fields.sender_paid_vnd)),
+        receiver_paid_vnd: parseNumber(getValue(fields.receiver_paid_vnd)),
+        cod_service: getValue(fields.cod_service) ? 1 : 0,
+        cod_vnd: parseNumber(getValue(fields.cod_vnd)),
+        notes: getValue(fields.notes),
+        details: gatherDetails()
+      };
+    }
+
+    async function loadMeta() {
+      const data = await requestJson(`${API_URL}?action=meta`);
+      if (!data || !data.success) {
+        console.error('Cargo metadata load failed', data);
+        alert('Không thể tải metadata hàng hóa: ' + (data?.message || 'Lỗi máy chủ'));
+        return;
+      }
+      state.meta = data;
+      state.options = data.options || {};
+      populateSelect(fields.onboard_at, state.options.branches || []);
+      populateSelect(fields.offboard_at, state.options.branches || []);
+      populateSelect(fields.payment_method, state.options.payments || []);
+      if (cargoId !== 'new') {
+        loadCargo(cargoId);
+      } else {
+        setStatusText('Mới', '---');
+        buildDetails([]);
+      }
+    }
+
+    async function loadCargo(id) {
+      const data = await requestJson(`${API_URL}?action=get&id=${encodeURIComponent(id)}`);
+      if (!data || !data.success) {
+        alert('Không tìm thấy đơn hàng này');
+        return;
+      }
+      state.row = data.row || {};
+      setCancelButtonVisibility();
+      setStatusText(state.row.status_label || 'Đã lưu', state.row.random_code || state.row.cargo_id || '---');
+      setValue(fields.pass_mobile, state.row.pass_mobile);
+      setValue(fields.pass_name, state.row.pass_name);
+      setValue(fields.onboard_at, state.row.onboard_at);
+      ensureOption(fields.onboard_at, state.row.onboard_at, state.row.onboard_branch_name);
+      setValue(fields.temp_onboard, state.row.temp_onboard);
+      setValue(fields.receiver_mobile, state.row.receiver_mobile);
+      setValue(fields.reveiver_name, state.row.reveiver_name);
+      setValue(fields.offboard_at, state.row.offboard_at);
+      ensureOption(fields.offboard_at, state.row.offboard_at, state.row.offboard_branch_name);
+      setValue(fields.temp_offboard, state.row.temp_offboard);
+      setValue(fields.lay_tan_noi, state.row.lay_tan_noi);
+      setValue(fields.giao_tan_noi, state.row.giao_tan_noi);
+      setValue(fields.ticket_vnd, state.row.ticket_vnd);
+      setValue(fields.sum_vnd, state.row.sum_vnd);
+      setValue(fields.payment_method, state.row.payment_method);
+      ensureOption(fields.payment_method, state.row.payment_method, state.row.payment_method_label);
+      setValue(fields.sender_paid_vnd, state.row.sender_paid_vnd);
+      setValue(fields.receiver_paid_vnd, state.row.receiver_paid_vnd);
+      setValue(fields.cod_service, state.row.cod_service);
+      setValue(fields.cod_vnd, state.row.cod_vnd);
+      setValue(fields.notes, state.row.notes);
+      buildDetails(state.row.details || []);
+      updateSummaryFromTotals();
+    }
+
+    function validateCargoForm(payload) {
+      const errors = [];
+      if (!payload.onboard_at) {
+        errors.push('VP gửi là bắt buộc.');
+      }
+      if (!payload.offboard_at) {
+        errors.push('VP nhận là bắt buộc.');
+      }
+      return errors;
+    }
+
+    async function saveCargo() {
+      const payload = getFormData();
+      const errors = validateCargoForm(payload);
+      if (errors.length) {
+        alert(errors.join('\n'));
+        return;
+      }
+      const action = cargoId === 'new' ? 'insert' : 'edit';
+      const endpoint = `${API_URL}?action=${action}${cargoId === 'new' ? '' : '&id=' + encodeURIComponent(cargoId)}`;
+      const response = await requestJson(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      if (!response || !response.success) {
+        alert(response?.message || 'Lưu thất bại');
+        return;
+      }
+      const currentId = response.insert_id || cargoId;
+      alert('Lưu thành công!');
+      // If running inside an iframe modal, notify the parent to close/reload list
+      if (window.parent && window.parent !== window) {
+        try { window.parent.postMessage('cargo_saved', '*'); } catch (e) { /* ignore */ }
+        return;
+      }
+      if (cargoId === 'new' && currentId) {
+        window.location.href = `cargo-edit.html?id=${encodeURIComponent(currentId)}`;
+        return;
+      }
+      loadCargo(currentId);
+    }
+
+    async function cancelCargo() {
+      if (cargoId === 'new') return;
+      if (!state.row || Number(state.row.status_id) !== 1) {
+        alert('Chỉ có thể hủy đơn hàng đang ở trạng thái mới tạo.');
+        return;
+      }
+      const confirmed = confirm('Bạn có chắc chắn muốn hủy đơn hàng này?');
+      if (!confirmed) return;
+      const response = await requestJson(`${API_URL}?action=delete&id=${encodeURIComponent(cargoId)}`, {
+        method: 'POST'
+      });
+      if (!response || !response.success) {
+        alert(response?.message || 'Hủy đơn thất bại');
+        return;
+      }
+      alert('Đã hủy đơn hàng thành công.');
+      if (window.parent && window.parent !== window) {
+        try { window.parent.postMessage('cargo_closed', '*'); } catch (e) { /* ignore */ }
+        return;
+      }
+      window.location.href = 'cargo-list.html';
+    }
+
+    function buildPrintBody() {
+      const data = getFormData();
+      const onboardText = getSelectedText(fields.onboard_at);
+      const offboardText = getSelectedText(fields.offboard_at);
+      const paymentText = getSelectedText(fields.payment_method);
+      const codeValue = state.row.random_code || state.row.ticket_code || state.row.cargo_id || '---';
+      const printedAt = new Date().toLocaleString('vi-VN');
+      const fromAddress = state.row.onboard_branch_address || '';
+      const fromPhone = state.row.onboard_branch_mobile || '';
+      const toAddress = state.row.offboard_branch_address || '';
+      const toPhone = state.row.offboard_branch_mobile || '';
+      const detailRows = data.details.map((item, index) => `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${escapeHtml(item.cargo_name || '(không có tên)')}</td>
+            <td class="text-right">${item.quantity || 0}</td>
+            <td class="text-right">${formatCurrency(item.ship_fee_vnd ?? item.value_vnd)}</td>
+            <td>${escapeHtml(item.notes || '')}</td>
+          </tr>
+      `).join('');
+      const quantityTotal = data.details.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+      const totalAmount = formatCurrency(fields.sum_vnd.value || 0);
+      const detailTitle = data.details.length === 1 ? data.details[0].cargo_name || '(không tên)' : `Tổng ${data.details.length} dòng`; 
+      return `
+        <div class="print-box">
+          <div class="print-header">
+            <div>
+              <div class="meta-line"><strong>MÃ GD:</strong> ${escapeHtml(codeValue)}</div>
+              <div class="meta-line"><strong>In ngày:</strong> ${escapeHtml(printedAt)}</div>
+            </div>
+            <div style="text-align:right; min-width:180px;">
+              <svg id="cargo-print-barcode" style="max-width:100%; height:60px; display:block;"></svg>
+              <div style="margin-top:6px; font-size:14px; letter-spacing:0.2em; font-weight:700;">${escapeHtml(codeValue)}</div>
+            </div>
+          </div>
+          <h2>${escapeHtml(fields.pass_name.value || 'Phiếu gửi hàng')}</h2>
+          <div class="print-grid">
+            <div class="print-block">
+              <h3>VP gửi</h3>
+              <div class="print-cell"><strong>${escapeHtml(onboardText)}</strong></div>
+              <div class="print-cell">${escapeHtml(fromAddress)}</div>
+              <div class="print-cell">${escapeHtml(fromPhone)}</div>
+            </div>
+            <div class="print-block">
+              <h3>VP nhận</h3>
+              <div class="print-cell"><strong>${escapeHtml(offboardText)}</strong></div>
+              <div class="print-cell">${escapeHtml(toAddress)}</div>
+              <div class="print-cell">${escapeHtml(toPhone)}</div>
+            </div>
+          </div>
+          <table class="print-table" style="margin-top: 18px;">
+            <tbody>
+              <tr><td colspan="2"><strong>GỬI KHÁCH HÀNG</strong></td></tr>
+              <tr><td><strong>Mã đơn hàng:</strong> ${escapeHtml(codeValue)}</td><td><strong>In lúc:</strong> ${escapeHtml(printedAt)}</td></tr>
+            </tbody>
+          </table>
+          <table class="print-table" style="margin-top: 12px;">
+            <tbody>
+              <tr><td><strong>Gửi</strong></td><td><strong>Nhận</strong></td></tr>
+              <tr>
+                <td>${escapeHtml(fields.pass_name.value || '')} - ${escapeHtml(fields.pass_mobile.value || '')}</td>
+                <td>${escapeHtml(fields.reveiver_name.value || '')} - ${escapeHtml(fields.receiver_mobile.value || '')}</td>
+              </tr>
+              <tr>
+                <td>${escapeHtml(onboardText)}${fields.temp_onboard.value ? ' / ' + escapeHtml(fields.temp_onboard.value) : ''}${fields.lay_tan_noi.checked ? ' (Lấy tận nơi)' : ''}</td>
+                <td>${escapeHtml(offboardText)}${fields.temp_offboard.value ? ' / ' + escapeHtml(fields.temp_offboard.value) : ''}${fields.giao_tan_noi.checked ? ' (Giao tận nơi)' : ''}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="print-note"><strong>Ghi chú:</strong> ${escapeHtml(fields.notes.value || '')}</div>
+          <table class="print-table">
+            <thead>
+              <tr>
+                <th>Tên (giá trị hàng)</th>
+                <th>SL</th>
+                <th class="text-right">Cước</th>
+                <th>Ghi chú</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${detailRows || '<tr><td colspan="4">Không có dòng hàng hóa</td></tr>'}
+            </tbody>
+          </table>
+          <table class="print-summary">
+            <tr><td>Rồi (${quantityTotal} kiện)</td><td class="text-right">${formatCurrency(fields.sum_vnd.value)}</td></tr>
+            <tr><td><strong>Tổng phải thu</strong></td><td class="text-right"><strong>${totalAmount} VND</strong></td></tr>
+          </table>
+          <div class="print-signature">
+            <div>
+              <div class="sign-title">Người gửi xác nhận</div>
+            </div>
+            <div>
+              <div class="sign-title">Người nhận xác nhận</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function printCargo() {
+      if (cargoId === 'new') {
+        const proceed = confirm('Đơn hàng chưa được lưu. Bạn có muốn lưu trước khi in?');
+        if (proceed) {
+          saveCargo();
+          return;
+        }
+      }
+      fields.printSection.innerHTML = buildPrintBody();
+      if (window.JsBarcode && document.getElementById('cargo-print-barcode')) {
+        try {
+          JsBarcode('#cargo-print-barcode', state.row.random_code || state.row.ticket_code || state.row.cargo_id || '---', {
+            format: 'CODE128',
+            displayValue: false,
+            height: 60,
+            width: 2,
+            margin: 0
+          });
+        } catch (err) {
+          console.warn('Barcode render failed', err);
+        }
+      }
+      window.print();
+    }
+
+    loadMeta();
+  </script>
+  <button id="scrollTopBtn" class="scroll-top-btn" type="button" title="Lên đầu trang">↑</button>
+  <script src="scroll-top.js"></script>
+</body>
+</html>

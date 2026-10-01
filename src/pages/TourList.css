@@ -1,0 +1,108 @@
+.tourlist-page {
+  margin: 32px auto;
+  padding: 16px;
+}
+.tourlist-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.tourlist-card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  width: 320px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.2s;
+}
+.tourlist-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.13);
+}
+.tourlist-card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+.tourlist-info {
+  padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tourlist-info h3 {
+  margin: 0 0 4px 0;
+  font-size: 1.1rem;
+  color: #1a237e;
+}
+.tourlist-price {
+  color: #e53935;
+  font-weight: bold;
+}
+.tourlist-info a {
+  margin-top: 8px;
+  color: #1976d2;
+  text-decoration: none;
+  font-weight: 500;
+  align-self: flex-start;
+}
+.tourlist-info a:hover {
+  text-decoration: underline;
+}
+.tourlist-pagination .page-link {
+  cursor: pointer;
+}
+
+/* ── Filter bar ── */
+.tourlist-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  background: #f0f4ff;
+  border: 1px solid #d0d9f5;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+}
+
+.tourlist-keyword-group {
+  flex: 1 1 260px;
+  min-width: 200px;
+}
+
+.tourlist-dropdowns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  flex: 2 1 400px;
+}
+
+.tourlist-select {
+  flex: 1 1 180px;
+  min-width: 160px;
+}
+
+.tourlist-clear-btn {
+  white-space: nowrap;
+  align-self: center;
+}
+
+.tourlist-result-count {
+  font-size: 0.92rem;
+  color: #555;
+  margin-bottom: 12px;
+  padding-left: 4px;
+}
+
+@media (max-width: 575px) {
+  .tourlist-filter-bar {
+    padding: 10px 12px;
+  }
+  .tourlist-keyword-group,
+  .tourlist-dropdowns {
+    flex: 1 1 100%;
+  }
+}

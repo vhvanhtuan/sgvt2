@@ -1,0 +1,378 @@
+.KT_tng table {
+margin: 0;
+width: 100%;
+}
+.status_title {
+line-height: 22px !important;
+}
+.finished_seat {
+opacity: 0.3;
+}
+.body-modal-activate{
+overflow: hidden;
+}
+.filter {
+padding: 3px;
+}
+#div_modal strong {
+color:red;
+text-decoration: underline;
+}
+#div_modal {
+position: fixed;
+padding: 0px;
+margin: 10px;
+background: #ffffc1;
+z-index: 9;
+overflow: auto;
+}
+#div_modal .desktop-menus, #div_modal .online-support, #div_modal h1, #div_modal .clearfixplain, .modal-hidden {
+display: none;
+}
+#div_modal .KT_bottombuttons {
+border: none !important;
+background: none !important;
+border-top: solid 2px #666666 !important;
+padding-top: 12px;
+}
+.ticket_edit {
+float: left;
+padding: 3px;
+}
+.selected {
+background: #ffffc6 !important;
+border: dashed 2px red !important;
+}
+.large .one-seat {
+height: 220px !important;
+background: #FAFAFA;
+}
+@media (max-width: 799px) {
+.large .one-seat {
+height: 280px !important;
+}
+}
+.pass_name, .sum_vnd {
+padding: 2px 4px;
+/*
+background: green;
+color: yellow;
+margin: 0px 3px;
+*/
+}
+.large div {
+/*
+float: left;
+*/
+}
+.small {
+width: 400px;
+}
+.ticket_edit .new-ticket .one-seat-selected  {
+background: green;
+color: yellow;
+font-weight: 700;
+border: yellow dashed 2px !important;
+}
+.small .one-seat {
+height: 25px;
+line-height: 25px;
+cursor: pointer;
+}
+.one-bus .one-seat {
+width: 25%;
+border: 1px solid #999999;
+float: left;
+-webkit-box-sizing: border-box;
+-moz-box-sizing: border-box;
+box-sizing: border-box;
+text-align: center;
+overflow: hidden;
+}
+.small .taken {
+background-color: yellow;
+cursor: no-drop !important;
+}
+.bus-name {
+text-align: center;
+font-size: 110%;
+padding: 10px;
+}
+.seat-buttons {
+width: 100%;
+display: flex;
+padding-top: 3px;
+}
+.more-info, .more-info div {
+width: 100%;
+text-align: left;
+font-weight: 700;
+}
+.more-info div {
+padding: 2px 5px;
+}
+.seat-buttons div, .seat-buttons-legend div  {
+border-radius: 50%;
+border: solid 1px grey;
+padding: 5px;
+width: 20px;
+height: 20px;
+line-height: 20px;
+font-weight: 700;
+color: black;
+float: left;
+margin-left: 3px;
+background: white;
+cursor: pointer;
+text-align: center;
+}
+.seat-buttons-legend table, .seat-buttons-legend table td {
+border: none !important;
+vertical-align: middle;
+}
+.seat-buttons div:hover {
+border: solid 1px green;
+color: green;
+}
+.seat_number {
+color: black;
+float: left;
+width: 30px;
+height: 30px;
+line-height: 30px;
+font-weight: 700;
+background: white;
+border-radius: 50%;
+font-size: 150%;
+border: solid 1px grey;
+margin: 3px;
+background: white;
+}
+.on-offboard {
+/*
+float: right !important;
+*/
+}
+.is_temp_offboard {
+background: #13439f !important;
+}
+.is_temp_onboard {
+background: #13139f !important;
+}
+.onboard_at1 {
+background: green;
+color: yellow;
+/*
+font-weight: 700;
+padding: 2px 10px !important;
+width: 100% !important;
+*/
+padding: 2px 10px;
+max-width: 205px;
+text-align: right;
+}
+.offboard_at, .onboard_at, .temp_onboard, .temp_offboard {
+background: #13139f;
+color: yellow;
+font-weight: 700;
+padding: 2px 5px !important;
+/*
+margin-left: 2px;
+*/
+text-align: right;
+}
+.temp_onboard, .temp_offboard {
+background: #067c20 !important;
+}
+.branch_name {
+/*
+width: 52% !important;
+*/
+}
+.branch_name_2 {
+float: right !important;
+padding-right: 5px;
+}
+#dept_info td {
+padding: 2px 5px;
+/*
+font-size: 105%;
+*/
+}
+.modal-activate {
+width: 100%;
+height: 100%;
+margin: 0px !important;
+position: relative;
+background: #000000AA !important;
+}
+.modal-content {
+margin: auto;
+position: relative;
+top: 50%;
+-ms-transform: translateY(-50%);
+transform: translateY(-50%);
+background: #FFF;
+padding: 20px;
+border-radius: 10px;
+}
+.tabs {
+height: 100%;
+display: flex;
+padding-top: 5px;
+overflow: auto;
+}
+.active-handle {
+background: #ffffc1 !important;
+font-weight: 700;
+text-decoration: underline;
+}
+.one-tab {
+padding: 10px;
+border: solid 1px grey;
+margin-right: 3px;
+cursor: pointer;
+background: white;
+font-weight: 700;
+}
+#ticket_list, #div_don_tra, #div_trung_chuyen, #div_hang_hoa, #div_pax_search, #div_message {
+padding-top: 10px;
+}
+.div-bus-map {
+background: white;
+}
+.one-branch {
+margin-right: 20px;
+}
+.KT_tngtable .emphasis {
+background: white !important;
+}
+.group_ticket_1 {
+background: #fff0fe !important;
+}
+.group_ticket_2 {
+background: #edecff !important;
+}
+.group_ticket_3 {
+background: #dcffe5 !important;
+}
+.group_ticket_4 {
+background: #dbffc8 !important;
+}
+.group_ticket_5 {
+background: #ede6ff !important;
+}
+.group_ticket_6 {
+background: #d1ffb5 !important;
+}
+.group_ticket_7 {
+background: #fffdb5 !important;
+}
+.group_ticket_8 {
+background: #ffd1f8 !important;
+}
+.group_ticket_9 {
+background: #d4d1ff !important;
+}
+.group_ticket_10 {
+background: #ffd1d1 !important;
+}
+-->
+.bus-type-5 .last-seat-45{
+width: 20% !important;
+}
+</style>
+<style type="text/css">
+.message_content_box {
+}
+form .message_text , form .message_button{
+float: left;
+}
+form .message_text{
+width: 80%;
+}
+form .message_button{
+width: 18%;
+}
+.message_content_box div {
+width: 100%;
+clear: both;
+}
+.message_content_box div div {
+max-width: 80%;
+border: dashed 1px grey;
+border-radius: 10px;
+padding: 10px;
+margin: 2px;
+background-color: #FFF;
+}
+.message_content_box .my-message div {
+float: right;
+text-align: right;
+color: red;
+background-color: #ffffc1;
+}
+.user_name {
+color: red;
+background-color: yellow;
+padding: 0px 5px;
+margin-right: 5px;
+}
+.message_time {
+padding-right: 5px;
+font-style: italic;
+color: grey;
+}
+.driver {
+font-weight: bold;
+font-size: 400%;
+background-color: #d9d9d9 !important;
+background-image: url(/styles/stripe_bg_2.gif) !important;
+}
+.bus-type-3 .one-seat, .bus-type-5 .one-seat  {
+width: 24%;
+}
+.bus-type-3 .driver, .bus-type-5 .driver {
+width: 4%;
+}
+.bus-type-4 .one-seat {
+width: 20%;
+}
+.small .driver {
+font-size: unset;
+}
+
+.bus-report .one-seat {
+padding: 2mm;
+}
+.bus-report .large .one-seat {
+height: 3.1cm !important;
+}
+.bus-report .rp_pass_mobile, .bus-report h2  {
+font-size: 14pt !important;
+font-weight: 700;
+}
+.bus-report .rp_seat_number {
+float: left;
+padding-right: 3.1mm;
+font-weight: 700;
+}
+.bus-report p, .bus-report h2 {
+padding: 5px 0px;
+margin: 0px;
+}
+.bus-report .bus-name{
+display: none;
+}
+.bus-report .taken div {
+text-align: left;
+margin-bottom: 1mm;
+font-size: 11pt;
+}
+.a-45-last-seat{
+}
+html {
+/*
+font-family: Poppins, sans-serif !important;
+*/
+}

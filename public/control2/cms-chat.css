@@ -1,0 +1,36 @@
+#cms-chat-widget{position:fixed;left:16px;bottom:16px;z-index:2050;width:360px;max-width:calc(100vw - 32px);font-family:system-ui,Segoe UI,Arial,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.15);border-radius:14px;overflow:hidden;background:transparent}
+#cms-chat-widget .cms-chat-toggle{cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:14px;background:#0d6efd;color:#fff;font-weight:600;box-shadow:0 8px 20px rgba(13,110,253,.25)}
+#cms-chat-widget .cms-chat-toggle span{display:inline-block}
+#cms-chat-widget .cms-chat-toggle .cms-chat-unread{min-width:22px;height:22px;border-radius:999px;background:#dc3545;color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.75rem;line-height:1; padding:0 6px;margin-left:8px}
+#cms-chat-widget .cms-chat-panel{position:relative;width:100%;background:#fff;border-radius:14px;border:1px solid rgba(0,0,0,.08);overflow:hidden;height:500px;display:flex;flex-direction:column}
+#cms-chat-widget .cms-chat-header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #e9ecef;background:#f8f9fa}
+#cms-chat-widget .cms-chat-header strong{font-size:0.95rem}
+#cms-chat-widget .cms-chat-header small{display:block;color:#6c757d;font-size:0.78rem;margin-top:2px}
+#cms-chat-widget .cms-chat-close{border:none;background:transparent;color:#495057;font-size:1.35rem;line-height:1;cursor:pointer}
+#cms-chat-widget .cms-chat-body{display:flex;flex:1;min-height:0}
+#cms-chat-widget .cms-chat-sidebar{width:130px;background:#f8f9fa;border-right:1px solid #e9ecef;display:flex;flex-direction:column}
+#cms-chat-widget .cms-chat-sidebar-title{padding:10px 12px;font-size:0.85rem;font-weight:700;color:#343a40;border-bottom:1px solid #e9ecef}
+#cms-chat-widget .cms-chat-contacts{flex:1;overflow:auto;padding:8px}
+#cms-chat-widget .cms-chat-contact-item{padding:10px 10px;margin-bottom:8px;border-radius:10px;cursor:pointer;background:#fff;border:1px solid transparent;transition:background .2s,border .2s}
+#cms-chat-widget .cms-chat-contact-item:hover{background:#e9ecef}
+#cms-chat-widget .cms-chat-contact-item.active{background:#0d6efd;color:#fff;border-color:rgba(13,110,253,.35)}
+#cms-chat-widget .cms-chat-contact-item .name{font-size:0.88rem;font-weight:700}
+#cms-chat-widget .cms-chat-contact-item .meta{font-size:0.75rem;color:#6c757d;margin-top:4px}
+#cms-chat-widget .cms-chat-main{flex:1;display:flex;flex-direction:column}
+#cms-chat-widget .cms-chat-main-header{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid #e9ecef}
+#cms-chat-widget .cms-chat-main-header .title{font-size:0.9rem;font-weight:700;color:#212529}
+#cms-chat-widget .cms-chat-main-header .btn{font-size:0.78rem;padding:4px 10px}
+#cms-chat-widget .cms-chat-messages{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:#f8f9fa;max-height: 66vh;}
+#cms-chat-widget .cms-chat-message{max-width:84%;padding:10px 12px;border-radius:16px;position:relative;word-break:break-word;font-size:0.85rem;line-height:1.4}
+#cms-chat-widget .cms-chat-message.sent{align-self:flex-end;background:#0d6efd;color:#fff;border-bottom-right-radius:4px}
+#cms-chat-widget .cms-chat-message.received{align-self:flex-start;background:#fff;color:#212529;border:1px solid #dee2e6;border-bottom-left-radius:4px}
+#cms-chat-widget .cms-chat-message .meta{display:block;font-size:0.72rem;color:rgba(255,255,255,.75);margin-top:6px}
+#cms-chat-widget .cms-chat-message.received .meta{color:#6c757d}
+#cms-chat-widget .cms-chat-input{padding:10px 12px;border-top:1px solid #e9ecef;background:#fff;height: 100px;}
+#cms-chat-widget .cms-chat-input input,#cms-chat-widget .cms-chat-input textarea{width:100%;border:1px solid #ced4da;border-radius:10px;padding:8px 10px;font-size:0.86rem;background:#fff}
+#cms-chat-widget .cms-chat-input input{margin-top:8px;height:40px;}
+#cms-chat-widget .cms-chat-input textarea{min-height:70px;margin-top:8px;resize:none}
+#cms-chat-widget .cms-chat-actions{margin-top:8px;display:flex;justify-content:flex-end}
+#cms-chat-widget .cms-chat-actions .btn{font-size:0.82rem;padding:6px 14px}
+@media(max-width:640px){#cms-chat-widget{left:8px;right:8px;width:auto;bottom:8px}#cms-chat-widget .cms-chat-panel{height:calc(100vh - 24px);border-radius:12px;max-height:77vh;}}
+.unread{background-color:#af1725 !important;color:#fff;text-decoration: underline;}

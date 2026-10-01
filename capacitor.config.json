@@ -1,0 +1,6 @@
+{
+  "appId": "com.sgvt.cargo",
+  "appName": "SGVT Cargo Scanner",
+  "webDir": "build",
+  "bundledWebRuntime": false
+}
