@@ -111,7 +111,7 @@
           <input type="date" id="filter-date-from" />
         </div>
         <div class="field-group">
-          <label for="filter-date-from">Giờ</label>
+          <label for="filter-time-from">Giờ</label>
           <input type="time" id="filter-time-from" />
         </div>
         <div class="field-group">
@@ -119,7 +119,7 @@
           <input type="date" id="filter-date-to" />
         </div>
         <div class="field-group">
-          <label for="filter-date-to">Giờ</label>
+          <label for="filter-time-to">Giờ</label>
           <input type="time" id="filter-time-to" />
         </div>
         <!-- <div class="field-group">
@@ -446,7 +446,7 @@
 
     function renderSummary() {
       const totalEmployees = Number(state.total) || state.rows.length || 0;
-      const totalCollected = state.rows.reduce((sum, row) => sum + (Number(row.sum_thu_ho_vnd) || 0) + (Number(row.sum_phi_thu_ho_vnd) || 0), 0);
+      const totalCollected = state.rows.reduce((sum, row) => sum + (Number(row.sum_receiver_paid_vnd) || 0) + (Number(row.sum_sender_paid_vnd) || 0), 0);
       elems.totalBadge.textContent = `Tổng: ${formatCurrency(totalEmployees)} nhân viên`;
       elems.totalAmountBadge.textContent = `Tổng đã thu: ${formatCurrency(totalCollected)} đ`;
     }
@@ -626,8 +626,14 @@
     elems.currentBranch.addEventListener('change', async () => {
       localStorage.setItem('current_branch_id', elems.currentBranch.value || '');
       await loadCreaterOptions(elems.currentBranch.value || '');
+      await loadList(1);
       elems.creater.value = '';
     });
+    elems.dateFrom.addEventListener('change', () => loadList(1));
+    elems.dateTo.addEventListener('change', () => loadList(1));
+    elems.timeFrom.addEventListener('change', () => loadList(1));
+    elems.timeTo.addEventListener('change', () => loadList(1));
+
 
     (async function init() {
       await loadMeta();
