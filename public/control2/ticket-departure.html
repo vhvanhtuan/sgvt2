@@ -534,6 +534,8 @@ font-size: 11pt;
   </div>
 
   <script src="departure-editor.js"></script>
+  <script src="control2-auth.js"></script>
+  <script src="cargo-page-guard.js"></script>
   <script>
     const API_URL = '/api/cargo.php';
     const elems = {
@@ -1481,40 +1483,11 @@ elems.moving_status.addEventListener('click', (event) => {
       });
     }
 
-    function redirectToLogin() {
-      localStorage.removeItem('cms_token');
-      localStorage.removeItem('api_token');
-      window.location.href = 'cms-login.html';
-    }
-
-    function isAuthError(data, response) {
-      if (response && (response.status === 401 || response.status === 403)) return true;
-      const msg = data && data.message ? String(data.message) : '';
-      return data && data.success === false && /invalid|expired|missing.*authorization|missing.*auth|access denied/i.test(msg);
-    }
-
-    async function requestJson(url, opts = {}) {
-      const headers = opts.headers ? Object.assign({}, opts.headers) : {};
-      const authToken = typeof token !== 'undefined' ? token : (localStorage.getItem('cms_token') || localStorage.getItem('api_token') || '');
-      if (authToken) {
-        headers['Authorization'] = 'Bearer ' + authToken;
-      }
-      if (!opts.method || opts.method.toUpperCase() === 'GET') {
-        headers['Accept'] = 'application/json';
-      }
-      if (opts.body && !headers['Content-Type']) {
-        headers['Content-Type'] = 'application/json';
-      }
-      const response = await fetch(url, Object.assign({ credentials: 'same-origin' }, opts, { headers }));
-      const text = await response.text();
-      let data;
-      try { data = JSON.parse(text); } catch (err) { data = { success: false, message: 'Invalid response', raw: text }; }
-      if (isAuthError(data, response)) {
-        redirectToLogin();
-        return data;
-      }
-      return data;
-    }
+    const authClient = window.control2Auth.createClient({
+      tokenProvider: () => (localStorage.getItem('cms_token') || localStorage.getItem('api_token') || ''),
+      loginUrl: 'cms-login.html'
+    });
+    const requestJson = authClient.requestJson;
 
     async function loadRoutes() {
       const data = await requestJson(`${API_URL}?action=get_routes`);
@@ -2276,6 +2249,13 @@ let temp_lunar_date;
     }
 
     async function init() {
+      const canOpen = await window.cargoPageGuard.ensureCanOpenPage({
+        apiUrl: API_URL,
+        token: authClient.getToken(),
+        redirectUrl: 'departure-list.html'
+      });
+      if (!canOpen) return;
+
       initTicketModal();
       await loadWorkingBranches();
       await loadRoutes();

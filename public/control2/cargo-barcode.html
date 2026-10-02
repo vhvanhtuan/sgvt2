@@ -176,39 +176,16 @@
 
   <!-- html5-qrcode for web fallback scanning -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8"></script>
+  <script src="control2-auth.js"></script>
+  <script src="cargo-page-guard.js"></script>
 
   <script>
   const API_URL = '/api/cargo.php';
   const token = localStorage.getItem('cms_token') || localStorage.getItem('api_token') || '';
   if (!token) { location.href = 'cms-login.html'; }
 
-  function redirectToLogin() {
-    localStorage.removeItem('cms_token');
-    localStorage.removeItem('api_token');
-    window.location.href = 'cms-login.html';
-  }
-
-  function isAuthError(data, response) {
-    if (response && (response.status === 401 || response.status === 403)) return true;
-    const msg = data && data.message ? String(data.message) : '';
-    return data && data.success === false && /invalid|expired|missing.*authorization|missing.*auth|access denied/i.test(msg);
-  }
-
-  async function requestJson(url, opts = {}) {
-    const headers = opts.headers || {};
-    headers['Authorization'] = 'Bearer ' + token;
-    if (!opts.method || opts.method.toUpperCase() === 'GET') headers['Accept'] = 'application/json';
-    if (opts.body && !opts.headers?.['Content-Type']) headers['Content-Type'] = 'application/json';
-    const response = await fetch(url, Object.assign({ credentials: 'same-origin' }, opts, { headers }));
-    const text = await response.text();
-    let data;
-    try { data = JSON.parse(text); } catch (e) { data = { success: false, message: 'Invalid JSON response', raw: text }; }
-    if (isAuthError(data, response)) {
-      redirectToLogin();
-      return data;
-    }
-    return data;
-  }
+  const authClient = window.control2Auth.createClient({ token, loginUrl: 'cms-login.html' });
+  const requestJson = authClient.requestJson;
 
   function formatCurrency(num) {
     const n = Number(num);
@@ -717,6 +694,13 @@
   }
 
   async function init() {
+    const canOpen = await window.cargoPageGuard.ensureCanOpenPage({
+      apiUrl: API_URL,
+      token: token,
+      redirectUrl: 'departure-list.html'
+    });
+    if (!canOpen) return;
+
     await loadMeta();
     await loadBarcodeFormState();
     renderAll();

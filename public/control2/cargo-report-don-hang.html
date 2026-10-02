@@ -6,6 +6,8 @@
   <title>In đơn hàng</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <script src="control2-auth.js"></script>
+  <script src="cargo-page-guard.js"></script>
 <link href="/html_logo.ico" rel="shortcut icon">
   <style>
     body { font-family: Arial, Helvetica, sans-serif; background:#f5f7fa; padding:12px; }
@@ -57,6 +59,7 @@ line-height: 16pt;}
   (function(){
     const API_URL = '/api/cargo.php';
     const token = localStorage.getItem('cms_token') || localStorage.getItem('api_token') || '';
+    const authClient = window.control2Auth.createClient({ token, loginUrl: 'cms-login.html' });
     const params = new URLSearchParams(location.search);
     const ids = params.get('ids') || '';
     const content = document.getElementById('content');
@@ -66,9 +69,7 @@ line-height: 16pt;}
     }
 
     async function requestJson(url) {
-      const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } , credentials: 'same-origin'});
-      const text = await res.text();
-      try { return JSON.parse(text); } catch(e){ return { success:false, raw: text }; }
+      return authClient.requestJson(url);
     }
 
     // function fmt(n){ const num = Number(n)||0; return num.toLocaleString('vi-VN'); }
@@ -170,6 +171,13 @@ ${i+1}
     }
 
     (async function(){
+      const canOpen = await window.cargoPageGuard.ensureCanOpenPage({
+        apiUrl: API_URL,
+        token: token,
+        redirectUrl: 'departure-list.html'
+      });
+      if (!canOpen) return;
+
       content.innerHTML = '<div class="text-muted">Đang tải dữ liệu in...</div>';
       const data = await requestJson(`${API_URL}?action=get_multi&ids=${encodeURIComponent(ids)}`);
       if (!data || !data.success) {
