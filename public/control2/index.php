@@ -1,2 +1,2 @@
 <?php
-header('location:/control2/cms-list.html?table=richtext_types');
+header('location:/control2/departure-list.html');

@@ -1210,7 +1210,7 @@ function populateSelect(select, items) {
           <td class="text-right ${senderPaidClass}" title="${senderPaidTitle}">${formatNumberDisplay(row.sender_paid_vnd)} đ</td>
           <td class="text-right ${receiverPaidClass}" title="${receiverPaidTitle}">${formatNumberDisplay(row.receiver_paid_vnd)} đ</td>
           <td>${row.e_mail || ''}</td>
-          <td>${row.status_label || ''}  ${row.bus_plate ? `(${row.bus_plate})` : ''}</td>
+          <td>${row.status_label || ''}  ${row.bus_plate ? `(<a target="_blank" href="/control2/ticket-departure.html?route_id=${row.route_id}&dept_date=${row.dept_date}&dept_id=${row.dept_id}">${row.bus_plate} / ${row.dept_date} / ${row.dept_time}</a>)` : ''}</td>
           <td>${(row.register_submit || row.submit) ? formatDateTime(row.register_submit || row.submit) : ''}</td>
             <td class="text-right">
               <button class="btn btn-sm btn-primary btn-edit" data-id="${row.cargo_id}" title="Sửa">Sửa</button>
