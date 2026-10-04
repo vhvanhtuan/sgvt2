@@ -292,43 +292,43 @@
           <div class="card">
             <div class="form-section-title">Thông tin người gửi và người nhận</div>
             <div class="form-grid">
-              <div class="field-group" style="grid-column: span 6;">
+              <div class="field-group" style="grid-column: span 2;">
                 <label for="pass_mobile">SDT người gửi</label>
                 <input type="text" id="pass_mobile" autocomplete="tel" />
               </div>
-              <div class="field-group" style="grid-column: span 6;">
+              <div class="field-group" style="grid-column: span 3;">
                 <label for="pass_name">Người gửi</label>
                 <input type="text" id="pass_name" />
               </div>
-              <div class="field-group" style="grid-column: span 4;">
+              <div class="field-group" style="grid-column: span 2;">
                 <label for="onboard_at">VP gửi <span style="color:#d00">*</span></label>
                 <select id="onboard_at" required></select>
               </div>
-              <div class="field-group" style="grid-column: span 4;">
+              <div class="field-group" style="grid-column: span 3;">
                 <label for="temp_onboard">Lấy hàng dọc đường</label>
                 <input type="text" id="temp_onboard" placeholder="Nhập địa điểm..." />
               </div>
-              <div class="field-group inline" style="grid-column: span 4;">
+              <div class="field-group inline" style="grid-column: span 2;">
                 <input type="checkbox" id="lay_tan_noi" />
                 <label for="lay_tan_noi">Lấy tận nơi</label>
               </div>
-              <div class="field-group" style="grid-column: span 4;">
+              <div class="field-group" style="grid-column: span 2;">
                 <label for="receiver_mobile">SDT người nhận</label>
                 <input type="text" id="receiver_mobile" autocomplete="tel" />
               </div>
-              <div class="field-group" style="grid-column: span 4;">
+              <div class="field-group" style="grid-column: span 3;">
                 <label for="reveiver_name">Người nhận</label>
                 <input type="text" id="reveiver_name" />
               </div>
-              <div class="field-group" style="grid-column: span 4;">
+              <div class="field-group" style="grid-column: span 2;">
                 <label for="offboard_at">VP nhận <span style="color:#d00">*</span></label>
                 <select id="offboard_at" required></select>
               </div>
-              <div class="field-group" style="grid-column: span 4;">
+              <div class="field-group" style="grid-column: span 3;">
                 <label for="temp_offboard">Giao hàng dọc đường</label>
                 <input type="text" id="temp_offboard" placeholder="Nhập địa điểm..." />
               </div>
-              <div class="field-group inline" style="grid-column: span 4;">
+              <div class="field-group inline" style="grid-column: span 2;">
                 <input type="checkbox" id="giao_tan_noi" />
                 <label for="giao_tan_noi">Giao tận nơi</label>
               </div>
@@ -342,10 +342,10 @@
                 <thead>
                   <tr>
                     <th style="width: 75px;">SL</th>
-                    <th style="width: 120px;">Đơn vị tính</th>
+                    <th class="hidden" style="width: 120px;">Đơn vị tính</th>
                     <th>Tên hàng</th>
                     <th style="width: 140px;">Giá trị</th>
-                    <th>Ghi chú</th>
+                    <th class="hidden">Ghi chú</th>
                     <th style="width: 140px;">Cước phí</th>
                     <th style="width: 80px;">Xóa</th>
                   </tr>
@@ -370,7 +370,8 @@
           </div>
             <div class="toolbar no-print">
               <button class="cms-btn" id="btn-save" type="button"><i class="fa fa-save"></i> Lưu</button>
-              <button class="cms-btn" id="btn-print" type="button"><i class="fa fa-print"></i> Lưu, In tem và hóa đơn</button>
+              <button class="cms-btn" id="btn-print" type="button"><i class="fa fa-print"></i> Lưu, In tem</button>
+              <button class="cms-btn" id="btn-print-hoa-don" type="button"><i class="fa fa-print"></i> In hóa đơn</button>
               <button class="cms-btn" id="btn-new" type="button"><i class="fa fa-plus-circle"></i> Tạo đơn mới</button>
               <button class="cms-btn danger" id="btn-cancel-order" type="button" style="display:none;"><i class="fa fa-ban"></i> Hủy đơn</button>
               <button class="cms-btn cms-btn-back" id="btn-back" type="button"><i class="fa fa-arrow-left"></i> Đóng</button>
@@ -1540,10 +1541,10 @@
         const row = document.createElement('tr');
         row.innerHTML = `
           <td><input type="text" class="detail-quantity" min="1" inputmode="numeric" value="${detail.quantity||1}" /></td>
-          <td><input type="text" class="detail-unit" value="${detail.unit_name||'kiện'}" /></td>
+          <td class="hidden"><input type="text" class="detail-unit" value="${detail.unit_name||'kiện'}" /></td>
           <td><input type="text" class="detail-name" value="${detail.cargo_name||''}" /></td>
           <td><input type="text" class="detail-value" min="0" inputmode="numeric" value="${detail.value_vnd != null && detail.value_vnd !== '' ? sanitizeNumberInputValue(detail.value_vnd) : ''}" /></td>
-          <td><input type="text" class="detail-note" value="${detail.notes||''}" /></td>
+          <td class="hidden"><input type="text" class="detail-note" value="${detail.notes||''}" /></td>
           <td><input type="text" class="detail-ship" min="0" inputmode="numeric" value="${detail.ship_fee_vnd != null && detail.ship_fee_vnd !== '' ? sanitizeNumberInputValue(detail.ship_fee_vnd) : ''}" /></td>
           <td><button type="button" class="action-btn remove"><i class="fa fa-trash"></i></button></td>
         `;
@@ -1590,6 +1591,14 @@
       function show(){ modal.style.display = 'block'; setTimeout(()=> modal.classList.add('show'),20); }
       function hide(reload=true){ modal.classList.remove('show'); setTimeout(()=>{ modal.style.display='none'; if(reload) loadList(1); },160); }
 
+      function openCargoPrintWindow(id, includeRules = false){
+        const query = includeRules
+          ? `ids=${encodeURIComponent(id)}&show_rules=1`
+          : `ids=${encodeURIComponent(id)}`;
+        const url = `cargo-report-don-hang.html?${query}`;
+        window.open(url, '_blank');
+      }
+
       async function printCargo(){
         if(state.cargoId === 'new'){
           const proceed = confirm('Đơn hàng chưa được lưu. Bạn có muốn lưu trước khi in?');
@@ -1597,18 +1606,32 @@
           const res = await save();
           if(!res || !res.success) return;
           const idToPrint = res.insert_id || state.cargoId;
-          const url = `cargo-report-don-hang.html?ids=${encodeURIComponent(idToPrint)}`;
-          window.open(url, '_blank');
+          openCargoPrintWindow(idToPrint, false);
           return;
         }
         const id = state.cargoId || (state.row && state.row.cargo_id) || '';
         if(!id){ alert('Không có mã đơn để in.'); return; }
-        const url = `cargo-report-don-hang.html?ids=${encodeURIComponent(id)}`;
-        window.open(url, '_blank');
+        openCargoPrintWindow(id, false);
+      }
+
+      async function printCargoInvoice(){
+        if(state.cargoId === 'new'){
+          const proceed = confirm('Đơn hàng chưa được lưu. Bạn có muốn lưu trước khi in hóa đơn?');
+          if(!proceed) return;
+          const res = await save();
+          if(!res || !res.success) return;
+          const idToPrint = res.insert_id || state.cargoId;
+          openCargoPrintWindow(idToPrint, true);
+          return;
+        }
+        const id = state.cargoId || (state.row && state.row.cargo_id) || '';
+        if(!id){ alert('Không có mã đơn để in hóa đơn.'); return; }
+        openCargoPrintWindow(id, true);
       }
 
       const btnSave = q('#btn-save'); if(btnSave) btnSave.addEventListener('click', save);
       const btnPrint = q('#btn-print'); if(btnPrint) btnPrint.addEventListener('click', printCargo);
+      const btnPrintHoaDon = q('#btn-print-hoa-don'); if(btnPrintHoaDon) btnPrintHoaDon.addEventListener('click', printCargoInvoice);
       const btnNew = q('#btn-new'); if(btnNew) btnNew.addEventListener('click', async ()=>{
         state.cargoId = 'new';
         resetFormFields();

@@ -348,7 +348,7 @@
         return;
       }
       state.meta = data;
-      const branchWorkOptions = '<option value="">-- chọn VP --</option>' + (data.options?.branch_work || []).map(item => `<option value="${item.id}">${item.label}</option>`).join('');
+      const branchWorkOptions = '<option value="">-- chọn VP --</option>' + (data.options?.tien_hang_branch_work || []).map(item => `<option value="${item.id}">${item.label}</option>`).join('');
       elems.currentBranch.innerHTML = branchWorkOptions;
 
       const savedBranchId = localStorage.getItem('current_branch_id') || '';
