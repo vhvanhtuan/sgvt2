@@ -111,3 +111,6 @@ html, body {
 .dropdown, .dropdown-center, .dropend, .dropstart, .dropup, .dropup-center{
   position: relative;    padding-left: 5px;
 }
+#gtx-trans{
+	display: none !important;
+}

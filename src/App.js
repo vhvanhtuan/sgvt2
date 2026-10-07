@@ -24,6 +24,7 @@ import VisaPage from './pages/VisaPage';
 import HotelSearchPage from './pages/hotel/HotelSearchPage';
 import HotelResultsPage from './pages/hotel/HotelResultsPage';
 import HotelDetailPage from './pages/hotel/HotelDetailPage';
+import WebHomePage from './pages/WebHomePage';
 
 function App() {
   const isThueXeDeDangDomain = typeof window !== 'undefined' && /(^|\.)thuexededang\.com$/i.test(window.location.hostname || '');
@@ -31,7 +32,8 @@ function App() {
     <Router>
       <Layout>
         <Routes>
-          <Route path="/" element={isThueXeDeDangDomain ? <Navigate to="/thue-xe" replace /> : <HomePage />} />
+          <Route path="/home" element={isThueXeDeDangDomain ? <Navigate to="/thue-xe" replace /> : <WebHomePage />} />
+          <Route path="/" element={<HomePage />} />
           <Route path="/danh-sach-tour" element={<TourList />} />
           <Route path="/chi-tiet-tour" element={<TourDetailQuery />} />
           <Route path="/lich-khoi-hanh" element={React.createElement(require('./pages/LichKhoiHanh').default)} />
@@ -54,6 +56,7 @@ function App() {
           <Route path="/mua-ve" element={<OnlineTicket />} />
           <Route path="/mua-ve-may-bay" element={<AirTicketPage />} />
           <Route path="/hotel" element={<HotelSearchPage />} />
+          <Route path="/web-home" element={<WebHomePage />} />
           <Route path="/hotel/ket-qua" element={<HotelResultsPage />} />
           <Route path="/hotel/chi-tiet/:hotelSlug" element={<HotelDetailPage />} />
           <Route path="/visa" element={<VisaPage />} />
