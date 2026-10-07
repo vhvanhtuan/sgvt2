@@ -109,5 +109,5 @@ html, body {
 	height: 80px;
 }
 .dropdown, .dropdown-center, .dropend, .dropstart, .dropup, .dropup-center{
-  position: relative;    padding-left: 20px;
+  position: relative;    padding-left: 5px;
 }

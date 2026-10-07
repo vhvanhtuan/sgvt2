@@ -2,7 +2,56 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import './Layout.css';
 import { fetchInfo } from '../utils/infoApi';
-import { buildGroupRoute, buildZoneRoute } from '../utils/routeHelpers';
+
+function normalizeMenuPath(path = '', label = '') {
+  const rawPath = String(path || '').trim();
+
+  if (!rawPath) return '/';
+  if (/^(https?:)?\/\//i.test(rawPath)) return rawPath;
+
+  const normalizedPath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+  const lowerPath = normalizedPath.toLowerCase();
+
+  // if (lowerPath === '/lich-khoi-hanh.html') return '/lich-khoi-hanh';
+  // if (lowerPath === '/lien-he.html' || lowerPath === '/lien-he') return '/lien-he';
+  // if (lowerPath === '/so-do-website.html') return '/so-do-website';
+  // if (/^\/nhom-bai-.*visa.*\.html$/i.test(normalizedPath) || /visa/i.test(label)) return '/visa';
+
+  return normalizedPath;
+}
+
+function buildMenuItemKey(item, fallback = '') {
+  return [item?.tab_id, item?.subtab_title, item?.name, item?.php, fallback].filter(Boolean).join('-');
+}
+
+function MenuAnchor({ className, item, children }) {
+  const href = normalizeMenuPath(item?.php, item?.subtab_title || item?.name || '');
+  const isExternal = /^(https?:)?\/\//i.test(href);
+
+  if (isExternal) {
+    return <a className={className} href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
+  }
+
+  return <a className={className} href={href}>{children}</a>;
+}
+
+function DropdownToggleButton({ dropdownKey, dropdown, setDropdown }) {
+  return (
+    <button
+      type="button"
+      id={`${dropdownKey}Dropdown`}
+      className="nav-link dropdown-toggle border-0 bg-transparent"
+      aria-expanded={dropdown === dropdownKey}
+      aria-label="Toggle submenu"
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setDropdown(dropdown === dropdownKey ? '' : dropdownKey);
+      }}
+      onMouseEnter={() => window.innerWidth >= 992 && setDropdown(dropdownKey)}
+    ></button>
+  );
+}
 
 
 
@@ -54,23 +103,41 @@ const WidgetBar = ({ info }) => {
 
 
 function Layout({ children }) {
-  const [groups, setGroups] = useState([]);
-  const [sub_menus, setSubMenus] = useState([]);
-  const [zones, setZones] = useState([]);
+  const [tabs, setTabs] = useState([]);
+  const [subTabs, setSubTabs] = useState([]);
   const [navOpen, setNavOpen] = useState(false);
   const [dropdown, setDropdown] = useState("");
   const [info, setInfo] = useState(null);
   const navRef = useRef();
   const location = useLocation();
   const isThueXeDeDangDomain = typeof window !== 'undefined' && /(^|\.)thuexededang\.com$/i.test(window.location.hostname || '');
+  const subTabsByTabId = subTabs.reduce((acc, item) => {
+    const tabId = String(item?.tab_id || '');
+    if (!tabId) return acc;
+    if (!acc[tabId]) acc[tabId] = [];
+    acc[tabId].push(item);
+    return acc;
+  }, {});
 
   useEffect(() => {
-    fetch('/api/groups.php').then(res => res.json()).then(res => {
-      setGroups(res.data || []);
-      setSubMenus(res.sub_menus || []);
-    });
-    fetch('/api/zones.php').then(res => res.json()).then(res => setZones(res.data || []));
+    if (!isThueXeDeDangDomain) {
+      fetch('/api/bussiness.php?action=get_tabs')
+        .then(res => res.json())
+        .then(res => {
+          const payload = res?.data || {};
+          setTabs(payload.tabs || []);
+          setSubTabs(payload.sub_tabs || []);
+        })
+        .catch(() => {
+          setTabs([]);
+          setSubTabs([]);
+        });
+    }
+
     fetchInfo().then(setInfo);
+  }, [isThueXeDeDangDomain]);
+
+  useEffect(() => {
     setNavOpen(false);
     setDropdown("");
   }, [location]);
@@ -97,7 +164,7 @@ function Layout({ children }) {
       alt="Thuê Xe Dễ Dàng Logo" 
     />
   ) : (
-    "Du Lịch Real"
+    info?.web_title ? <span className="company-name">{info.web_title}</span> : <span className="company-name">Du Lịch Real</span>
   )}
 </Link>
 
@@ -115,72 +182,40 @@ function Layout({ children }) {
               </>
             ) : (
               <>
-                {/* <Link to="/" className="nav-link">Trang chủ</Link> */}
-                <div className={`nav-item dropdown${dropdown==='trang_chu' ? ' show' : ''}`}
-                  onClick={() => setDropdown(dropdown==='trang_chu' ? '' : 'trang_chu')}
-                  onMouseEnter={() => window.innerWidth >= 992 && setDropdown('trang_chu')}
-                  onMouseLeave={() => window.innerWidth >= 992 && setDropdown('')}
-                >
-                  <span className="nav-link dropdown-toggle" id="trang_chuDropdown" role="button" aria-expanded={dropdown==='trang_chu'}>Trang chủ</span>
-                  <ul className={`dropdown-menu${dropdown==='trang_chu' ? ' show' : ''}`} aria-labelledby="trang_chuDropdown">
-                    {sub_menus.map(sub_menu => sub_menu.tab_id === '14' && (
-                      <li key={sub_menu.subtab_id}><Link className="dropdown-item" to={sub_menu.php}>{sub_menu.subtab_title}</Link></li>
-                    ))}
-                  </ul>
-                </div>
-                {/* <Link to="/danh-sach-tour" className="nav-link">Danh sách tour</Link> */}
-                {/* <Link to="/tinh-gia-thue-xe" className="nav-link">Tính giá thuê xe</Link> */}
-                <div className={`nav-item dropdown${dropdown==='group' ? ' show' : ''}`}
-                  onClick={() => setDropdown(dropdown==='group' ? '' : 'group')}
-                  onMouseEnter={() => window.innerWidth >= 992 && setDropdown('group')}
-                  onMouseLeave={() => window.innerWidth >= 992 && setDropdown('')}
-                >
-                  <span className="nav-link dropdown-toggle" id="groupDropdown" role="button" aria-expanded={dropdown==='group'}>Nhóm tour</span>
-                  <ul className={`dropdown-menu${dropdown==='group' ? ' show' : ''}`} aria-labelledby="groupDropdown">
-                    {groups.map(group => (
-                      <li key={group.group_id}><Link className="dropdown-item" to={buildGroupRoute(group)}>{group.name}</Link></li>
-                    ))}
-                  </ul>
-                </div>
-                <div className={`nav-item dropdown${dropdown==='zone' ? ' show' : ''}`}
-                  onClick={() => setDropdown(dropdown==='zone' ? '' : 'zone')}
-                  onMouseEnter={() => window.innerWidth >= 992 && setDropdown('zone')}
-                  onMouseLeave={() => window.innerWidth >= 992 && setDropdown('')}
-                >
-                  <span className="nav-link dropdown-toggle" id="zoneDropdown" role="button" aria-expanded={dropdown==='zone'}>Khu vực</span>
-                  <ul className={`dropdown-menu${dropdown==='zone' ? ' show' : ''}`} aria-labelledby="zoneDropdown">
-                    {zones.map(zone => (
-                      <li key={zone.zone_id}><Link className="dropdown-item" to={buildZoneRoute(zone)}>{zone.zone_name}</Link></li>
-                    ))}
-                  </ul>
-                </div>
-                <Link to="/lich-khoi-hanh" className="nav-link">Lịch khởi hành</Link>
-                <div className={`nav-item dropdown${dropdown==='bus_rental' ? ' show' : ''}`}
-                  onClick={() => setDropdown(dropdown==='bus_rental' ? '' : 'bus_rental')}
-                  onMouseEnter={() => window.innerWidth >= 992 && setDropdown('bus_rental')}
-                  onMouseLeave={() => window.innerWidth >= 992 && setDropdown('')}
-                >
-                  <span className="nav-link dropdown-toggle" id="bus_rentalDropdown" role="button" aria-expanded={dropdown==='bus_rental'}>Thuê xe</span>
-                  <ul className={`dropdown-menu${dropdown==='bus_rental' ? ' show' : ''}`} aria-labelledby="bus_rentalDropdown">
-                      <li key="thue-xe"><Link className="dropdown-item" to="/thue-xe">Thuê xe</Link></li>
-                      <li key="thue-xe-nang-cao"><Link className="dropdown-item" to="/thue-xe-nang-cao">Thuê xe nâng cao</Link></li>
-                  </ul>
-                </div>
-                <Link to="/mua-ve" className="nav-link">Mua vé xe tuyến</Link>
-                <Link to="/mua-ve-may-bay" className="nav-link">Mua vé máy bay</Link>
-                <div className={`nav-item dropdown${dropdown==='others' ? ' show' : ''}`}
-                  onClick={() => setDropdown(dropdown==='others' ? '' : 'others')}
-                  onMouseEnter={() => window.innerWidth >= 992 && setDropdown('others')}
-                  onMouseLeave={() => window.innerWidth >= 992 && setDropdown('')}
-                >
-                  <span className="nav-link dropdown-toggle" id="othersDropdown" role="button" aria-expanded={dropdown==='others'}>Dịch vụ khác</span>
-                  <ul className={`dropdown-menu${dropdown==='others' ? ' show' : ''}`} aria-labelledby="othersDropdown">
-                      <li key="visa"><Link className="dropdown-item" to="/visa">Visa</Link></li>
-                      <li key="hotel"><Link className="dropdown-item" to="/hotel">Khách sạn</Link></li>
-                  </ul>
-                </div>
-                {/* <Link to="/lien-he" className="nav-link">Liên hệ</Link> */}
-                {/* <Link to="/so-do-website" className="nav-link">Sơ đồ website</Link> */}
+                {tabs.map((tab) => {
+                  const tabId = String(tab?.tab_id || '');
+                  const currentSubTabs = subTabsByTabId[tabId] || [];
+                  const dropdownKey = `tab_${tabId}`;
+
+                  if (currentSubTabs.length > 0) {
+                    return (
+                      <div
+                        key={buildMenuItemKey(tab, dropdownKey)}
+                        className={`nav-item dropdown${dropdown===dropdownKey ? ' show' : ''}`}
+                        onMouseEnter={() => window.innerWidth >= 992 && setDropdown(dropdownKey)}
+                        onMouseLeave={() => window.innerWidth >= 992 && setDropdown('')}
+                      >
+                        <div className="d-flex align-items-center">
+                          <MenuAnchor className="nav-link" item={tab}>{tab.name}</MenuAnchor>
+                          <DropdownToggleButton dropdownKey={dropdownKey} dropdown={dropdown} setDropdown={setDropdown} />
+                        </div>
+                        <ul className={`dropdown-menu${dropdown===dropdownKey ? ' show' : ''}`} aria-labelledby={`${dropdownKey}Dropdown`}>
+                          {currentSubTabs.map((subTab, index) => (
+                            <li key={buildMenuItemKey(subTab, index)}>
+                              <MenuAnchor className="dropdown-item" item={subTab}>{subTab.subtab_title}</MenuAnchor>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <MenuAnchor key={buildMenuItemKey(tab)} className="nav-link" item={tab}>
+                      {tab.name}
+                    </MenuAnchor>
+                  );
+                })}
               </>
             )}
           </nav>

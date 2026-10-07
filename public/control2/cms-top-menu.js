@@ -13,7 +13,7 @@
         } else {
             a.href = 'cms-list.html?table=' + encodeURIComponent(item.table_name || '');
         }
-        a.className = 'nav-link cms-topmenu-link' + (isActive ? ' active' : '');
+        a.className = 'nav-link cms-topmenu-link' + (isActive ? ' active' : '') + (item.pinned ? ' pinned' : '');
         a.textContent = item.table_php_name || item.table_name || 'Untitled';
         return a;
     }
@@ -67,7 +67,9 @@
                 menuBody.className = 'cms-topmenu-children';
 
                 childItems.forEach(item => {
+                    /*
                     item.table_php_name = item.pinned ? item.table_php_name + ' 📌' : item.table_php_name;
+                    */
                     const link = createMenuLink(item, currentTable && currentTable === item.table_name);
                     menuBody.appendChild(link);
                 });

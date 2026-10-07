@@ -13,6 +13,10 @@
   <link rel="stylesheet" href="wdg.css" />
 <link href="/html_logo.ico" rel="shortcut icon">
   <style>
+    
+button {
+padding: 10px;
+}
     .heading-cell { font-weight: 600; color: #1f3f6c; background: #f8f9fa; }
     .page-shell { max-width: 1280px; margin: 0 auto; padding: 20px; }
     .page-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
@@ -22,7 +26,7 @@
     .dept-selection-panel .field-group { display: flex; flex-direction: column; gap: 6px; }
     .dept-selection-panel .field-group label { font-size: 13px; color: #44516b; }
     .dept-selection-panel .field-group select,
-    .dept-selection-panel .field-group input { width: 100%; min-width: 120px; padding: 8px 10px; border: 1px solid #d9dee6; border-radius: 8px; background: #fff; }
+    .dept-selection-panel .field-group input { width: 100%; padding: 8px 10px; border: 1px solid #d9dee6; border-radius: 8px; background: #fff; }
     .dept-selection-panel .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     .dept-selection-panel .actions button,
     .dept-selection-panel .actions a { border-radius: 8px; border: 1px solid #d9dee6; background: #fff; padding: 8px 12px; color: #1f3f6c; text-decoration: none; cursor: pointer; }
@@ -212,7 +216,7 @@ font-size: 11pt;
     .ticket-modal-seat-status { margin-top: 12px; font-size: 13px; color: #44516b; }
     .ticket-modal-seat-status strong { color: #198754; }
     .ticket-modal-dept-nav { display: flex; gap: 8px; margin-top: 10px; }
-    .ticket-modal-dept-nav button { min-width: 42px; padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #1f3f6c; cursor: pointer; }
+    .ticket-modal-dept-nav button { padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #1f3f6c; cursor: pointer; }
     .ticket-modal-dept-nav button:hover { background: #e8f1ff; }
     .form-section { margin-bottom: 5px; }
     .form-section label { display: block; font-size: 13px; color: #44516b; font-weight: 600; margin-bottom: 6px; }
@@ -308,7 +312,7 @@ font-size: 11pt;
       <div class="field-group" style="grid-column: span 1;">
         <label for="route_id">Tuyến xe</label>
         <select id="route_id" name="route_id">
-          <option value="">-- chọn tuyến --</option>
+          <option value="">-- tuyến --</option>
         </select>
       </div>
       <div class="" style="grid-column: span 3;">

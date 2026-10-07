@@ -9,6 +9,9 @@
   <link rel="stylesheet" href="cms.css" />
   <link rel="stylesheet" href="cargo.css" />
   <link rel="stylesheet" href="scroll-top.css" />
+  <script src="control2-auth.js"></script>
+  <script src="cargo-page-guard.js"></script>
+  <script src="header-loader.js"></script>
 <link href="/html_logo.ico" rel="shortcut icon">
   <style>
     .filter-panel { background: #fff; border: 1px solid #d9dee6; border-radius: 10px; padding: 16px; margin-bottom: 18px; box-shadow: 0 1px 10px rgba(0,0,0,0.03); }
@@ -565,6 +568,12 @@
     }
 
   (async function init() {
+      const canOpen = await window.cargoPageGuard.ensureCanOpenPage({
+        apiUrl: API_URL,
+        token: token,
+        redirectUrl: 'departure-list.html'
+      });
+      if (!canOpen) return;
     state.filters.show_old_departures = localStorage.getItem('show_old_departures') === '1' ? '1' : '';
     elems.showOldDepartures.checked = state.filters.show_old_departures === '1';
     await loadMeta();

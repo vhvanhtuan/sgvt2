@@ -110,8 +110,9 @@ button:disabled { background: #90caf9; }
 }
 .cms-topmenu-children .cms-topmenu-link.active {
     /* background: #e3f2fd; */
-    color: #d32f2f !important;
-    font-weight: 700;
+/* color: #d32f2f !important;
+font-weight: 700; */
+text-decoration: underline !important;
 }
 .emphasic { font-weight: bold; color: #d32f2f; font-size: 110%; }
 #cms-help-modal-body h1, #cms-help-modal-body h2, #cms-help-modal-body h3 {text-align: left;}
@@ -195,3 +196,11 @@ padding-top: 5px;
   display: none !important;
 }
 .driver-autocomplete-panel button { color: black; }
+.dropdown-menu .dropdown-item strong{
+text-decoration: underline;
+color: #c71414;
+}
+#cms-shortcuts .nav-link.pinned {
+  font-weight: 700;
+  color: #d32f2f !important;
+}

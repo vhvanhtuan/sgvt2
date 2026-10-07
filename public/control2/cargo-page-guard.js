@@ -44,6 +44,10 @@
       }
 
       if (data && data.success === true) {
+        // update <title> : data.me.first_name
+        if (data.me && data.me.e_mail) {
+          document.title = data.me.e_mail + ' - ' + document.title;
+        }
         return true;
       }
     } catch (err) {

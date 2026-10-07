@@ -509,7 +509,7 @@
                     <th style="width: 140px;">Giá trị</th>
                     <th class="hidden">Ghi chú</th>
                     <th style="width: 140px;">Cước phí</th>
-                    <th style="width: 80px;">Xóa</th>
+                    <th class="hidden" style="width: 80px;">Xóa</th>
                   </tr>
                 </thead>
                 <tbody id="details-body"></tbody>
@@ -523,9 +523,9 @@
             <div class="summary-grid">
               <div class="summary-item" style="grid-column: span 3;"><label for="ticket_vnd">Tổng giá trị hàng hóa</label><input type="text" id="ticket_vnd" inputmode="numeric" pattern="[0-9,\\.]*" /></div>
               <div class="summary-item" style="grid-column: span 3;"><label for="sum_vnd">Tổng cước</label><input type="text" id="sum_vnd" inputmode="numeric" pattern="[0-9,\\.]*" /></div>
-              <div class="summary-item" style="grid-column: span 3;"><label for="payment_method">Hình thức thanh toán</label><select required id="payment_method"></select></div>
               <div class="summary-item" style="grid-column: span 3;"><label for="sender_paid_vnd">Người gửi trả</label><input type="text" id="sender_paid_vnd" inputmode="numeric" pattern="[0-9,\\.]*" /></div>
               <div class="summary-item" style="grid-column: span 3;"><label for="receiver_paid_vnd">Người nhận trả</label><input type="text" id="receiver_paid_vnd" inputmode="numeric" pattern="[0-9,\\.]*" /></div>
+              <div class="summary-item" style="grid-column: span 3;"><label for="payment_method">Hình thức thanh toán</label><select required id="payment_method"></select></div>
               <div class="summary-item" style="grid-column: span 3; display:flex; flex-direction:column; gap:8px;"><div class="field-group inline"><input type="checkbox" id="cod_service" /><label for="cod_service">Thu hộ</label></div><label for="cod_vnd">Phí thu hộ</label><input type="text" id="cod_vnd" inputmode="numeric" pattern="[0-9,\\.]*" /></div>
               <div class="summary-item" style="grid-column: span 6;"><label for="notes">Ghi chú</label><textarea id="notes"></textarea></div>
             </div>
@@ -2110,7 +2110,7 @@ function populateSelect(select, items) {
           <td><input type="text" class="detail-value" min="0" inputmode="numeric" value="${detail.value_vnd != null && detail.value_vnd !== '' ? sanitizeNumberInputValue(detail.value_vnd) : ''}" /></td>
           <td class="hidden"><input type="text" class="detail-note" value="${detail.notes||''}" /></td>
           <td><input type="text" class="detail-ship" min="0" inputmode="numeric" value="${detail.ship_fee_vnd != null && detail.ship_fee_vnd !== '' ? sanitizeNumberInputValue(detail.ship_fee_vnd) : ''}" /></td>
-          <td><button type="button" class="action-btn remove"><i class="fa fa-trash"></i></button></td>
+          <td class="hidden"><button type="button" class="action-btn remove"><i class="fa fa-trash"></i></button></td>
         `;
         row.querySelector('.remove').addEventListener('click', ()=>{ row.remove(); updateSummaryFromTotals(); });
         ['detail-value','detail-ship','detail-quantity'].forEach(cls=> {

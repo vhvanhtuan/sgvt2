@@ -9,7 +9,7 @@
       <ul id="dynamic-menu" class="navbar-nav me-auto mb-2 mb-lg-0">
       </ul>
 
-      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+      <ul class="navbar-nav ms-auto mb-2 mb-lg-0 hidden">
         <li class="nav-item">
           <form class="d-flex" role="search" onsubmit="return false;">
             <input class="form-control form-control-sm me-2" type="search" placeholder="Tìm..." aria-label="Search">
@@ -106,6 +106,20 @@
         const menuData = Array.isArray(json.data) ? json.data : [];
         // Nếu đã login, thêm menu Logout có control_type_id=8
         if (token) {
+          menuData.push({
+            control_type_id: 8,
+            control_type_name: 'Người dùng',
+            vn: 'CMS',
+            php: '/control2/cms-list.html?table=users',
+            bold: 0
+          });
+          menuData.push({
+            control_type_id: 8,
+            control_type_name: 'Người dùng',
+            vn: 'Version cũ',
+            php: '/control/vexe_departures.php',
+            bold: 1
+          });
           menuData.push({
             control_type_id: 8,
             control_type_name: 'Người dùng',
