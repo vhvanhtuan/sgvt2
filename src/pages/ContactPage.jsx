@@ -118,7 +118,7 @@ function ContactPage() {
   return (
     <div className="contact-page container py-4">
       <div className="row">
-        <div className="col-md-6 mb-4">
+        <div className="col-md-7 mb-4">
           {this_text && (
             <div className="tour-text mb-3">
               <h2>{this_text.richtext_title}</h2>
@@ -148,7 +148,7 @@ function ContactPage() {
             {error && <div className="text-danger mt-2">{error}</div>}
           </form>
         </div>
-        <div className="col-md-6">
+        <div className="col-md-5">
           <h5>Thông tin liên hệ</h5>
           <ul className="list-unstyled">
             <li><i className="fas fa-map-marker-alt me-1"></i><b>Địa chỉ:</b> {info?.address || 'Đang cập nhật...'}</li>

@@ -136,11 +136,15 @@ function Layout({ children }) {
 
     fetchInfo().then(setInfo);
   }, [isThueXeDeDangDomain]);
-
+  
+// set title của trang = info.web_title nếu có, nếu không thì để mặc định là "Du Lịch Real"
   useEffect(() => {
-    setNavOpen(false);
-    setDropdown("");
-  }, [location]);
+    if (info?.web_title) {
+      document.title = info.web_title;
+    } else {
+      document.title = "Du Lịch Real";
+    }
+  }, [info]);
 
   useEffect(() => {
     function handleClick(e) {

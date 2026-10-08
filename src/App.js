@@ -32,8 +32,8 @@ function App() {
     <Router>
       <Layout>
         <Routes>
-          <Route path="/home" element={isThueXeDeDangDomain ? <Navigate to="/thue-xe" replace /> : <WebHomePage />} />
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={isThueXeDeDangDomain ? <Navigate to="/thue-xe" replace /> : <HomePage />} />
+          <Route path="/home" element={<WebHomePage />} />
           <Route path="/danh-sach-tour" element={<TourList />} />
           <Route path="/chi-tiet-tour" element={<TourDetailQuery />} />
           <Route path="/lich-khoi-hanh" element={React.createElement(require('./pages/LichKhoiHanh').default)} />
